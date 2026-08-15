@@ -1,0 +1,379 @@
+:root {
+  --bg: #14171c;
+  --panel: #1c2027;
+  --panel-2: #232833;
+  --line: #2e3542;
+  --text: #e6e9ef;
+  --muted: #99a2b3;
+  --accent: #6ea8fe;
+  --warm: #f0a05a;
+  --good: #5fd08a;
+  --bad: #f0736a;
+  --radius: 12px;
+  --tap: 44px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font:
+    16px/1.5 ui-sans-serif,
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+/* --- chrome ------------------------------------------------------------- */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0));
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+
+.topbar h1 {
+  font-size: 17px;
+  margin: 0;
+  letter-spacing: 0.4px;
+}
+
+.topbar nav {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+  overflow-x: auto;
+}
+
+.topbar nav a {
+  padding: 8px 12px;
+  border-radius: 8px;
+  color: var(--muted);
+  white-space: nowrap;
+  min-height: var(--tap);
+  display: flex;
+  align-items: center;
+}
+
+.topbar nav a.active {
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+main {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 16px 16px 64px;
+}
+
+h2 {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin: 26px 0 10px;
+  font-weight: 600;
+}
+h2:first-child {
+  margin-top: 0;
+}
+
+/* --- show cards --------------------------------------------------------- */
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-bottom: 10px;
+}
+
+.show {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  padding: 0;
+}
+
+.show.selectable {
+  cursor: pointer;
+}
+
+.show .when {
+  min-width: 74px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.show .when .weekend {
+  color: var(--good);
+}
+
+.show .body {
+  flex: 1;
+  min-width: 0;
+}
+
+.show .artist {
+  font-weight: 600;
+  font-size: 17px;
+  overflow-wrap: anywhere;
+}
+
+.show .where {
+  color: var(--muted);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.show .drive {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.chip {
+  font-size: 12px;
+  padding: 3px 9px;
+  border-radius: 99px;
+  background: var(--panel-2);
+  color: var(--muted);
+  border: 1px solid var(--line);
+}
+
+.chip.warn {
+  color: var(--warm);
+  border-color: #4a3a28;
+}
+.chip.info {
+  color: var(--accent);
+  border-color: #27384f;
+}
+.chip.good {
+  color: var(--good);
+  border-color: #2c4a39;
+}
+
+.score {
+  min-width: 46px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.meter {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--panel-2);
+  margin-top: 4px;
+  overflow: hidden;
+}
+
+.meter > i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.selected {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+/* --- forms -------------------------------------------------------------- */
+
+label {
+  display: block;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+input[type='text'],
+input[type='date'],
+input[type='number'],
+input[type='search'],
+select {
+  width: 100%;
+  padding: 11px 12px;
+  min-height: var(--tap);
+  border-radius: 10px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  color: var(--text);
+  font: inherit;
+}
+
+input[type='range'] {
+  width: 100%;
+  min-height: var(--tap);
+}
+
+button {
+  padding: 11px 16px;
+  min-height: var(--tap);
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+button.primary {
+  background: var(--accent);
+  color: #10151d;
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+button.danger {
+  color: var(--bad);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.stack {
+  display: grid;
+  gap: 14px;
+}
+
+/* --- misc --------------------------------------------------------------- */
+
+.muted {
+  color: var(--muted);
+}
+
+.note {
+  font-size: 14px;
+  color: var(--warm);
+  background: #251d13;
+  border: 1px solid #4a3a28;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.empty {
+  color: var(--muted);
+  padding: 40px 20px;
+  text-align: center;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+}
+
+.statusbar {
+  font-size: 13px;
+  color: var(--muted);
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.progress {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+
+.progress .bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--panel-2);
+  margin-top: 8px;
+  overflow: hidden;
+}
+
+.progress .bar > i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.4s ease;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+td,
+th {
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+
+th {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+@media (max-width: 560px) {
+  .grid2 {
+    grid-template-columns: 1fr;
+  }
+  .show .when {
+    min-width: 62px;
+  }
+}
