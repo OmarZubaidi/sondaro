@@ -86,11 +86,8 @@ async def api_status():
 
 
 @app.get("/api/home")
-async def api_home(
-    min_score: float | None = Query(None, ge=0.0, le=1.0),
-    discovery: bool = Query(True),
-):
-    candidates = scan.home_candidates(include_discovery=discovery)
+async def api_home(min_score: float | None = Query(None, ge=0.0, le=1.0)):
+    candidates = scan.home_candidates()
     if min_score is not None:
         candidates = [c for c in candidates if c.total >= min_score]
 
@@ -112,7 +109,6 @@ async def api_sync():
     """Force a library refresh now rather than waiting for the daily task."""
     async with _sync_lock:
         result = await library.sync()
-        result["discovery"] = await library.refresh_discovery()
     worker.worker.nudge()
     return result
 
@@ -140,7 +136,6 @@ def _trip_summary(row) -> dict:
         "flex_before": row["flex_before"],
         "flex_after": row["flex_after"],
         "strict_dates": bool(row["strict_dates"]),
-        "discovery": bool(row["discovery"]),
         "scanned_at": row["scanned_at"],
     }
 
@@ -176,7 +171,7 @@ async def api_create_trip(payload: dict = Body(...)):
 
     trip_id = db.execute(
         "INSERT INTO trips(name, countries, cities, start_date, end_date, flex_before, "
-        "flex_after, strict_dates, discovery, created_at) VALUES(?,?,?,?,?,?,?,?,?,?)",
+        "flex_after, strict_dates, created_at) VALUES(?,?,?,?,?,?,?,?,?)",
         (
             name,
             ",".join(countries),
@@ -186,7 +181,6 @@ async def api_create_trip(payload: dict = Body(...)):
             flex_before,
             flex_after,
             1 if strict else 0,
-            1 if payload.get("discovery", True) else 0,
             now_iso(),
         ),
     )

@@ -1,8 +1,6 @@
 export interface Show {
   id: string
   artist: string
-  source: 'lidarr' | 'discovery'
-  seed: string | null
   listens: number
   score: number
   affinity: number
@@ -46,7 +44,6 @@ export interface Status {
   providers: Record<string, boolean>
   library: {
     artists: number
-    discovery: number
     synced_at: string | null
     affinity_source: string
   }
@@ -68,7 +65,6 @@ export interface Trip {
   flex_before: number
   flex_after: number
   strict_dates: boolean
-  discovery: boolean
   scanned_at: string | null
 }
 

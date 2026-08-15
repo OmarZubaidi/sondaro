@@ -20,7 +20,6 @@ export function Trips() {
     flex_before: 3,
     flex_after: 3,
     strict_dates: false,
-    discovery: true,
   })
 
   useEffect(() => {
@@ -192,15 +191,6 @@ export function Trips() {
             </div>
           </div>
         )}
-
-        <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <input
-            type="checkbox"
-            checked={form.discovery}
-            onChange={(e) => setForm({ ...form, discovery: e.target.checked })}
-          />
-          Include artists I don't own
-        </label>
 
         <div className="row">
           <button className="primary" type="submit" disabled={saving}>

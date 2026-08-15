@@ -7,8 +7,6 @@ function show(id: string, date: string, city: string, lat: number, lon: number):
   return {
     id,
     artist: `Band ${id}`,
-    source: 'lidarr',
-    seed: null,
     listens: 100,
     score: 0.5,
     affinity: 0.5,

@@ -54,12 +54,11 @@ async def announce_new_shows() -> int:
 
     threshold = settings.get("notify_min_score")
     cap = settings.get("notify_max_per_run")
-    allow_discovery = settings.get("notify_discovery")
 
     already = {row["event_id"] for row in db.query("SELECT event_id FROM notified")}
     candidates = [
         c
-        for c in scan.home_candidates(include_discovery=allow_discovery)
+        for c in scan.home_candidates()
         if c.event.id not in already and c.total >= threshold
     ]
     if not candidates:
@@ -78,9 +77,6 @@ async def announce_new_shows() -> int:
             estimate = " (est.)" if "estimated drive time" in candidate.score.flags else ""
             lines.append(f"{drive:.1f}h drive{estimate}")
         lines.append(" · ".join(candidate.score.reasons))
-        for flag in candidate.score.flags:
-            if flag != "estimated drive time":
-                lines.append(f"⚑ {flag}")
 
         ok = await send(
             config.ntfy_topic_alerts,

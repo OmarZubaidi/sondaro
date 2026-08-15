@@ -8,8 +8,6 @@ function makeShow(overrides: Partial<Show> = {}): Show {
   return {
     id: 'ticketmaster:1',
     artist: 'The National',
-    source: 'lidarr',
-    seed: null,
     listens: 4210,
     score: 0.64,
     affinity: 1,
@@ -58,26 +56,19 @@ describe('ShowCard', () => {
     render(
       <ShowCard
         show={makeShow({
-          flags: ['major planning', 'not on your itinerary (Switzerland)'],
+          flags: ['not on your itinerary (Switzerland)', 'outside your dates'],
         })}
       />,
     )
-    expect(screen.getByText('major planning')).toBeInTheDocument()
     expect(screen.getByText('not on your itinerary (Switzerland)')).toBeInTheDocument()
+    expect(screen.getByText('outside your dates')).toBeInTheDocument()
   })
 
-  it('explains why an artist you do not own is being suggested', () => {
-    render(
-      <ShowCard
-        show={makeShow({
-          source: 'discovery',
-          seed: 'Big Thief',
-          reasons: ['similar to Big Thief'],
-          flags: ['not in your library'],
-        })}
-      />,
-    )
-    expect(screen.getByText('similar to Big Thief')).toBeInTheDocument()
+  it('does not badge a show for merely being far away', () => {
+    // a long drive sinks on score alone; a badge would draw the eye to the
+    // thing you are least likely to do
+    render(<ShowCard show={makeShow({ drive_hours: 6, score: 0.06, flags: [] })} />)
+    expect(screen.queryByText(/major planning/)).not.toBeInTheDocument()
   })
 
   it('is not interactive unless a toggle handler is supplied', () => {

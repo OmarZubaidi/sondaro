@@ -23,7 +23,6 @@ from datetime import date
 # --- affinity ---------------------------------------------------------------
 
 LIBRARY_FLOOR = 0.25  # in Lidarr, never scrobbled
-DISCOVERY_CEILING = 0.45  # a suggestion can't outrank a real favourite
 
 # --- home reach -------------------------------------------------------------
 
@@ -31,7 +30,6 @@ DISCOVERY_CEILING = 0.45  # a suggestion can't outrank a real favourite
 BASE_HOURS_WEEKNIGHT = 3.0  # Mon-Thu
 BASE_HOURS_SUNDAY = 3.75
 BASE_HOURS_WEEKEND = 4.5  # Fri-Sat
-MAJOR_PLANNING_HOURS = 5.0
 
 # --- trip reach -------------------------------------------------------------
 
@@ -47,11 +45,9 @@ DECAY_EXPONENT = 4  # plateau near home, then a fast cliff
 
 
 class Flag:
-    MAJOR_PLANNING = "major planning"
     OFF_ITINERARY = "not on your itinerary"
     OUTSIDE_DATES = "outside your dates"
     ESTIMATED_DRIVE = "estimated drive time"
-    DISCOVERY = "not in your library"
 
 
 @dataclass
@@ -78,11 +74,6 @@ def affinity(listens: int, ceiling: int) -> float:
         return LIBRARY_FLOOR
     scaled = math.log1p(listens) / math.log1p(ceiling)
     return round(LIBRARY_FLOOR + (1.0 - LIBRARY_FLOOR) * min(scaled, 1.0), 4)
-
-
-def discovery_affinity(similarity: float) -> float:
-    """Affinity for an artist you don't own, from a similarity score in [0,1]."""
-    return round(max(0.0, min(similarity, 1.0)) * DISCOVERY_CEILING, 4)
 
 
 def shape_home(a: float) -> float:
@@ -198,20 +189,14 @@ def score_home(
     drive_hours: float,
     miles: float | None = None,
     estimated: bool = False,
-    is_discovery: bool = False,
     listens: int = 0,
-    seed: str | None = None,
     base_hours: float | None = None,
-    major_planning_hours: float = MAJOR_PLANNING_HOURS,
 ) -> Score:
     fit = reach_fit_home(drive_hours, artist_affinity, day, base_hours=base_hours)
-    flags: list[str] = []
-    if drive_hours > major_planning_hours:
-        flags.append(Flag.MAJOR_PLANNING)
-    if estimated:
-        flags.append(Flag.ESTIMATED_DRIVE)
-    if is_discovery:
-        flags.append(Flag.DISCOVERY)
+
+    # A show that's too far simply scores low and sinks. It gets no badge:
+    # flagging it would draw the eye to the thing you're least likely to do.
+    flags: list[str] = [Flag.ESTIMATED_DRIVE] if estimated else []
 
     return Score(
         total=round(artist_affinity * fit, 4),
@@ -221,7 +206,7 @@ def score_home(
         flags=flags,
         drive_hours=drive_hours,
         miles=miles,
-        reasons=_reasons(listens, is_discovery, seed),
+        reasons=_reasons(listens),
     )
 
 
@@ -238,9 +223,7 @@ def score_trip(
     country_name: str | None = None,
     miles_to_border: float | None = None,
     miles_to_named_city: float | None = None,
-    is_discovery: bool = False,
     listens: int = 0,
-    seed: str | None = None,
     border_base_miles: float = TRIP_BORDER_BASE_MILES,
 ) -> Score:
     fit_date = date_fit(
@@ -260,8 +243,6 @@ def score_trip(
         flags.append(f"{Flag.OFF_ITINERARY} ({where})")
     if 0 < fit_date < 1.0:
         flags.append(Flag.OUTSIDE_DATES)
-    if is_discovery:
-        flags.append(Flag.DISCOVERY)
 
     return Score(
         total=round(artist_affinity * fit_date * fit_reach, 4),
@@ -270,13 +251,11 @@ def score_trip(
         reach_fit=fit_reach,
         flags=flags,
         miles=miles_to_border if not in_visited_country else miles_to_named_city,
-        reasons=_reasons(listens, is_discovery, seed),
+        reasons=_reasons(listens),
     )
 
 
-def _reasons(listens: int, is_discovery: bool, seed: str | None) -> list[str]:
-    if is_discovery and seed:
-        return [f"similar to {seed}"]
+def _reasons(listens: int) -> list[str]:
     if listens > 0:
         return [f"{listens:,} scrobbles"]
     return ["in your library"]

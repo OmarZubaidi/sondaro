@@ -126,7 +126,7 @@ def _add_artist(name: str, listens: int, ceiling: int) -> None:
 
     db.execute(
         "INSERT INTO artists(key, mbid, name, lidarr_id, monitored, listens, affinity, "
-        "source, seed, updated_at) VALUES(?,?,?,?,?,?,?,?,?,?) "
+        "updated_at) VALUES(?,?,?,?,?,?,?,?) "
         "ON CONFLICT(key) DO UPDATE SET listens=excluded.listens, affinity=excluded.affinity",
         (
             artist_key(None, name),
@@ -136,8 +136,6 @@ def _add_artist(name: str, listens: int, ceiling: int) -> None:
             1,
             listens,
             scoring.affinity(listens, ceiling),
-            "lidarr",
-            None,
             now_iso(),
         ),
     )
@@ -199,7 +197,7 @@ def _plays_after(world, name, place):
 def _trip(world):
     trip_id = db.execute(
         "INSERT INTO trips(name, countries, cities, start_date, end_date, flex_before, "
-        "flex_after, strict_dates, discovery, created_at) VALUES(?,?,?,?,?,?,?,?,?,?)",
+        "flex_after, strict_dates, created_at) VALUES(?,?,?,?,?,?,?,?,?)",
         (
             "Europe",
             "FR,ES",
@@ -209,7 +207,6 @@ def _trip(world):
             0,
             0,
             0,
-            1,
             now_iso(),
         ),
     )
@@ -264,14 +261,15 @@ def _not_recommended(world, name):
     assert not _find(world, name)
 
 
-@then("it is not flagged as major planning")
-def _no_major_flag(world):
-    assert not any("major planning" in f for c in world["results"] for f in c.score.flags)
+@then("it carries no flags")
+def _no_flags(world):
+    assert all(not c.score.flags for c in world["results"])
 
 
-@then("it is flagged as major planning")
-def _major_flag(world):
-    assert any("major planning" in f for c in world["results"] for f in c.score.flags)
+@then("it ranks below anything closer to home")
+def _ranks_low(world):
+    ordered = sorted(world["results"], key=lambda c: -c.total)
+    assert ordered[-1].event.city == "Millbrook"
 
 
 @then("it is flagged as an estimated drive time")

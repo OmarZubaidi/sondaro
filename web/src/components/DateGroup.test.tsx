@@ -7,8 +7,6 @@ function show(id: string, artist: string, score: number): Show {
   return {
     id,
     artist,
-    source: 'lidarr',
-    seed: null,
     listens: 10,
     score,
     affinity: score,

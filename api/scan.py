@@ -9,7 +9,7 @@ roster changes, rather than leaving you to wait out a 14-day cadence.
 """
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import date, timedelta
 
 from . import borders, db, geo, queue, routing, scoring, settings
@@ -31,7 +31,6 @@ class Candidate:
     artist: Artist
     score: scoring.Score
     provider: str = ""
-    extras: dict = field(default_factory=dict)
 
     @property
     def total(self) -> float:
@@ -136,14 +135,14 @@ def _destinations(rows) -> dict[str, tuple[float, float]]:
     return out
 
 
-def home_candidates(*, include_discovery: bool = True) -> list[Candidate]:
+def home_candidates() -> list[Candidate]:
     """Everything reachable from home, scored and ranked."""
     lat, lon = settings.home()
     horizon = settings.horizon_end()
     min_lat, max_lat, min_lon, max_lon = geo.bounding_box(lat, lon, HOME_QUERY_MILES)
 
     rows = db.query(
-        "SELECT e.*, a.affinity, a.source, a.listens, a.seed, a.name AS artist_display "
+        "SELECT e.*, a.affinity, a.listens "
         "FROM events e JOIN artists a ON a.key = e.artist_key "
         "WHERE e.date >= ? AND e.date <= ? "
         "  AND e.lat BETWEEN ? AND ? AND e.lon BETWEEN ? AND ? "
@@ -162,14 +161,11 @@ def home_candidates(*, include_discovery: bool = True) -> list[Candidate]:
                 queue.plan_route(origin, dest, dest_key)
 
     floor = settings.get("min_score")
-    major = settings.get("major_planning_hours")
     candidates: list[Candidate] = []
 
     for row in rows:
         day = parse_date(row["date"])
         if day is None or row["lat"] is None:
-            continue
-        if row["source"] == "discovery" and not include_discovery:
             continue
 
         dest_key = routing.point_key(row["lat"], row["lon"])
@@ -183,11 +179,8 @@ def home_candidates(*, include_discovery: bool = True) -> list[Candidate]:
             drive_hours=route.drive_hours,
             miles=route.miles,
             estimated=route.estimated,
-            is_discovery=row["source"] == "discovery",
             listens=row["listens"] or 0,
-            seed=row["seed"],
             base_hours=settings.base_hours_for(day),
-            major_planning_hours=major,
         )
         if score.total < floor:
             continue
@@ -247,12 +240,11 @@ def trip_candidates(trip) -> list[Candidate]:
         return []
 
     strict = bool(trip["strict_dates"])
-    include_discovery = bool(trip["discovery"])
     border_base = settings.get("trip_border_base_miles")
     floor = settings.get("min_score")
 
     rows = db.query(
-        "SELECT e.*, a.affinity, a.source, a.listens, a.seed "
+        "SELECT e.*, a.affinity, a.listens "
         "FROM events e JOIN artists a ON a.key = e.artist_key "
         "WHERE e.date >= ? AND e.date <= ? ORDER BY e.date",
         (max(window_start, today()).isoformat(), window_end.isoformat()),
@@ -264,8 +256,6 @@ def trip_candidates(trip) -> list[Candidate]:
     for row in rows:
         day = parse_date(row["date"])
         if day is None:
-            continue
-        if row["source"] == "discovery" and not include_discovery:
             continue
 
         country = (row["country"] or "").upper()
@@ -298,9 +288,7 @@ def trip_candidates(trip) -> list[Candidate]:
             country_name=borders.country_name(country) if country else None,
             miles_to_border=miles_to_border,
             miles_to_named_city=miles_to_named,
-            is_discovery=row["source"] == "discovery",
             listens=row["listens"] or 0,
-            seed=row["seed"],
             border_base_miles=border_base,
         )
         if score.total < floor:
@@ -333,9 +321,7 @@ def _candidate(row, score: scoring.Score) -> Candidate:
             name=row["artist_name"],
             mbid=None,
             affinity=row["affinity"],
-            source=row["source"],
             listens=row["listens"] or 0,
-            seed=row["seed"],
         ),
         score=score,
         provider=row["provider"],
@@ -348,8 +334,6 @@ def serialise(candidate: Candidate) -> dict:
     return {
         "id": event.id,
         "artist": candidate.artist.name,
-        "source": candidate.artist.source,
-        "seed": candidate.artist.seed,
         "listens": candidate.artist.listens,
         "score": score.total,
         "affinity": score.affinity,

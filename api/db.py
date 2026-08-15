@@ -18,7 +18,8 @@ _lock = threading.RLock()
 _conn: sqlite3.Connection | None = None
 
 SCHEMA = """
--- artists from Lidarr, plus discovery candidates from the similarity graph
+-- artists from Lidarr. This is the whole universe of what can be recommended:
+-- sondaro never suggests anyone you haven't added yourself.
 CREATE TABLE IF NOT EXISTS artists (
     key         TEXT PRIMARY KEY,   -- mbid when known, else name:<normalised>
     mbid        TEXT,
@@ -27,12 +28,9 @@ CREATE TABLE IF NOT EXISTS artists (
     monitored   INTEGER DEFAULT 1,
     listens     INTEGER DEFAULT 0,
     affinity    REAL    DEFAULT 0.25,
-    source      TEXT    DEFAULT 'lidarr',   -- lidarr | discovery
-    seed        TEXT,                       -- discovery rows: who suggested it
     updated_at  TEXT
 );
 CREATE INDEX IF NOT EXISTS artists_affinity ON artists(affinity DESC);
-CREATE INDEX IF NOT EXISTS artists_source ON artists(source);
 
 -- resolved provider identifiers, cached so we never re-search a known artist
 CREATE TABLE IF NOT EXISTS provider_ids (
@@ -113,7 +111,6 @@ CREATE TABLE IF NOT EXISTS trips (
     flex_before  INTEGER DEFAULT 0,
     flex_after   INTEGER DEFAULT 0,
     strict_dates INTEGER DEFAULT 0, -- booked and immovable
-    discovery    INTEGER DEFAULT 1,
     created_at   TEXT,
     scanned_at   TEXT
 );

@@ -67,8 +67,7 @@ def _cap_reached():
 def _cached_artists():
     db.execute(
         "INSERT INTO artists(key, mbid, name, lidarr_id, monitored, listens, affinity, "
-        "source, seed, updated_at) VALUES('k1', NULL, 'Cached Band', 1, 1, 10, 0.5, "
-        "'lidarr', NULL, ?)",
+        "updated_at) VALUES('k1', NULL, 'Cached Band', 1, 1, 10, 0.5, ?)",
         (now_iso(),),
     )
 

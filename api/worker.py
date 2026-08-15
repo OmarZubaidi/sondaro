@@ -176,7 +176,6 @@ class Worker:
     async def _library_sync(self, task: queue.Task) -> None:
         before = {row["key"] for row in db.query("SELECT key FROM artists")}
         result = await library.sync()
-        await library.refresh_discovery()
         after = {row["key"] for row in db.query("SELECT key FROM artists")}
 
         if result.get("error"):

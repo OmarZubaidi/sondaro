@@ -146,10 +146,6 @@ export function StatusPage() {
               <td>{status.library.artists}</td>
             </tr>
             <tr>
-              <th>Suggestions</th>
-              <td>{status.library.discovery}</td>
-            </tr>
-            <tr>
               <th>Affinity from</th>
               <td>{status.library.affinity_source}</td>
             </tr>

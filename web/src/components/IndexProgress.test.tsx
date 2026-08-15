@@ -15,7 +15,6 @@ function status(overrides: Partial<Status> = {}): Status {
     providers: { ticketmaster: true },
     library: {
       artists: 120,
-      discovery: 40,
       synced_at: null,
       affinity_source: 'listenbrainz',
     },

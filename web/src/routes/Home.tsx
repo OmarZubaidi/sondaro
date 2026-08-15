@@ -8,18 +8,17 @@ import { IndexProgress } from '../components/IndexProgress'
 export function Home() {
   const [feed, setFeed] = useState<HomeFeed | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [discovery, setDiscovery] = useState(true)
 
   useEffect(() => {
     let cancelled = false
     api
-      .home({ discovery })
+      .home()
       .then((data) => !cancelled && setFeed(data))
       .catch((err) => !cancelled && setError(String(err.message ?? err)))
     return () => {
       cancelled = true
     }
-  }, [discovery])
+  }, [])
 
   if (error) return <div className="note">Couldn't load shows: {error}</div>
   if (!feed) return <div className="empty">Loading…</div>
@@ -32,23 +31,12 @@ export function Home() {
 
       <div className="statusbar">
         <span>{status.library.artists} artists</span>
-        {status.library.discovery > 0 && (
-          <span>{status.library.discovery} suggestions</span>
-        )}
         <span>affinity: {status.library.affinity_source}</span>
         <span>synced {relativeTime(status.library.synced_at)}</span>
         <span>{feed.total} upcoming</span>
       </div>
 
       <div className="row" style={{ marginBottom: 16 }}>
-        <label style={{ display: 'flex', gap: 8, alignItems: 'center', margin: 0 }}>
-          <input
-            type="checkbox"
-            checked={discovery}
-            onChange={(event) => setDiscovery(event.target.checked)}
-          />
-          include artists I don't own
-        </label>
         <a href="/calendar.ics">calendar feed</a>
       </div>
 

@@ -137,10 +137,7 @@ def status() -> dict:
         "quotas": quotas,
         "providers": config.credential_status(),
         "library": {
-            "artists": int(db.scalar("SELECT COUNT(*) FROM artists WHERE source='lidarr'")),
-            "discovery": int(
-                db.scalar("SELECT COUNT(*) FROM artists WHERE source='discovery'")
-            ),
+            "artists": int(db.scalar("SELECT COUNT(*) FROM artists")),
             "synced_at": db.get_meta("library_synced_at"),
             "affinity_source": db.get_meta("affinity_source", "unknown"),
         },

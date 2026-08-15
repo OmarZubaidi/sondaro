@@ -27,10 +27,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  home: (opts: { minScore?: number; discovery?: boolean } = {}) => {
+  home: (opts: { minScore?: number } = {}) => {
     const params = new URLSearchParams()
     if (opts.minScore !== undefined) params.set('min_score', String(opts.minScore))
-    if (opts.discovery !== undefined) params.set('discovery', String(opts.discovery))
     const query = params.toString()
     return request<HomeFeed>(`/api/home${query ? `?${query}` : ''}`)
   },

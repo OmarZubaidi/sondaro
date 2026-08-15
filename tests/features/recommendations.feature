@@ -13,14 +13,15 @@ Feature: Recommending shows worth going to
     And "The National" plays Fairview on a Tuesday
     When I look at what's on near home
     Then "The National" is recommended
-    And it is not flagged as major planning
+    And it carries no flags
 
-  Scenario: A favourite playing Millbrook is only a weekend proposition
+  Scenario: Somewhere too far just sinks, without being singled out
     Given "The National" is an artist I play constantly
+    And "The National" plays Springfield on a Saturday
     And "The National" plays Millbrook on a Saturday
     When I look at what's on near home
-    Then "The National" is recommended
-    And it is flagged as major planning
+    Then it ranks below anything closer to home
+    And it carries no flags
 
   Scenario: A mid-tier artist is not worth crossing the state for
     Given "Passing Interest" is an artist I rarely play
