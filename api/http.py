@@ -17,6 +17,12 @@ from .config import config
 
 log = logging.getLogger("sondaro.http")
 
+# httpx logs every request at INFO, including the full URL — which for most
+# providers means the API key sits in the query string. That would put live
+# credentials in the container logs and anywhere they get shipped.
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+
 _client: httpx.AsyncClient | None = None
 
 USER_AGENT = "sondaro/1.0 (self-hosted concert tracker)"

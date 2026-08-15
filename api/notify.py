@@ -11,12 +11,24 @@ learning to ignore both.
 """
 
 import logging
+from email.header import Header
 
 from . import db, http, scan, settings
 from .config import config
 from .util import now_iso, parse_date
 
 log = logging.getLogger("sondaro.notify")
+
+
+def _header_safe(text: str) -> str:
+    """HTTP headers can't carry raw UTF-8, and artist names routinely have
+    accents (Sigur Rós, Beyoncé, Mötley Crüe). Anything non-ASCII goes out
+    RFC 2047 encoded, which ntfy decodes back for the notification title."""
+    try:
+        text.encode("ascii")
+        return text
+    except UnicodeEncodeError:
+        return Header(text, "utf-8").encode()
 
 
 async def send(
@@ -32,7 +44,7 @@ async def send(
     if not endpoint:
         return False
 
-    headers = {"Title": title, "Tags": tags, "Priority": priority}
+    headers = {"Title": _header_safe(title), "Tags": tags, "Priority": priority}
     if config.ntfy_token:
         headers["Authorization"] = f"Bearer {config.ntfy_token}"
     if click:
@@ -80,7 +92,7 @@ async def announce_new_shows() -> int:
 
         ok = await send(
             config.ntfy_topic_alerts,
-            title=f"{candidate.artist.name} — {event.city or 'nearby'}",
+            title=f"{candidate.artist.name} · {event.city or 'nearby'}",
             body="\n".join(lines),
             click=event.url,
             priority="high" if candidate.total >= 0.7 else "default",

@@ -99,19 +99,52 @@ async def fetch_lastfm_counts() -> dict[str, int]:
     return counts
 
 
+async def pick_counts(artists: list[dict]) -> tuple[dict[str, int], str]:
+    """Choose the scrobble source that actually knows your library.
+
+    Trying one and falling back only when it's empty picks badly: a
+    ListenBrainz account connected last month answers, so a Last.fm account
+    with years of history never gets consulted, and affinity ends up driven by
+    a handful of plays. So ask both (they're free, once a day) and keep
+    whichever covers more of the library.
+    """
+    wanted = {normalize(a["name"]) for a in artists}
+
+    candidates = [
+        ("listenbrainz", await fetch_listenbrainz_counts()),
+        ("lastfm", await fetch_lastfm_counts()),
+    ]
+
+    scored = []
+    for name, counts in candidates:
+        if not counts:
+            continue
+        covered = len(wanted & counts.keys())
+        plays = sum(counts.get(key, 0) for key in wanted)
+        scored.append((covered, plays, name, counts))
+
+    if not scored:
+        return {}, "none — every artist weighted equally"
+
+    scored.sort(reverse=True)
+    covered, _plays, name, counts = scored[0]
+
+    if len(scored) > 1:
+        loser = scored[1]
+        log.info(
+            "affinity from %s (%d of %d artists) over %s (%d)",
+            name, covered, len(wanted), loser[2], loser[0],
+        )
+    return counts, f"{name} ({covered}/{len(wanted)} artists)"
+
+
 async def sync() -> dict:
     """Refresh artists and affinity. Safe to run repeatedly."""
     artists = await lidarr.list_artists()
     if not artists:
         return {"artists": 0, "error": "no artists returned from Lidarr"}
 
-    counts = await fetch_listenbrainz_counts()
-    source = "listenbrainz"
-    if not counts:
-        counts = await fetch_lastfm_counts()
-        source = "lastfm"
-    if not counts:
-        source = "none — every artist weighted equally"
+    counts, source = await pick_counts(artists)
 
     ceiling = max(counts.values()) if counts else 0
     stamp = now_iso()
