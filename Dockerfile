@@ -41,8 +41,10 @@ COPY api/ ./api/
 COPY --from=borders /build/borders.db ./api/borders.db
 COPY --from=web /web/dist ./static
 
-# runs unprivileged; 7373 is container-internal so it can never clash
-RUN useradd --system --uid 3002 --create-home sondaro \
+# runs unprivileged; 7373 is container-internal so it can never clash.
+# uid 3002 is fixed because deploy.sh chowns the data dir to it. Not --system:
+# that reserves uids below 1000 and warns when given one above it.
+RUN useradd --uid 3002 --user-group --create-home sondaro \
     && mkdir -p /config \
     && chown -R sondaro:sondaro /config /app
 USER sondaro
