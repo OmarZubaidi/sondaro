@@ -1,0 +1,24 @@
+[project]
+name = "sondaro"
+version = "1.0.0"
+description = "Concert tracking for a Lidarr/Navidrome library, with a trip planner"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi==0.115.6",
+    "uvicorn[standard]==0.34.0",
+    "httpx==0.28.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==8.3.4",
+    "pytest-asyncio==0.25.2",
+    "pytest-bdd==8.1.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+bdd_features_base_dir = "tests/features"
+filterwarnings = ["error::DeprecationWarning"]

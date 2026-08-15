@@ -1,0 +1,22 @@
+---
+services:
+  sondaro:
+    build: .
+    container_name: sondaro
+    restart: unless-stopped
+    env_file: .env
+    # this VM will eventually host many containers; sondaro sits still
+    mem_limit: 256m
+    cpus: 0.5
+    volumes:
+      - /appdata/sondaro:/config
+    networks: [proxy]
+    logging:
+      driver: "json-file"
+      options: { max-size: "10m", max-file: "3" }
+
+# no published ports: the reverse proxy reaches this by service name over the shared
+# network, so sondaro consumes no entry in the host port table
+networks:
+  proxy:
+    external: true
