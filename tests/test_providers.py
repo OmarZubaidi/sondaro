@@ -234,6 +234,22 @@ async def test_jambase_never_retries_because_a_retry_is_another_bill(routes, mon
     assert usage.used("jambase") == 1  # and it still counted, because it may still bill
 
 
+async def test_jambase_authenticates_with_a_bearer_header(routes, monkeypatch):
+    """v3 takes a Bearer token. The old v1 API used ?apikey=, and sending it
+    that way returns 401 while still burning a reserved quota slot."""
+    monkeypatch.setattr(config, "jambase_api_key", "secret-key")
+    monkeypatch.setenv("JAMBASE_BASE_URL", "https://jb.test/v3")
+    routes.add("/events", {"events": []})
+
+    await jambase.by_artist_name("Band", TODAY, TODAY + timedelta(days=30))
+
+    request = routes.calls[0]
+    assert request.headers["Authorization"] == "Bearer secret-key"
+    # a key in a query string leaks into logs and proxies
+    assert "secret-key" not in str(request.url)
+    assert "apikey" not in str(request.url)
+
+
 async def test_jambase_parses_a_listing():
     parsed = jambase.parse_event(
         {

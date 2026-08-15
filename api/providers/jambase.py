@@ -108,12 +108,16 @@ async def by_artist_name(name: str, start: date, end: date) -> list[Event]:
         payload = await http.get_json(
             f"{base_url()}/events",
             params={
-                "apikey": config.jambase_api_key,
                 "artistName": name,
                 "eventDateFrom": start.isoformat(),
                 "eventDateTo": clamped_end.isoformat(),
                 "perPage": PER_PAGE,
             },
+            # v3 takes a Bearer token. The old v1 API used ?apikey=, and their
+            # docs now say explicitly that keys are not sent as query
+            # parameters — which also keeps the key out of URLs, and therefore
+            # out of logs and proxies.
+            headers={"Authorization": f"Bearer {config.jambase_api_key}"},
             provider=PROVIDER,
         )
     except http.QuotaExhausted:

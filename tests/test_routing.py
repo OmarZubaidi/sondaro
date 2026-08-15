@@ -63,6 +63,17 @@ async def test_an_explicit_base_url_pins_the_host(routes, monkeypatch):
     assert routes.count("heigit") == 0
 
 
+async def test_ors_authenticates_with_an_api_key_query_param(routes, monkeypatch):
+    """ORS documents ?api_key=<key> for the GET endpoints. Unlike JamBase, it
+    is a query parameter, so the two providers must not be made to match."""
+    monkeypatch.setattr(config, "ors_api_key", "ors-secret")
+    routes.add("api.heigit.org/v2/directions", directions(1000, 100))
+
+    await routing.drive_time(HOME, FAIRVIEW)
+
+    assert "api_key=ors-secret" in str(routes.calls[0].url)
+
+
 async def test_coordinates_are_sent_lon_lat(routes, monkeypatch):
     """ORS reverses the coordinate order used everywhere else in this codebase."""
     monkeypatch.setattr(config, "ors_api_key", "key")
