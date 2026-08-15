@@ -1,273 +1,157 @@
 # Sondaro
 
-Concert tracking for a Lidarr/Navidrome library, with a trip planner.
+Finds concerts for the artists in your Lidarr library, ranked by how much you
+actually listen to them and how far you'd realistically travel to see them.
 
-Lidarr knows which artists you follow. Navidrome's scrobbles know which ones you actually listen to. Neither knows when any of them are playing near you. Sondaro joins those up and ranks shows by how much you listen to the artist and how far you'd realistically travel on that particular day.
+Two views:
 
-- Near home: everything reachable from where you live, with ntfy push for new announcements.
-- Trips: pick countries and rough dates, get back who's playing. Trips are multi-country, cities are optional, and a show just over a border counts as a detour rather than a disqualification.
+- Near home: what's reachable from where you live, with ntfy push for new
+  announcements.
+- Trips: pick countries and dates, get back who's playing while you're there.
 
-## The scoring model
+It only ever suggests artists you added to Lidarr yourself.
+
+## Where things are
+
+| Path | What's in it |
+| --- | --- |
+| `api/scoring.py` | The ranking rules. Pure functions, no I/O. Start here. |
+| `api/settings.py` | Everything tunable from the UI, with defaults and ranges |
+| `api/scan.py` | Matches listings to your library, builds ranked results |
+| `api/queue.py` | Which API calls to make, in what order, how often |
+| `api/worker.py` | Background loop that drains the queue |
+| `api/providers/` | One file per external service |
+| `api/main.py` | HTTP routes |
+| `web/src/` | React UI |
+| `tests/features/` | Behavior specs in plain English, good for orientation |
+
+## How ranking works
 
 ```text
 score = affinity × date_fit × reach_fit
 ```
 
-Multiplicative, all three in `[0,1]`, so one bad axis kills a candidate without a pile of tuning weights and every component stays explainable in the UI.
+All three are 0 to 1, multiplied together, so one bad axis sinks a result.
 
-### affinity
+`affinity` is a log-scaled play count from ListenBrainz, with Last.fm as a
+fallback. Artists with no scrobbles floor at 0.25.
 
-Log-scaled lifetime play count from ListenBrainz, falling back to Last.fm, floored at `0.25` for artists in Lidarr you've never scrobbled. Log rather than linear so one obsessively-played artist doesn't flatten everything else to zero.
+`reach_fit` at home is based on driving hours rather than miles. Home to DC
+and Home to Millbrook differ by 129 miles but much less in hours, so ranking on
+distance gets them backwards. How far you'll go scales with how much you like
+the artist, and with the day of week, since Friday and Saturday justify a longer
+drive than a Tuesday. A show that's too far just scores low and sinks. Nothing
+badges it.
 
-Artists you don't own can appear too, sourced from Last.fm's similarity graph and capped at `0.45` affinity so a suggestion can never outrank a real favorite. They're always flagged `not in your library`.
+`reach_fit` on a trip is a flat 1.0 anywhere inside a country you're visiting,
+because you pick countries first and cities later. Outside those countries it's
+measured from the nearest border, not the centroid. France's center is 400 miles
+from Geneva while its border is 2, so Geneva during a France trip shows up
+flagged as a detour, and Berlin doesn't show up at all.
 
-### reach_fit at home (measured in driving hours)
+`date_fit` is 1.0 inside the trip window. Flexible trips decay to 0.5 across the
+slack days, and strict trips are all or nothing.
 
-```text
-shape(A)  = 0.12 + 0.88·A²
-reach     = base_hours × shape(affinity)
-reach_fit = 1 / (1 + (drive_hours / reach)⁴)
-```
-
-Hours, not miles. Home → DC is 227 mi and Home → Millbrook is 356 mi; they look far apart on a map and much closer from behind a wheel. Ranking on distance would order them wrongly.
-
-Base hours depend on the day, because a Saturday justifies a longer drive than a Tuesday:
-
-| Show falls on | Base   |
-| ------------- | ------ |
-| Mon–Thu       | 3.0 h  |
-| Sun           | 3.75 h |
-| Fri–Sat       | 4.5 h  |
-
-Anything past 5 hours also carries a `major planning` flag; visible, just no longer pretending to be a casual decision.
-
-What that produces from Home:
-
-| Artist               | Springfield 0.5h | Nearby 1.3h | Fairview 2.6h | DC 4.4h | Millbrook 6.0h |
-| -------------------- | ----------- | --------------- | -------------- | ------- | ------------ |
-| favorite, weeknight  | 1.00        | 0.97            | 0.64           | 0.18    | 0.06 ⚑       |
-| favorite, weekend    | 1.00        | 0.99            | 0.90           | 0.52    | 0.24 ⚑       |
-| mid-tier, weeknight  | 0.98        | 0.51            | 0.06           | ~0      | ~0           |
-| mid-tier, weekend    | 1.00        | 0.84            | 0.25           | 0.04    | ~0           |
-| un-listened, weekend | 0.86        | 0.12            | ~0             | ~0      | ~0           |
-
-The four base-hour values and the flag threshold are editable in Settings.
-
-### reach_fit on a trip (measured from a border)
-
-No weekday split (you're already out) and a far gentler curve, since distance is cheap once you're traveling.
-
-- Inside a country you're visiting → `1.0`, flat. You pick countries first and cities afterwards, so nothing in-country is ever penalized.
-- Inside, with cities named → decays from the nearest named city but is floored at 0.6, so elsewhere-in-country stays clearly viable.
-- Outside every visited country → measured from the nearest border of any of them, base 100 mi, and always flagged `not on your itinerary (Country)`.
-
-A France + Spain trip puts Geneva at ~2 mi from the French border, so it scores ≈1.0 and shows up flagged as Switzerland. Berlin is ~350 mi from the nearest French border and drops out entirely.
-
-Distance is to the border, not a centroid. France's centroid is 400 mi from Geneva while its border is 2 mi away.
-
-### date_fit
-
-| Trip type      | Behavior                                                                        |
-| -------------- | ------------------------------------------------------------------------------- |
-| Home           | always `1.0`                                                                    |
-| Flexible dates | `1.0` inside the window, decaying to a `0.5` floor across the slack, `0` beyond |
-| Strict dates   | binary, `1.0` inside, `0` outside                                               |
-
-Strict is for trips already booked and immovable.
-
----
+To change any of this, edit `api/scoring.py`. The numbers you're most likely to
+want to touch are already exposed in Settings via `api/settings.py`.
 
 ## Providers
 
-| Provider               | Role                                       | Budget                           |
-| ---------------------- | ------------------------------------------ | -------------------------------- |
-| Ticketmaster Discovery | primary; the only one that sweeps          | free, 5,000/day                  |
-| JamBase                | gap-filler for artists Ticketmaster misses | free Developer tier, 1,000/month |
-| OpenRouteService       | home → city driving times, geocoding       | free, 2,000/day                  |
+| Provider | Role | Limit |
+| --- | --- | --- |
+| Ticketmaster | Everything. The only one that can search broadly. | 5,000/day |
+| JamBase | Only for artists Ticketmaster found nothing for | 500/month |
+| OpenRouteService | Driving times, place search | 2,000/day |
 
-Only Ticketmaster is required. Without OpenRouteService, drive times fall back to `great-circle × 1.25 ÷ 55 mph` and every affected row is marked estimated.
+Only Ticketmaster is required. Without OpenRouteService, drive times become
+rough estimates and are labeled as such.
 
-### ⚠ JamBase bills for overage
+### JamBase costs money if you exceed the quota
 
-JamBase's Developer tier does not return 429 above its monthly quota, it charges $0.05 per call. There is no protective error from their end, so Sondaro's own counter is the only thing between a bug and an invoice. Because of that:
+It bills $0.05 per call past 1,000 a month instead of returning an error.
+Sondaro caps itself at 500 so there's headroom for a bug, counts attempts rather
+than successes, never retries, and won't run at all unless `JAMBASE_BASE_URL` is
+set explicitly. If you're changing anything in `api/providers/jambase.py` or
+`api/usage.py`, that's why it's written so defensively.
 
-- The cap is 500/month, not 1,000. The gap is deliberate headroom.
-- A hard ceiling of 900 is compiled in; no setting can raise the cap past it.
-- Calls are reserved before dispatch, in a single guarded `UPDATE`, so two workers can't both take the last slot.
-- Attempts are counted, not successes, and reservations are never refunded on failure; a failed call may still have been billed.
-- Retries are disabled for it. A retry is another bill, not a free second go.
-- It is only ever called for artists Ticketmaster returned nothing for. Duplicating free coverage would be the worst possible use of ~16 calls a day.
-- Its future window is 6 months, so queries clamp to whichever is nearer, the horizon or that limit, rather than paying for an unanswerable question.
-- It stays disabled unless `JAMBASE_BASE_URL` is set explicitly. Guessing at a base URL would spend real money discovering the guess was wrong.
+## Configuration
 
-Its Developer tier also has no External Identifiers, so it can't match on MusicBrainz IDs and is a name search like Ticketmaster's, which is why it's a gap-filler rather than the precision layer it first looked like.
+Secrets and URLs live in `.env`. Everything else lives in the database and is
+edited at `/settings`. Env values only seed the database on first run, so after
+that, editing `.env` does nothing for those fields.
 
-### OpenRouteService host migration
+Editable in the UI: home location, how far ahead to look, the driving-hour
+budgets, cross-border distance, alert threshold, mute-until.
 
-HeiGIT is retiring `api.openrouteservice.org` in favour of `api.heigit.org`. Sondaro tries the new host first, falls back to the old one, and remembers whichever answered so the probe happens once. Set `ORS_BASE_URL` to pin a host.
+Env only: every API key and token, plus `LIDARR_URL`, `NTFY_URL` and `TZ`.
 
-Note that ORS takes coordinates as lon,lat, reversed from everywhere else in this codebase. There is a test for it.
+API keys are never shown in the UI or returned by the API, only whether they're
+present. Changing one means a redeploy.
 
----
-
-## Lidarr is read-only, enforced in code
-
-Lidarr has no scoped API keys: one key, full access. So read-only can't be a property of the credential and is a property of the client instead.
-
-`api/providers/lidarr.py` allows exactly `GET` and exactly two paths (`/api/v1/artist`, `/api/v1/health`). Anything else raises before a socket is opened. Adding a write means deliberately editing an allowlist.
-
-This protects against this app writing to Lidarr.
-
----
-
-## Configuration: what lives where
-
-Secrets and wiring in env. Everything behavioral in the database.
-
-Env vars seed the settings table once on first run and are never consulted again once a value has been set in the UI.
-
-| UI-editable at `/settings`               | env-only, never rendered              |
-| ---------------------------------------- | ------------------------------------- |
-| Home location and label                  | `LIDARR_API_KEY`                      |
-| Horizon (default 180 days)               | `TICKETMASTER_API_KEY`                |
-| Driving-hour bases (3.0 / 3.75 / 4.5)    | `JAMBASE_API_KEY`, `JAMBASE_BASE_URL` |
-| `major planning` threshold (5 h)         | `ORS_API_KEY`, `ORS_BASE_URL`         |
-| Cross-border budget (100 mi)             | `NTFY_TOKEN`                          |
-| Alert threshold, per-run cap, mute-until | `LIDARR_URL`, `NTFY_URL`, topics      |
-| Whether suggestions can alert            | `TZ`                                  |
-
-Settings shows keys as configured / not configured with live quota usage, and never renders or accepts a value. Changing a key stays a deploy, which is the right amount of friction for something that grants access.
-
-### Moving house
-
-Changing home invalidates work rather than just changing a number, so the UI says so:
-
-- Drive times are keyed on origin, so a new home simply misses and re-resolves. Old rows stay put, move back and they're reused rather than re-paid for.
-- Home coverage is invalidated and a re-fill is queued.
-- Status reports re-indexing for `<new place>` rather than quietly serving scores computed for where you used to live.
-
-The location field is a search box backed by the ORS geocoder. Raw coordinates remain editable as a fallback.
-
-## How the index fills
-
-Not a nightly scan. A persistent priority queue drained by a single worker that sleeps until the next task is due, so an empty queue costs no CPU.
-
-```text
-priority = urgency × importance
-urgency  = 1 / (1 + days_out/30)
-```
-
-Near-term windows and favorite artists drain first, so the UI is useful within minutes of a cold start rather than hours.
-
-Refresh cadence by horizon. This is what keeps steady-state cost flat:
-
-| Horizon    | Refetch every |
-| ---------- | ------------- |
-| 0–14 days  | 1 day         |
-| 15–60 days | 3 days        |
-| 61+ days   | 14 days       |
-
-A show four months out isn't going to change this week, so it doesn't get a call this week. Steady state lands around 20–40 Ticketmaster calls/day against a 5,000/day budget. The cold fill is the expensive part, and it's deliberately allowed to take its time.
-
-Only listings that match your library are stored, keeping every music event in a 450-mile radius would mean tens of thousands of rows about artists you've never heard of, on a 256 MB container. The cost is that an artist added to Lidarr today isn't matched against already-fetched listings, so a library sync re-arms the sweeps when the roster changes rather than making you wait out a 14-day cadence.
-
----
+Moving home invalidates cached coverage and re-resolves drive times. They're
+keyed by origin, so the old ones stay on file if you move back.
 
 ## Notifications
 
-Two ntfy topics, deliberately separate:
+The `sondaro` topic gets new shows, filtered by the alert threshold and capped
+per run. The `services` topic gets health problems only, and is never muted by
+the alert settings.
 
-| Topic      | Carries                | Gated?                                          |
-| ---------- | ---------------------- | ----------------------------------------------- |
-| `sondaro`  | new show matches       | yes, by the alert threshold, and capped per run |
-| `services` | health and degradation | never                                           |
+## Calendar
 
-Gig alerts are frequent and optional; infrastructure alerts are rare and actionable. Mixing them teaches you to ignore both. Muting silences gig alerts only, it should never hide that Lidarr is down.
+`/calendar.ics` and `/trips/{id}.ics` are subscribe URLs for any calendar app.
+Add `?min_score=0.5` to filter the subscription without changing what the UI
+shows.
 
-Health alerts dedupe on _state change_, so a six-hour outage is one push, not seventy-two, and recovery is announced too.
+## How it fills its index
 
-## Calendar feeds
+A background worker drains a priority queue instead of doing one big nightly
+scan. Near-term dates and favorite artists get fetched first, so it's useful
+within minutes of starting even though a full 6-month fill takes hours.
 
-Format-neutral subscribe URLs
+Things get refetched at a rate matching how fast they change: daily inside two
+weeks, every 3 days out to two months, every 2 weeks beyond that. Steady state is
+20 to 40 Ticketmaster calls a day out of 5,000.
 
-```text
-/calendar.ics                  everything near home
-/calendar.ics?min_score=0.5    only what's worth a drive
-/trips/3.ics?min_score=0.35    one trip
-```
+Only listings matching your library are stored, which keeps the database small.
+The tradeoff is that adding an artist to Lidarr doesn't retroactively match
+listings already fetched, so a library sync re-arms the sweeps when your roster
+changes.
 
-`min_score` filters the subscription without changing what the app shows, so you can keep a permissive UI and a strict calendar.
-
-## API
-
-```text
-GET    /api/status                 coverage, queue depth, quotas, degradation
-GET    /api/home                   ranked shows near home, grouped by month
-POST   /api/sync                   force a library refresh now
-GET    /api/trips                  list
-POST   /api/trips                  create (multi-country)
-GET    /api/trips/{id}             every option, grouped by date
-POST   /api/trips/{id}/rescan      re-queue the country sweeps
-DELETE /api/trips/{id}
-GET    /api/settings               specs + values + credential presence
-PATCH  /api/settings               takes effect next scan, no restart
-POST   /api/settings/home          move house (invalidates coverage)
-GET    /api/geocode?q=             place search
-GET    /api/countries              from the border index
-GET    /api/docs                   OpenAPI
-```
-
----
-
-## Development
+## Running it
 
 ```sh
-# python
-python3 -m venv .venv && ./.venv/bin/pip install -e ".[dev]"
-./.venv/bin/python -m pytest -q
-
-# web
-npm --prefix web install
-npm --prefix web test
-npm --prefix web run build
-
-# both, from the repo root
+make sondaro-deploy    # from the repo root, first install and every update
+make sondaro-logs
 make sondaro-test
 ```
 
-No test ever touches a real provider. `tests/conftest.py` blocks `connect`/`connect_ex` on the IP families plus DNS resolution for the whole session, so httpx, urllib and raw sockets all fail loudly. It's deliberately surgical, replacing `socket.socket` wholesale breaks asyncio's own self-pipe before a test can run. An unstubbed URL raises rather than returning empty, because a stub that silently returns nothing is indistinguishable from a quiet weekend. `tests/test_harness.py` tests the guard itself.
+a pull-based updater does not work here. It runs
+`docker compose pull`, which does nothing for a locally built image.
 
-`web/package.json` pins an `overrides` entry deduping `vite`, because vitest ships a nested copy and plugin types otherwise resolve to two different modules and fail typecheck.
-
-### The border index
-
-`scripts/build_borders.py` bakes Natural Earth 110m boundaries into a read-only SQLite R\*Tree at image-build time. Countries don't move, so this is reference data baked in, not a cache: nothing is parsed at startup, no polygons sit in memory, and it never needs invalidating.
-
-`fetch_geojson` is the only networked function and is separate from `build()` on purpose, so tests exercise the real builder against inline polygons. One test asserts the R\*Tree gives the same answer as a brute-force scan of every segment; the index may change the work done, never the result.
-
----
-
-## Deploying
+Local development:
 
 ```sh
-make sondaro-deploy     # first install and every update
-make sondaro-logs
-make sondaro-restart
+python3 -m venv .venv && ./.venv/bin/pip install -e ".[dev]"
+./.venv/bin/python -m pytest -q
+npm --prefix web install && npm --prefix web test
 ```
 
-`deploy.sh` rsyncs this folder to the server and rebuilds. It excludes `.env` from both the copy and the `--delete`, so the VM's keys survive every deploy. On a first run it creates the `proxy` network, seeds `.env` from `.env.example`, and stops with a message rather than starting a container that would fail on missing keys.
+No test ever contacts a real API. `tests/conftest.py` blocks outbound
+connections for the whole session, and an unstubbed URL raises. If you add a
+test that needs a provider response, register a stub route rather than loosening
+the guard.
 
-`docker compose pull` is a no-op for a locally-built image, so `make sondaro-deploy` is the update path.
+## Things that will confuse you later
 
-No host port is published. Caddy reaches the container by service name over the shared `proxy` network, so Sondaro consumes no entry in the host port table. The `7373` in the Caddyfile is the container-internal port: container network namespaces are isolated, so any number of containers can listen on it at once.
-
-The tradeoff is no direct `192.168.1.24:PORT` access for debugging: use `make sondaro-logs` or `docker exec`.
-
----
-
-## Known limits
-
-- Ticketmaster mostly sees larger ticketed venues. For an indie-heavy library the results are a floor, not a ceiling. JamBase closes some of that gap; 500 calls a month only closes so much.
-- JamBase can't use MusicBrainz IDs on the free tier, so its matching is name-based and subject to the same ambiguity as Ticketmaster's.
-- Discovery paging caps at 1,000 results per query. Sweeps halve their window and retry when they hit it, and say so on the status page if a single day still overflow; a truncated sweep and an empty one otherwise look identical.
-- Only matched listings are stored, so the event cache is not a general concert database and can't be mined for artists you haven't added yet.
+- ORS takes coordinates as `lon,lat`, backwards from everywhere else in the
+  codebase.
+- `borders.db` is built during `docker build`, not at runtime. Country borders
+  don't change, so it's baked into the image. Rebuild to regenerate it.
+- Ticketmaster caps paging at 1,000 results, so sweeps split their date window
+  and retry when they hit it. Otherwise a truncated search looks exactly like a
+  quiet week.
+- `api/queue.py` is a database table, not Python's `queue` module.
+- Lidarr access is locked to GET plus two specific paths in
+  `api/providers/lidarr.py`, and anything else raises. Lidarr has no read-only
+  API keys, so it's enforced here instead.
