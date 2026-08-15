@@ -138,6 +138,13 @@ CREATE TABLE IF NOT EXISTS provider_usage (
     PRIMARY KEY (provider, period)
 );
 
+-- internal key/value: which ORS host answered, last library sync, and so on.
+-- distinct from `settings`, which is the user-facing surface.
+CREATE TABLE IF NOT EXISTS meta (
+    key   TEXT PRIMARY KEY,
+    value TEXT
+);
+
 -- health alert throttling, so a sustained outage is one push and not hundreds
 CREATE TABLE IF NOT EXISTS alerts (
     key          TEXT PRIMARY KEY,
@@ -218,6 +225,21 @@ def scalar(sql: str, params: tuple = (), default: Any = 0) -> Any:
         return default
     value = row[0]
     return default if value is None else value
+
+
+def get_meta(key: str, default: Any = None) -> Any:
+    row = query_one("SELECT value FROM meta WHERE key = ?", (key,))
+    if row is None:
+        return default
+    return json_loads(row["value"], default)
+
+
+def set_meta(key: str, value: Any) -> None:
+    execute(
+        "INSERT INTO meta(key, value) VALUES(?,?) "
+        "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        (key, json_dumps(value)),
+    )
 
 
 def json_dumps(value: Any) -> str:

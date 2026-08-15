@@ -9,11 +9,22 @@ dependencies = [
     "httpx==0.28.1",
 ]
 
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+# `web/` is the React app, not a python package — say so explicitly or
+# setuptools refuses to guess between the two top-level directories
+[tool.setuptools]
+packages = ["api", "api.providers", "scripts"]
+
 [project.optional-dependencies]
+# runtime deps are pinned; dev tooling is ranged so a new interpreter doesn't
+# strand the suite on a version that predates it
 dev = [
-    "pytest==8.3.4",
-    "pytest-asyncio==0.25.2",
-    "pytest-bdd==8.1.0",
+    "pytest>=8.4",
+    "pytest-asyncio>=1.2",
+    "pytest-bdd>=8.1",
 ]
 
 [tool.pytest.ini_options]

@@ -32,7 +32,9 @@ def _float(key: str, default: float) -> float:
         return default
 
 
-@dataclass(frozen=True)
+# deliberately not frozen: tests point db_path and borders_db at a tmpdir, and a
+# frozen dataclass would need object.__setattr__ gymnastics to allow it
+@dataclass
 class Config:
     # --- storage ------------------------------------------------------------
     db_path: str = field(default_factory=lambda: _str("SONDARO_DB", "/config/sondaro.db"))
