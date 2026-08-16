@@ -18,6 +18,8 @@ const ON_HOME_PAGE = new Set([
   'min_score',
 ])
 
+const clamp = (value: number) => Math.min(1, Math.max(0, value || 0))
+
 const HANDLED_SEPARATELY = new Set(['home_lat', 'home_lon', 'home_label', 'notify_min_score'])
 
 export function Settings() {
@@ -132,33 +134,35 @@ export function Settings() {
       </div>
 
       <h2>Alerts</h2>
-      <div className="card stack">
-        <label htmlFor="threshold">Alert threshold — {threshold.toFixed(2)}</label>
-        <input
-          id="threshold"
-          type="range"
-          min={0}
-          max={1}
-          step={0.05}
-          value={threshold}
-          onChange={(e) =>
-            persist({ notify_min_score: Number(e.target.value) }, 'Threshold updated.')
-          }
-        />
-        <div className="row">
-          {THRESHOLD_STOPS.map((stop) => (
-            <button
-              key={stop.value}
-              type="button"
-              className={threshold === stop.value ? 'primary' : undefined}
-              onClick={() => persist({ notify_min_score: stop.value }, 'Threshold updated.')}
-            >
-              {stop.label}
-            </button>
-          ))}
+      <div className="card">
+        <div className="inline-field">
+          <label htmlFor="threshold">Alert above</label>
+          <input
+            id="threshold"
+            type="number"
+            min={0}
+            max={1}
+            step={0.05}
+            value={threshold}
+            onChange={(e) =>
+              persist({ notify_min_score: clamp(Number(e.target.value)) }, 'Threshold updated.')
+            }
+          />
+          <div className="segmented">
+            {THRESHOLD_STOPS.map((stop) => (
+              <button
+                key={stop.value}
+                type="button"
+                aria-pressed={threshold === stop.value}
+                onClick={() => persist({ notify_min_score: stop.value }, 'Threshold updated.')}
+              >
+                {stop.label}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="muted" style={{ fontSize: 13 }}>
-          Health alerts go to a separate topic and are never muted by this.
+        <div className="muted" style={{ fontSize: 13, marginTop: 8 }}>
+          Health alerts use a separate topic and are never muted by this.
         </div>
       </div>
 

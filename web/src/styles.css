@@ -264,6 +264,29 @@ select {
   font: inherit;
 }
 
+/* A pointer doesn't need a 44px target, and full-width number fields look
+   absurd next to a two-character value. */
+@media (pointer: fine) {
+  :root {
+    --tap: 34px;
+  }
+
+  input[type='text'],
+  input[type='date'],
+  input[type='number'],
+  input[type='search'],
+  select,
+  button {
+    padding: 6px 10px;
+    min-height: 34px;
+    font-size: 14px;
+  }
+
+  input[type='number'] {
+    max-width: 8rem;
+  }
+}
+
 input[type='range'] {
   width: 100%;
   min-height: var(--tap);
@@ -389,6 +412,11 @@ th {
   font-size: 13px;
 }
 
+tbody tr:last-child td,
+tbody tr:last-child th {
+  border-bottom: none;
+}
+
 @media (max-width: 560px) {
   .grid2 {
     grid-template-columns: 1fr;
@@ -462,4 +490,47 @@ th {
   .grid3 {
     grid-template-columns: 1fr;
   }
+}
+
+/* --- compact segmented control ------------------------------------------- */
+
+.segmented {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel-2);
+}
+
+.segmented button {
+  padding: 4px 10px;
+  min-height: 28px;
+  font-size: 13px;
+  border: none;
+  background: none;
+  border-radius: 7px;
+  color: var(--muted);
+}
+
+.segmented button[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+.inline-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.inline-field label {
+  margin: 0;
+}
+
+.inline-field input[type='number'] {
+  max-width: 6rem;
 }

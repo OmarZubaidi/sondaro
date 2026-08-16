@@ -10,9 +10,12 @@ interface Props {
   onChange: (next: Filters) => void
 }
 
-/** Live filters. These re-score events already in the database, so moving a
+/** Live filters. These re-score events already in the database, so changing a
  *  control never costs an API call — nothing is refetched. Drive budgets are
- *  one-way: the time it takes to get there, not the round trip. */
+ *  one-way: the time it takes to get there, not the round trip.
+ *
+ *  Deliberately a number field rather than a slider: every drag position was a
+ *  round trip, which stuttered between stops. */
 export function HomeFilters({ value, onChange }: Props) {
   const set = <K extends keyof Filters>(key: K, next: number) =>
     onChange({ ...value, [key]: next })
@@ -43,18 +46,18 @@ export function HomeFilters({ value, onChange }: Props) {
         Hours you'd drive each way for an artist you love.
       </div>
 
-      <div style={{ marginTop: 14 }}>
-        <label htmlFor="f-min">
-          Hide anything below {value.min_score.toFixed(2)}
-        </label>
+      <div className="inline-field" style={{ marginTop: 14 }}>
+        <label htmlFor="f-min">Hide anything below</label>
         <input
           id="f-min"
-          type="range"
+          type="number"
           min={0}
           max={1}
           step={0.05}
           value={value.min_score}
-          onChange={(e) => set('min_score', Number(e.target.value))}
+          onChange={(e) =>
+            set('min_score', Math.min(1, Math.max(0, Number(e.target.value) || 0)))
+          }
         />
       </div>
     </div>
