@@ -1,6 +1,6 @@
 import type {
   GeocodeResult,
-  HomeFeed,
+  LocalFeed,
   SettingsPayload,
   Status,
   Trip,
@@ -33,7 +33,7 @@ export const api = {
       if (value !== undefined && value !== null) params.set(key, String(value))
     }
     const query = params.toString()
-    return request<HomeFeed>(`/api/home${query ? `?${query}` : ''}`)
+    return request<LocalFeed>(`/api/local${query ? `?${query}` : ''}`)
   },
 
   status: () => request<Status>('/api/status'),

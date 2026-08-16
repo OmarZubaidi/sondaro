@@ -16,7 +16,7 @@ interface Props {
  *
  *  Deliberately a number field rather than a slider: every drag position was a
  *  round trip, which stuttered between stops. */
-export function HomeFilters({ value, onChange }: Props) {
+export function LocalFilters({ value, onChange }: Props) {
   const set = <K extends keyof Filters>(key: K, next: number) =>
     onChange({ ...value, [key]: next })
 

@@ -1,5 +1,5 @@
 import { NavLink, Route, Routes } from 'react-router-dom'
-import { Home } from './routes/Home'
+import { Local } from './routes/Local'
 import { Trips } from './routes/Trips'
 import { TripDetail } from './routes/TripDetail'
 import { Settings } from './routes/Settings'
@@ -12,7 +12,7 @@ export function App() {
         <h1>Sondaro</h1>
         <nav>
           <NavLink to="/" end className={({ isActive }) => (isActive ? 'active' : '')}>
-            Near home
+            Local
           </NavLink>
           <NavLink to="/trips" className={({ isActive }) => (isActive ? 'active' : '')}>
             Trips
@@ -27,7 +27,7 @@ export function App() {
       </header>
       <main>
         <Routes>
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<Local />} />
           <Route path="/trips" element={<Trips />} />
           <Route path="/trips/:id" element={<TripDetail />} />
           <Route path="/status" element={<StatusPage />} />

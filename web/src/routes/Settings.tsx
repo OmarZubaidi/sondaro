@@ -9,9 +9,9 @@ const THRESHOLD_STOPS = [
   { value: 0.75, label: 'only the good ones' },
 ]
 
-// these live on the Near home page as live filters instead, where you can see
+// these live on the Local page as live filters instead, where you can see
 // what they do while you move them
-const ON_HOME_PAGE = new Set([
+const ON_LOCAL_PAGE = new Set([
   'base_hours_weeknight',
   'base_hours_sunday',
   'base_hours_weekend',
@@ -83,7 +83,7 @@ export function Settings() {
   const byKey = (key: string) => payload.settings.find((s) => s.key === key)
   const threshold = Number(byKey('notify_min_score')?.value ?? 0.35)
   const editable = payload.settings.filter(
-    (s) => !ON_HOME_PAGE.has(s.key) && !HANDLED_SEPARATELY.has(s.key),
+    (s) => !ON_LOCAL_PAGE.has(s.key) && !HANDLED_SEPARATELY.has(s.key),
   )
   const dirty = Object.keys(draft).length > 0
 

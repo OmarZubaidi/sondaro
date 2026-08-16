@@ -44,7 +44,7 @@ def run(coro):
 def _cold_queue(world):
     settings.set_value("home_lat", HOME[0])
     settings.set_value("home_lon", HOME[1])
-    queue.plan_home(*HOME, 180)
+    queue.plan_local(*HOME, 180)
     world["windows"] = queue.slice_windows(today(), today() + timedelta(days=180))
 
 
@@ -92,7 +92,7 @@ def _home_home():
 
 @given("the home horizon has been covered")
 def _covered():
-    scope = queue.home_scope(*HOME)
+    scope = queue.local_scope(*HOME)
     for window_start, window_end, _ in queue.slice_windows(
         today(), today() + timedelta(days=180)
     ):
@@ -229,7 +229,7 @@ def _survives():
 
 @then("home coverage is invalidated")
 def _invalidated():
-    old_scope = queue.home_scope(*HOME)
+    old_scope = queue.local_scope(*HOME)
     rows = db.query(
         "SELECT COUNT(*) AS n FROM coverage WHERE scope_key = ?", (old_scope,)
     )

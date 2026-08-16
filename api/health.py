@@ -107,7 +107,7 @@ def status() -> dict:
     lat, lon = settings.home()
     horizon_days = settings.get("home_horizon_days")
     expected_slices = len(queue.slice_windows(today(), settings.horizon_end()))
-    scope = queue.home_scope(lat, lon)
+    scope = queue.local_scope(lat, lon)
 
     stalled = queue.stalled()
     quotas = usage.snapshot()

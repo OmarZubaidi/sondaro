@@ -70,7 +70,7 @@ async def announce_new_shows() -> int:
     already = {row["event_id"] for row in db.query("SELECT event_id FROM notified")}
     candidates = [
         c
-        for c in scan.home_candidates()
+        for c in scan.local_candidates()
         if c.event.id not in already and c.total >= threshold
     ]
     if not candidates:

@@ -174,8 +174,30 @@ def connect() -> sqlite3.Connection:
             _conn.execute("PRAGMA synchronous=NORMAL")
             _conn.execute("PRAGMA foreign_keys=ON")
             _conn.executescript(SCHEMA)
+            _migrate(_conn)
             _conn.commit()
         return _conn
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """Small, idempotent fixups for databases written by an earlier version.
+
+    Worth doing rather than starting clean: the index costs hundreds of API
+    calls to rebuild, some of them billable.
+    """
+    # the local scope was called "home" before the page was renamed. Rewriting
+    # the key keeps coverage attached to the work already done rather than
+    # orphaning it and re-sweeping the whole horizon.
+    conn.execute(
+        "UPDATE OR IGNORE coverage SET scope_key = 'local:' || substr(scope_key, 6) "
+        "WHERE scope_key LIKE 'home:%'"
+    )
+    conn.execute("DELETE FROM coverage WHERE scope_key LIKE 'home:%'")
+    conn.execute(
+        "UPDATE OR IGNORE fetch_tasks SET task_key = 'local:' || substr(task_key, 6) "
+        "WHERE task_key LIKE 'home:%'"
+    )
+    conn.execute("DELETE FROM fetch_tasks WHERE task_key LIKE 'home:%'")
 
 
 def close() -> None:

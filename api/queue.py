@@ -227,11 +227,11 @@ def coverage_fraction(scope_prefix: str, expected: int) -> float:
 # --------------------------------------------------------------------------
 
 
-def plan_home(lat: float, lon: float, horizon_days: int, radius_miles: float = 150.0) -> int:
+def plan_local(lat: float, lon: float, horizon_days: int, radius_miles: float = 150.0) -> int:
     """Slice the home horizon into sweep tasks. Cheap to call repeatedly."""
     start = today()
     end = start + timedelta(days=horizon_days)
-    scope = home_scope(lat, lon)
+    scope = local_scope(lat, lon)
 
     for window_start, window_end, _cadence in slice_windows(start, end):
         days_out = (window_start - start).days
@@ -355,8 +355,8 @@ def plan_route(origin: tuple[float, float], dest: tuple[float, float], city: str
     )
 
 
-def home_scope(lat: float, lon: float) -> str:
-    return f"home:{lat:.3f},{lon:.3f}"
+def local_scope(lat: float, lon: float) -> str:
+    return f"local:{lat:.3f},{lon:.3f}"
 
 
 def trip_scope(trip_id: int, country: str) -> str:

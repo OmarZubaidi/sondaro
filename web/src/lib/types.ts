@@ -76,7 +76,7 @@ export interface TripDetail {
   notes: string[]
 }
 
-export interface HomeFeed {
+export interface LocalFeed {
   total: number
   months: { label: string; shows: Show[] }[]
   status: Status

@@ -17,7 +17,7 @@ log = logging.getLogger("sondaro.worker")
 
 IDLE_SLEEP = 300.0  # nothing scheduled: check back in five minutes
 MAX_SLEEP = 900.0
-HOME_RADIUS_MILES = 150.0
+LOCAL_RADIUS_MILES = 150.0
 CITY_RADIUS_MILES = 75.0  # a metro area, for home-country trip cities
 TARGETED_ARTISTS = 60
 
@@ -105,7 +105,7 @@ class Worker:
             end,
             lat=task.params["lat"],
             lon=task.params["lon"],
-            radius_miles=task.params.get("radius_miles", HOME_RADIUS_MILES),
+            radius_miles=task.params.get("radius_miles", LOCAL_RADIUS_MILES),
             chunk_days=7,
         )
         artists = library.all_artists()
@@ -116,7 +116,7 @@ class Worker:
         if notes:
             db.set_meta("last_sweep_notes", notes)
         queue.complete(task, next_due=queue.reschedule_for(start))
-        await self._announce_new_home_shows()
+        await self._announce_new_local_shows()
 
     async def _sweep_country(self, task: queue.Task) -> None:
         start, end = queue.params_dates(task.params)
@@ -270,7 +270,7 @@ class Worker:
         construction: only artists you'd travel for get looked up this way.
         """
         horizon = settings.horizon_end()
-        scope = queue.home_scope(*settings.home())
+        scope = queue.local_scope(*settings.home())
         for artist in library.top_artists(TARGETED_ARTISTS):
             queue.plan_artist_lookup(
                 artist.key,
@@ -282,7 +282,7 @@ class Worker:
                 worldwide=True,
             )
 
-    async def _announce_new_home_shows(self) -> None:
+    async def _announce_new_local_shows(self) -> None:
         try:
             await notify.announce_new_shows()
         except Exception:  # noqa: BLE001 - a push failure must not fail a sweep
@@ -297,7 +297,7 @@ def bootstrap() -> None:
     settings.seed()
     lat, lon = settings.home()
     queue.enqueue(queue.LIBRARY_SYNC, "library:sync", {}, priority=5.0)
-    slices = queue.plan_home(lat, lon, settings.get("home_horizon_days"), HOME_RADIUS_MILES)
+    slices = queue.plan_local(lat, lon, settings.get("home_horizon_days"), LOCAL_RADIUS_MILES)
 
     for row in db.query("SELECT * FROM trips WHERE end_date >= ?", (today().isoformat(),)):
         _, _, window_start, window_end = scan.trip_window(row)
@@ -317,7 +317,7 @@ def relocate(lat: float, lon: float) -> None:
     """Home moved. Drive times are keyed on origin so they miss cleanly, but
     coverage must be invalidated or we'd serve results scored for the old place.
     """
-    queue.clear_coverage("home:")
-    queue.plan_home(lat, lon, settings.get("home_horizon_days"), HOME_RADIUS_MILES)
+    queue.clear_coverage("local:")
+    queue.plan_local(lat, lon, settings.get("home_horizon_days"), LOCAL_RADIUS_MILES)
     db.set_meta("relocated_at", now_iso())
     worker.nudge()

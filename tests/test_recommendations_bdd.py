@@ -309,7 +309,7 @@ def _strict(world):
 
 @when("I look at what's on near home")
 def _look_home(world):
-    world["results"] = scan.home_candidates()
+    world["results"] = scan.local_candidates()
 
 
 @when("I look at the trip")

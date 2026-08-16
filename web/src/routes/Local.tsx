@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../lib/api'
-import type { HomeFeed, SettingSpec } from '../lib/types'
+import type { LocalFeed, SettingSpec } from '../lib/types'
 import { relativeTime } from '../lib/format'
 import { ShowCard } from '../components/ShowCard'
 import { IndexProgress } from '../components/IndexProgress'
 import { CalendarIcon, IconButton } from '../components/IconButton'
-import { HomeFilters, type Filters } from '../components/HomeFilters'
+import { LocalFilters, type Filters } from '../components/LocalFilters'
 
 const DEFAULTS: Filters = {
   weeknight_hours: 3,
@@ -27,8 +27,8 @@ function fromSpecs(specs: SettingSpec[]): Filters {
   }
 }
 
-export function Home() {
-  const [feed, setFeed] = useState<HomeFeed | null>(null)
+export function Local() {
+  const [feed, setFeed] = useState<LocalFeed | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [filters, setFilters] = useState<Filters | null>(null)
 
@@ -79,7 +79,7 @@ export function Home() {
       <IndexProgress status={status} />
 
       <div className="title-row">
-        <h2>Near home</h2>
+        <h2>Local</h2>
         <div className="actions">
           <IconButton label="Calendar feed" icon={<CalendarIcon />} href="/calendar.ics" />
         </div>
@@ -92,7 +92,7 @@ export function Home() {
         <span>{feed.total} upcoming</span>
       </div>
 
-      <HomeFilters value={filters} onChange={setFilters} />
+      <LocalFilters value={filters} onChange={setFilters} />
 
       {feed.months.length === 0 && (
         <div className="empty">

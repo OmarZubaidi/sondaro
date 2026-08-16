@@ -22,7 +22,7 @@ log = logging.getLogger("sondaro.scan")
 
 # how far out to pull events before scoring decides what's reachable. Generous:
 # the decay curve does the filtering, this is just the SQL prefilter.
-HOME_QUERY_MILES = 450.0
+LOCAL_QUERY_MILES = 450.0
 
 
 @dataclass
@@ -167,7 +167,7 @@ def _destinations(rows) -> dict[str, tuple[float, float]]:
     return out
 
 
-def home_candidates(overrides: dict | None = None) -> list[Candidate]:
+def local_candidates(overrides: dict | None = None) -> list[Candidate]:
     """Everything reachable from home, scored and ranked.
 
     `overrides` lets the UI drive the drive-time budgets and score floor live.
@@ -177,7 +177,7 @@ def home_candidates(overrides: dict | None = None) -> list[Candidate]:
     overrides = overrides or {}
     lat, lon = settings.home()
     horizon = settings.horizon_end()
-    min_lat, max_lat, min_lon, max_lon = geo.bounding_box(lat, lon, HOME_QUERY_MILES)
+    min_lat, max_lat, min_lon, max_lon = geo.bounding_box(lat, lon, LOCAL_QUERY_MILES)
 
     rows = db.query(
         "SELECT e.*, a.affinity, a.listens "

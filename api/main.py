@@ -93,15 +93,15 @@ async def api_status():
 # --------------------------------------------------------------------------
 
 
-@app.get("/api/home")
-async def api_home(
+@app.get("/api/local")
+async def api_local(
     min_score: float | None = Query(None, ge=0.0, le=1.0),
     weeknight_hours: float | None = Query(None, gt=0, le=24),
     sunday_hours: float | None = Query(None, gt=0, le=24),
     weekend_hours: float | None = Query(None, gt=0, le=24),
 ):
     """Filters are applied by re-scoring cached events, so they never fetch."""
-    candidates = scan.home_candidates(
+    candidates = scan.local_candidates(
         {
             "min_score": min_score,
             "weeknight_hours": weeknight_hours,
@@ -393,7 +393,7 @@ async def api_patch_settings(payload: dict = Body(...)):
             raise HTTPException(status_code=400, detail=str(exc))
 
     if "home_horizon_days" in updated:
-        queue.plan_home(*settings.home(), settings.get("home_horizon_days"))
+        queue.plan_local(*settings.home(), settings.get("home_horizon_days"))
     worker.worker.nudge()
     return {"updated": updated}
 
@@ -458,7 +458,7 @@ def _calendar_response(candidates, name: str) -> Response:
 
 @app.get("/calendar.ics")
 async def home_calendar(min_score: float = Query(0.0, ge=0.0, le=1.0)):
-    candidates = [c for c in scan.home_candidates() if c.total >= min_score]
+    candidates = [c for c in scan.local_candidates() if c.total >= min_score]
     return _calendar_response(candidates, f"Sondaro — {settings.get('home_label')}")
 
 
