@@ -86,10 +86,21 @@ async def api_status():
 
 
 @app.get("/api/home")
-async def api_home(min_score: float | None = Query(None, ge=0.0, le=1.0)):
-    candidates = scan.home_candidates()
-    if min_score is not None:
-        candidates = [c for c in candidates if c.total >= min_score]
+async def api_home(
+    min_score: float | None = Query(None, ge=0.0, le=1.0),
+    weeknight_hours: float | None = Query(None, gt=0, le=24),
+    sunday_hours: float | None = Query(None, gt=0, le=24),
+    weekend_hours: float | None = Query(None, gt=0, le=24),
+):
+    """Filters are applied by re-scoring cached events, so they never fetch."""
+    candidates = scan.home_candidates(
+        {
+            "min_score": min_score,
+            "weeknight_hours": weeknight_hours,
+            "sunday_hours": sunday_hours,
+            "weekend_hours": weekend_hours,
+        }
+    )
 
     by_month: dict[str, list] = {}
     for candidate in candidates:

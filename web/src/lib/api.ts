@@ -27,9 +27,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  home: (opts: { minScore?: number } = {}) => {
+  home: (filters: Record<string, number> = {}) => {
     const params = new URLSearchParams()
-    if (opts.minScore !== undefined) params.set('min_score', String(opts.minScore))
+    for (const [key, value] of Object.entries(filters)) {
+      if (value !== undefined && value !== null) params.set(key, String(value))
+    }
     const query = params.toString()
     return request<HomeFeed>(`/api/home${query ? `?${query}` : ''}`)
   },
@@ -65,7 +67,7 @@ export const api = {
       body: JSON.stringify(payload),
     }),
 
-  setHome: (payload: { lat: number; lon: number; label?: string }) =>
+  setHome: (payload: { lat: number; lon: number; label?: string; country?: string }) =>
     request<{ reindexing: boolean }>('/api/settings/home', {
       method: 'POST',
       body: JSON.stringify(payload),

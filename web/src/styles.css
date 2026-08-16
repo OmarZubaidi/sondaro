@@ -447,3 +447,19 @@ th {
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+.grid3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.filters {
+  margin-bottom: 16px;
+}
+
+@media (max-width: 560px) {
+  .grid3 {
+    grid-template-columns: 1fr;
+  }
+}

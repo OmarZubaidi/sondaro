@@ -123,6 +123,16 @@ def prune_past() -> int:
 # --------------------------------------------------------------------------
 
 
+def _base_hours(day: date, overrides: dict) -> float:
+    """Drive budget for a day, preferring a live UI override."""
+    weekday = day.weekday()
+    key = "weekend_hours" if weekday in (4, 5) else (
+        "sunday_hours" if weekday == 6 else "weeknight_hours"
+    )
+    value = overrides.get(key)
+    return float(value) if value is not None else settings.base_hours_for(day)
+
+
 def away_windows() -> list[tuple[date, date]]:
     """Dates you're demonstrably somewhere else.
 
@@ -157,8 +167,14 @@ def _destinations(rows) -> dict[str, tuple[float, float]]:
     return out
 
 
-def home_candidates() -> list[Candidate]:
-    """Everything reachable from home, scored and ranked."""
+def home_candidates(overrides: dict | None = None) -> list[Candidate]:
+    """Everything reachable from home, scored and ranked.
+
+    `overrides` lets the UI drive the drive-time budgets and score floor live.
+    Scoring happens here against already-cached events, so moving a slider
+    re-ranks what we hold and never costs an API call.
+    """
+    overrides = overrides or {}
     lat, lon = settings.home()
     horizon = settings.horizon_end()
     min_lat, max_lat, min_lon, max_lon = geo.bounding_box(lat, lon, HOME_QUERY_MILES)
@@ -182,7 +198,9 @@ def home_candidates() -> list[Candidate]:
             if routing.cached(origin_key, dest_key) is None:
                 queue.plan_route(origin, dest, dest_key)
 
-    floor = settings.get("min_score")
+    floor = overrides.get("min_score")
+    if floor is None:
+        floor = settings.get("min_score")
     away = away_windows()
     candidates: list[Candidate] = []
 
@@ -205,7 +223,7 @@ def home_candidates() -> list[Candidate]:
             miles=route.miles,
             estimated=route.estimated,
             listens=row["listens"] or 0,
-            base_hours=settings.base_hours_for(day),
+            base_hours=_base_hours(day, overrides),
         )
         if score.total < floor:
             continue

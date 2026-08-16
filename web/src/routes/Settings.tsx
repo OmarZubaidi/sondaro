@@ -9,25 +9,48 @@ const THRESHOLD_STOPS = [
   { value: 0.75, label: 'only the good ones' },
 ]
 
+// these live on the Near home page as live filters instead, where you can see
+// what they do while you move them
+const ON_HOME_PAGE = new Set([
+  'base_hours_weeknight',
+  'base_hours_sunday',
+  'base_hours_weekend',
+  'min_score',
+])
+
+const HANDLED_SEPARATELY = new Set(['home_lat', 'home_lon', 'home_label', 'notify_min_score'])
+
 export function Settings() {
   const [payload, setPayload] = useState<SettingsPayload | null>(null)
+  const [draft, setDraft] = useState<Record<string, string | number | boolean>>({})
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<GeocodeResult[]>([])
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     api.settings().then(setPayload).catch((err) => setError(String(err)))
   }, [])
 
-  async function save(key: string, value: unknown) {
+  async function persist(changes: Record<string, unknown>, note: string) {
     setError(null)
     try {
-      await api.updateSettings({ [key]: value })
+      await api.updateSettings(changes)
       setPayload(await api.settings())
-      setMessage('Saved — takes effect on the next scan, no restart needed.')
+      setDraft({})
+      setMessage(note)
     } catch (err) {
       setError(String((err as Error).message ?? err))
+    }
+  }
+
+  async function saveAll() {
+    setSaving(true)
+    try {
+      await persist(draft, 'Saved. Takes effect on the next scan, no restart needed.')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -37,7 +60,12 @@ export function Settings() {
   }
 
   async function chooseHome(result: GeocodeResult) {
-    await api.setHome({ lat: result.lat, lon: result.lon, label: result.label })
+    await api.setHome({
+      lat: result.lat,
+      lon: result.lon,
+      label: result.label,
+      country: result.country ?? undefined,
+    })
     setResults([])
     setQuery('')
     setPayload(await api.settings())
@@ -52,9 +80,10 @@ export function Settings() {
 
   const byKey = (key: string) => payload.settings.find((s) => s.key === key)
   const threshold = Number(byKey('notify_min_score')?.value ?? 0.35)
-
-  const hidden = new Set(['home_lat', 'home_lon', 'home_label', 'notify_min_score'])
-  const rest = payload.settings.filter((s) => !hidden.has(s.key))
+  const editable = payload.settings.filter(
+    (s) => !ON_HOME_PAGE.has(s.key) && !HANDLED_SEPARATELY.has(s.key),
+  )
+  const dirty = Object.keys(draft).length > 0
 
   return (
     <>
@@ -79,16 +108,8 @@ export function Settings() {
             onChange={(e) => setQuery(e.target.value)}
             style={{ flex: 1 }}
           />
-          <button type="submit" disabled={!payload.credentials.openrouteservice}>
-            Search
-          </button>
+          <button type="submit">Search</button>
         </form>
-        {!payload.credentials.openrouteservice && (
-          <div className="muted" style={{ fontSize: 13 }}>
-            OpenRouteService isn't configured, so search is unavailable — set
-            home by editing the coordinates below.
-          </div>
-        )}
         {results.map((result) => (
           <button
             key={`${result.lat},${result.lon}`}
@@ -102,9 +123,7 @@ export function Settings() {
 
       <h2>Alerts</h2>
       <div className="card stack">
-        <label htmlFor="threshold">
-          Alert threshold — {threshold.toFixed(2)}
-        </label>
+        <label htmlFor="threshold">Alert threshold — {threshold.toFixed(2)}</label>
         <input
           id="threshold"
           type="range"
@@ -112,7 +131,9 @@ export function Settings() {
           max={1}
           step={0.05}
           value={threshold}
-          onChange={(e) => save('notify_min_score', Number(e.target.value))}
+          onChange={(e) =>
+            persist({ notify_min_score: Number(e.target.value) }, 'Threshold updated.')
+          }
         />
         <div className="row">
           {THRESHOLD_STOPS.map((stop) => (
@@ -120,7 +141,7 @@ export function Settings() {
               key={stop.value}
               type="button"
               className={threshold === stop.value ? 'primary' : undefined}
-              onClick={() => save('notify_min_score', stop.value)}
+              onClick={() => persist({ notify_min_score: stop.value }, 'Threshold updated.')}
             >
               {stop.label}
             </button>
@@ -132,44 +153,24 @@ export function Settings() {
       </div>
 
       <h2>Behaviour</h2>
-      {rest.map((spec) => (
-        <SettingRow key={spec.key} spec={spec} onSave={save} />
+      {editable.map((spec) => (
+        <SettingRow
+          key={spec.key}
+          spec={spec}
+          value={draft[spec.key] ?? spec.value}
+          onChange={(value) => setDraft((d) => ({ ...d, [spec.key]: value }))}
+        />
       ))}
 
-      <h2>Credentials</h2>
-      <div className="card">
-        <p className="muted" style={{ marginTop: 0, fontSize: 14 }}>
-          Keys live in the env file and are never shown or editable here —
-          changing one is a deploy, which is the right amount of friction for
-          something that grants access.
-        </p>
-        <table>
-          <thead>
-            <tr>
-              <th>Provider</th>
-              <th>Status</th>
-              <th>Usage</th>
-            </tr>
-          </thead>
-          <tbody>
-            {Object.entries(payload.credentials).map(([name, present]) => {
-              const quota = payload.quotas.find((q) => q.provider === name)
-              return (
-                <tr key={name}>
-                  <td>{name}</td>
-                  <td className={present ? undefined : 'muted'}>
-                    {present ? 'configured' : 'not configured'}
-                  </td>
-                  <td className="muted">
-                    {quota
-                      ? `${quota.used}/${quota.cap} this ${quota.period === 'monthly' ? 'month' : 'day'}`
-                      : '—'}
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
+      <div className="row">
+        <button className="primary" type="button" onClick={saveAll} disabled={!dirty || saving}>
+          {saving ? 'Saving…' : 'Save changes'}
+        </button>
+        {dirty && (
+          <button type="button" onClick={() => setDraft({})}>
+            Discard
+          </button>
+        )}
       </div>
     </>
   )
@@ -177,13 +178,13 @@ export function Settings() {
 
 function SettingRow({
   spec,
-  onSave,
+  value,
+  onChange,
 }: {
   spec: SettingSpec
-  onSave: (key: string, value: unknown) => void
+  value: string | number | boolean
+  onChange: (value: string | number | boolean) => void
 }) {
-  const [value, setValue] = useState(spec.value)
-
   if (spec.kind === 'bool') {
     return (
       <div className="card">
@@ -191,10 +192,7 @@ function SettingRow({
           <input
             type="checkbox"
             checked={Boolean(value)}
-            onChange={(e) => {
-              setValue(e.target.checked)
-              onSave(spec.key, e.target.checked)
-            }}
+            onChange={(e) => onChange(e.target.checked)}
           />
           <span style={{ color: 'var(--text)' }}>{spec.label}</span>
         </label>
@@ -210,25 +208,15 @@ function SettingRow({
   return (
     <div className="card">
       <label htmlFor={spec.key}>{spec.label}</label>
-      <div className="row">
-        <input
-          id={spec.key}
-          type={spec.kind === 'date' ? 'text' : spec.kind === 'str' ? 'text' : 'number'}
-          value={String(value)}
-          min={spec.minimum ?? undefined}
-          max={spec.maximum ?? undefined}
-          step={spec.kind === 'float' ? 0.05 : 1}
-          onChange={(e) => setValue(e.target.value)}
-          style={{ flex: 1 }}
-        />
-        <button
-          type="button"
-          onClick={() => onSave(spec.key, value)}
-          disabled={String(value) === String(spec.value)}
-        >
-          Save
-        </button>
-      </div>
+      <input
+        id={spec.key}
+        type={spec.kind === 'float' || spec.kind === 'int' ? 'number' : 'text'}
+        value={String(value)}
+        min={spec.minimum ?? undefined}
+        max={spec.maximum ?? undefined}
+        step={spec.kind === 'float' ? 0.05 : 1}
+        onChange={(e) => onChange(e.target.value)}
+      />
       {spec.help && (
         <div className="muted" style={{ fontSize: 13, marginTop: 6 }}>
           {spec.help}

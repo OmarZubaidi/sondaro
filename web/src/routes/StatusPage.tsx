@@ -4,6 +4,16 @@ import type { Status } from '../lib/types'
 import { percent, relativeTime } from '../lib/format'
 import { IndexProgress } from '../components/IndexProgress'
 
+/** The queue's internal kinds, in words. */
+const TASK_NAMES: Record<string, string> = {
+  artist_lookup: 'Artist lookup',
+  library_sync: 'Library sync',
+  route_lookup: 'Drive time lookup',
+  sweep_geo: 'Nearby sweep',
+  sweep_country: 'Country sweep',
+  sweep_city: 'City sweep',
+}
+
 export function StatusPage() {
   const [status, setStatus] = useState<Status | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -62,10 +72,6 @@ export function StatusPage() {
                 {status.worker.last_error && ` · last error: ${status.worker.last_error}`}
               </td>
             </tr>
-            <tr>
-              <th>Routing host</th>
-              <td className="muted">{status.routing_host ?? 'not yet probed'}</td>
-            </tr>
           </tbody>
         </table>
       </div>
@@ -86,7 +92,7 @@ export function StatusPage() {
             <tbody>
               {Object.entries(status.queue).map(([kind, counts]) => (
                 <tr key={kind}>
-                  <td>{kind}</td>
+                  <td>{TASK_NAMES[kind] ?? kind}</td>
                   <td>{counts.total}</td>
                   <td>{counts.due}</td>
                 </tr>
