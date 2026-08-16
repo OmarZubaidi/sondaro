@@ -15,6 +15,9 @@
   --on-accent: #ffffff;
   --radius: 12px;
   --tap: 44px;
+  /* 24px of padding around the tallest thing in the topbar. Declared rather
+     than measured so a sticky element can offset itself by exactly it. */
+  --topbar: 68px;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -42,6 +45,12 @@ body,
 #root {
   margin: 0;
   min-height: 100%;
+}
+
+/* Reserve the scrollbar's width whether or not there's anything to scroll, so
+   a short page and a long one centre their content in the same place. */
+html {
+  scrollbar-gutter: stable;
 }
 
 body {
@@ -73,7 +82,8 @@ a:hover {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0));
+  height: var(--topbar);
+  padding: 12px 16px;
   background: var(--panel);
   border-bottom: 1px solid var(--line);
 }
@@ -102,6 +112,23 @@ a:hover {
 }
 
 .topbar nav a.active {
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+/* settings isn't a route, but it sits in the nav and should look like one */
+.topbar nav .navlike {
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  border-radius: 8px;
+  color: var(--muted);
+  white-space: nowrap;
+  min-height: var(--tap);
+  font: inherit;
+}
+
+.topbar nav .navlike.active {
   background: var(--panel-2);
   color: var(--text);
 }
@@ -269,6 +296,8 @@ select {
 @media (pointer: fine) {
   :root {
     --tap: 34px;
+    /* nav items are 16px/1.5 text in 8px of padding, so 40 rather than --tap */
+    --topbar: 64px;
   }
 
   input[type='text'],
@@ -513,11 +542,11 @@ main:has(.local-layout) {
   align-items: start;
 }
 
+/* Sticks exactly where it already sat — the topbar plus main's own padding —
+   so it doesn't hop a few pixels the instant it becomes stuck. */
 .local-layout .side {
   position: sticky;
-  /* clears the sticky topbar, whose height is 24px of padding around a
-     control that is --tap high */
-  top: calc(var(--tap) + 40px);
+  top: calc(var(--topbar) + 16px);
 }
 
 /* one column: three hour fields side by side don't fit in 250px */
@@ -606,4 +635,85 @@ main:has(.local-layout) {
 
 .inline-field input[type='number'] {
   max-width: 6rem;
+}
+
+/* --- settings drawer ------------------------------------------------------ */
+
+/* Both the scrim and the panel stay mounted so they can transition. They are
+   `visibility: hidden` when closed rather than merely off-screen, which keeps
+   them out of the tab order and the accessibility tree; the visibility change
+   is delayed by the length of the slide so the exit animation still plays. */
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: rgb(0 0 0 / 45%);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.22s ease,
+    visibility 0s linear 0.22s;
+}
+
+.scrim.shown {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.22s ease;
+}
+
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 21;
+  width: min(420px, 100%);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  border-left: 1px solid var(--line);
+  transform: translateX(100%);
+  visibility: hidden;
+  transition:
+    transform 0.22s ease,
+    visibility 0s linear 0.22s;
+}
+
+.drawer.shown {
+  transform: none;
+  visibility: visible;
+  transition: transform 0.22s ease;
+}
+
+.drawer-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+
+.drawer-head h1 {
+  font-size: 17px;
+  margin: 0;
+  letter-spacing: 0.4px;
+}
+
+.drawer-head .icon-button {
+  margin-left: auto;
+}
+
+.drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 16px calc(24px + env(safe-area-inset-bottom, 0));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scrim,
+  .drawer {
+    transition-duration: 0s;
+  }
 }
