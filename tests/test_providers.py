@@ -274,7 +274,80 @@ async def test_jambase_parses_a_listing():
     assert parsed.lineup == ["Support Act"]
     assert parsed.city == "Lakeside"
     assert parsed.date == "2026-09-12"
+    assert parsed.country == "US"
     assert parsed.mbid is None  # External Identifiers are not on this tier
+
+
+def _listing_in(country) -> dict:
+    return {
+        "identifier": "jb99",
+        "startDate": "2026-09-12T20:30",
+        "performer": [{"name": "Palehound"}],
+        "location": {"address": {"addressCountry": country}},
+    }
+
+
+@pytest.fixture
+def country_index(tmp_path, monkeypatch):
+    """Resolving an alpha-3 or a spelled-out name needs the border index, which
+    is built during `docker build` and so isn't on disk here."""
+    from api import borders
+    from scripts import build_borders
+
+    path = tmp_path / "borders.db"
+    build_borders.build(
+        {
+            "features": [
+                {
+                    "properties": {
+                        "ISO_A2_EH": "US",
+                        "ISO_A3_EH": "USA",
+                        "NAME_EN": "United States",
+                    },
+                    "geometry": {
+                        "type": "Polygon",
+                        "coordinates": [
+                            [[-80.0, 35.0], [-79.0, 35.0], [-79.0, 36.0], [-80.0, 35.0]]
+                        ],
+                    },
+                }
+            ]
+        },
+        path,
+    )
+    monkeypatch.setattr(config, "borders_db", str(path))
+    borders.reset()
+    borders.alpha2_for.cache_clear()
+    borders.alpha2_for_name.cache_clear()
+    yield
+    borders.reset()
+    borders.alpha2_for.cache_clear()
+    borders.alpha2_for_name.cache_clear()
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "US",
+        "us",
+        "USA",
+        {"@type": "Country", "identifier": "US"},
+        {"@type": "Country", "name": "United States"},
+        {"@type": "Country", "name": "united states"},
+    ],
+    ids=["alpha2", "lowercase", "alpha3", "object-code", "object-name", "object-case"],
+)
+def test_jambase_country_survives_every_shape_schema_org_allows(raw, country_index):
+    """`addressCountry` is a string *or* a Country object, and JamBase sends
+    both. Assuming a string crashed ingest *after* the billable call, so the
+    retry paid for the same listing again."""
+    assert jambase.parse_event(_listing_in(raw)).country == "US"
+
+
+@pytest.mark.parametrize("raw", [None, "", {}, {"name": "Freedonia"}, 7, []])
+def test_jambase_an_unusable_country_is_dropped_not_raised(raw, country_index):
+    """No country is a listing we can still score. A crash is a bill."""
+    assert jambase.parse_event(_listing_in(raw)).country is None
 
 
 # --------------------------------------------------------------------------

@@ -169,6 +169,23 @@ def country_name(code: str) -> str:
 
 
 @lru_cache(maxsize=512)
+def alpha2_for_name(name: str) -> str | None:
+    """ISO-2 for a country's spelled-out name. schema.org lets a provider send
+    `{"name": "United States"}` where a code was expected."""
+    if not name:
+        return None
+    try:
+        conn = _connect()
+    except BordersUnavailable:
+        return None
+    row = conn.execute(
+        "SELECT code FROM countries WHERE name = ? COLLATE NOCASE LIMIT 1",
+        (name.strip(),),
+    ).fetchone()
+    return row["code"] if row else None
+
+
+@lru_cache(maxsize=512)
 def alpha2_for(code: str) -> str | None:
     """ISO-2 for either an ISO-2 or ISO-3 code. Pelias geocoding answers in
     alpha-3, while every event provider uses alpha-2."""

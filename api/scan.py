@@ -93,7 +93,10 @@ def ingest(events: list[Event], artists: list[Artist]) -> tuple[int, int]:
             event.venue,
             event.city,
             event.region,
-            (event.country or "").upper() or None,
+            # belt and braces over the provider's own normalising: a malformed
+            # field here would fail the task, and a retried task re-spends the
+            # API call that fetched it
+            (event.country.upper() if isinstance(event.country, str) else None) or None,
             event.lat,
             event.lon,
             event.url,

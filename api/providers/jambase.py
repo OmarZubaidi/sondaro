@@ -30,7 +30,7 @@ from datetime import date, timedelta
 from .. import http
 from ..config import config
 from ..util import today
-from .base import Event, as_float
+from .base import Event, as_country, as_float
 
 log = logging.getLogger("sondaro.jambase")
 
@@ -84,7 +84,7 @@ def parse_event(raw: dict) -> Event | None:
         venue=venue.get("name"),
         city=address.get("addressLocality"),
         region=address.get("addressRegion"),
-        country=address.get("addressCountry"),
+        country=as_country(address.get("addressCountry")),
         lat=as_float(geo.get("latitude")),
         lon=as_float(geo.get("longitude")),
         url=raw.get("url"),
