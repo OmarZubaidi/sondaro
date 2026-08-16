@@ -38,6 +38,9 @@ SPECS: tuple[Spec, ...] = (
     Spec("home_country", "Home country", "str", "US",
          help="ISO-2. A trip to this country searches only the cities you name, "
               "since you don't need the whole place swept to visit one city."),
+    Spec("home_tz", "Home timezone", "str", "UTC",
+         help="IANA name. Comes with the home location, so nothing has to be "
+              "kept in step by hand."),
     Spec("home_horizon_days", "How far ahead to look", "int", 180, 30, 365,
          help="Longer horizons cost more API calls on the first fill only."),
     Spec("base_hours_weeknight", "Weeknight drive budget (hours)", "float",

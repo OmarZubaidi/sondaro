@@ -2,9 +2,10 @@
 
 The split is deliberate and enforced here: this module holds **secrets and
 wiring only**, plus first-run seeds for the settings the UI owns afterwards.
-Anything behavioural — home location, horizon, driving-hour bases, alert
-threshold — is read through `settings.py`, not from here, so changing it never
-requires a redeploy.
+Anything behavioural — horizon, driving-hour bases, alert threshold — is read
+through `settings.py`, not from here, so changing it never requires a redeploy.
+Home location and timezone aren't here either: those come from Home Assistant,
+which already holds them.
 
 `SEEDS` is the one-way door: those values are copied into the settings table on
 first run and never consulted again.
@@ -42,7 +43,6 @@ class Config:
         default_factory=lambda: _str("SONDARO_BORDERS_DB", "/app/api/borders.db")
     )
     static_dir: str = field(default_factory=lambda: _str("SONDARO_STATIC_DIR", "/app/static"))
-    tz: str = field(default_factory=lambda: _str("TZ", "UTC"))
 
     # --- wiring -------------------------------------------------------------
     lidarr_url: str = field(
@@ -93,9 +93,6 @@ config = Config()
 # First-run seeds. Copied into the settings table once, then owned by the UI.
 # Keep in sync with the settings schema in settings.py.
 SEEDS: dict[str, str] = {
-    "home_lat": _str("HOME_LAT", "38.0"),
-    "home_lon": _str("HOME_LON", "-95.0"),
-    "home_label": _str("HOME_LABEL", "Home"),
     "home_horizon_days": _str("HOME_HORIZON_DAYS", "180"),
     "notify_min_score": _str("NOTIFY_MIN_SCORE", "0.35"),
 }

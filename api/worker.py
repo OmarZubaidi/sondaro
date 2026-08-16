@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, timezone
 
 from . import db, health, library, notify, queue, routing, scan, settings
 from .providers import homeassistant, jambase, ticketmaster
-from .util import now_iso, today
+from .util import known_timezone, now_iso, today
 
 log = logging.getLogger("sondaro.worker")
 
@@ -228,6 +228,10 @@ class Worker:
             settings.set_value("home_label", home["label"])
         if home.get("country"):
             settings.set_value("home_country", home["country"])
+        # a zone we can't load would silently turn every local date into UTC,
+        # so an unrecognised one is dropped rather than stored
+        if home.get("tz") and known_timezone(home["tz"]):
+            settings.set_value("home_tz", home["tz"])
 
         if moved:
             log.info("home assistant moved home to %s", home.get("label") or home["lat"])

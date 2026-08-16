@@ -1,13 +1,14 @@
 """Home Assistant as the source of truth for where you live.
 
-Home Assistant already knows your latitude, longitude, location name and
-country, and you already maintain them there. Keeping a second copy in
+Home Assistant already knows your latitude, longitude, location name, country
+and timezone, and you already maintain them there. Keeping a second copy in
 Sondaro's settings means two places to update and one of them silently going
 stale, so when this is configured Home Assistant wins and the UI stops
 offering a location search.
 
-`/api/config` returns all four fields in one call, so this needs no entity
-lookups and no polling of state.
+`/api/config` returns all five fields in one call, so this needs no entity
+lookups, no polling of state, and no way of deriving a timezone from
+coordinates.
 
 Read-only, enforced the same way the Lidarr client is: a token that can drive
 your whole house should not be usable by this app to do anything but read.
@@ -62,7 +63,7 @@ async def _request(method: str, path: str) -> dict | None:
 
 
 async def fetch_home() -> dict | None:
-    """Latitude, longitude, label and country, or None if unavailable.
+    """Latitude, longitude, label, country and timezone, or None if unavailable.
 
     Returns None rather than raising: Home Assistant being down should leave
     the last known home in place, not blank it out.
@@ -85,4 +86,5 @@ async def fetch_home() -> dict | None:
         "lon": float(lon),
         "label": str(config.get("location_name") or "").strip() or None,
         "country": str(config.get("country") or "").strip().upper() or None,
+        "tz": str(config.get("time_zone") or "").strip() or None,
     }

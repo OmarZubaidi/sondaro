@@ -4,18 +4,35 @@ every user-facing date is rendered in the configured local zone.
 """
 
 from datetime import date, datetime, timezone
+from functools import lru_cache
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
-
-from .config import config
 
 _UTC = timezone.utc
 
 
-def local_tz() -> ZoneInfo:
+@lru_cache(maxsize=8)
+def known_timezone(name: str) -> ZoneInfo | None:
+    """The zone, or None if this machine has never heard of it."""
     try:
-        return ZoneInfo(config.tz)
+        return ZoneInfo(name)
     except (ZoneInfoNotFoundError, ValueError):
-        return ZoneInfo("UTC")
+        return None
+
+
+def local_tz() -> ZoneInfo:
+    """The home timezone, which travels with the home location rather than
+    being configured separately and left behind.
+
+    `settings` is imported lazily because it imports this module.
+    """
+    from . import settings
+
+    try:
+        stored = str(settings.get("home_tz") or "")
+    except Exception:  # noqa: BLE001 - time must work before the db does
+        stored = ""
+
+    return known_timezone(stored) or ZoneInfo("UTC")
 
 
 def now() -> datetime:

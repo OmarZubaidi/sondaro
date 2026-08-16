@@ -7,7 +7,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from api import settings, worker  # noqa: E402
+from api import settings, util, worker  # noqa: E402
 from api.providers import homeassistant  # noqa: E402
 
 HASS_CONFIG = {
@@ -38,12 +38,18 @@ async def test_refuses_anything_but_reading(routes, hass):
     assert routes.calls == []
 
 
-async def test_reads_all_four_fields_in_one_call(routes, hass):
+async def test_reads_every_field_in_one_call(routes, hass):
     routes.add("/api/config", HASS_CONFIG)
 
     home = await homeassistant.fetch_home()
 
-    assert home == {"lat": 38.2, "lon": -95.2, "label": "Springfield", "country": "US"}
+    assert home == {
+        "lat": 38.2,
+        "lon": -95.2,
+        "label": "Springfield",
+        "country": "US",
+        "tz": "UTC",
+    }
     assert routes.count("/api/config") == 1
 
 
@@ -95,3 +101,23 @@ async def test_the_same_location_does_not_reindex(routes, hass):
 async def test_missing_coordinates_are_ignored(routes, hass):
     routes.add("/api/config", {"location_name": "Nowhere"})
     assert await homeassistant.fetch_home() is None
+
+
+async def test_the_timezone_comes_with_the_location(routes, hass):
+    """Moving to another zone shouldn't need a redeploy to fix the dates."""
+    routes.add("/api/config", {**HASS_CONFIG, "time_zone": "Europe/Lisbon"})
+
+    await worker.worker.sync_home_from_hass()
+
+    assert settings.get("home_tz") == "Europe/Lisbon"
+    assert str(util.local_tz()) == "Europe/Lisbon"
+
+
+async def test_a_timezone_this_machine_cannot_load_is_ignored(routes, hass):
+    """Storing it would silently render every local date as UTC."""
+    routes.add("/api/config", {**HASS_CONFIG, "time_zone": "Mars/Olympus_Mons"})
+    settings.set_value("home_tz", "UTC")
+
+    await worker.worker.sync_home_from_hass()
+
+    assert settings.get("home_tz") == "UTC"

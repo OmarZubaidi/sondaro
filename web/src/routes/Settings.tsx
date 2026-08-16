@@ -20,7 +20,14 @@ const ON_LOCAL_PAGE = new Set([
 
 const clamp = (value: number) => Math.min(1, Math.max(0, value || 0))
 
-const HANDLED_SEPARATELY = new Set(['home_lat', 'home_lon', 'home_label', 'notify_min_score'])
+// home_tz rides along with the location rather than being typed in
+const HANDLED_SEPARATELY = new Set([
+  'home_lat',
+  'home_lon',
+  'home_label',
+  'home_tz',
+  'notify_min_score',
+])
 
 export function Settings() {
   const [payload, setPayload] = useState<SettingsPayload | null>(null)
