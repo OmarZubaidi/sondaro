@@ -32,11 +32,13 @@ class Event:
         return ", ".join(b for b in (self.venue, self.city, self.region, self.country) if b)
 
     def candidate_names(self) -> list[str]:
-        """Every act this listing could be matched against."""
+        """Every act this listing could be matched against. Filtered to real
+        strings: matching normalises these, and a provider that hands over a
+        JSON-LD object instead would fail the whole listing there."""
         names = [self.artist_name, *self.lineup]
         if self.title and self.title != self.artist_name:
             names.append(self.title)
-        return [n for n in names if n]
+        return [n for n in names if n and isinstance(n, str)]
 
 
 def as_float(value) -> float | None:
@@ -46,24 +48,32 @@ def as_float(value) -> float | None:
         return None
 
 
-# schema.org's Country object, in the order of how much we'd like to find
-_COUNTRY_KEYS = ("identifier", "alternateName", "name")
+# schema.org names a thing with any of these, in the order we'd rather have
+_NAME_KEYS = ("identifier", "alternateName", "name")
+
+
+def as_text(value) -> str | None:
+    """A plain string from a schema.org field that may be a string or an object.
+
+    Every addressable field in JSON-LD has this shape: `addressRegion` is
+    "KS" or `{"@type": "State", "name": "Kansas"}`, and the same goes
+    for locality, country and venue name. A provider that assumes the string
+    form works right up until the listing where it doesn't.
+    """
+    if isinstance(value, dict):
+        value = next((value[k] for k in _NAME_KEYS if isinstance(value.get(k), str)), None)
+    if not isinstance(value, str):
+        return None
+    return value.strip() or None
 
 
 def as_country(value) -> str | None:
     """An alpha-2 code from whatever a provider called a country.
 
-    schema.org's `addressCountry` is *either* a string or a Country object, and
-    JamBase sends both. Everything downstream stores and compares alpha-2, so
-    the shape is flattened here rather than at each use site — the last one to
-    assume a string crashed the ingest after the billable call had been spent.
+    Everything downstream stores and compares alpha-2, so the shape is
+    flattened here rather than at each use site.
     """
-    if isinstance(value, dict):
-        value = next((value[k] for k in _COUNTRY_KEYS if value.get(k)), None)
-    if not isinstance(value, str):
-        return None
-
-    text = value.strip()
+    text = as_text(value)
     if not text:
         return None
     # alpha-2 and alpha-3 first; a spelled-out name is the fallback because it

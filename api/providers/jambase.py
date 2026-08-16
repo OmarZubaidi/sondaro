@@ -30,7 +30,7 @@ from datetime import date, timedelta
 from .. import http
 from ..config import config
 from ..util import today
-from .base import Event, as_country, as_float
+from .base import Event, as_country, as_float, as_text
 
 log = logging.getLogger("sondaro.jambase")
 
@@ -69,21 +69,24 @@ def parse_event(raw: dict) -> Event | None:
     geo = venue.get("geo") or {}
 
     performers = [
-        p.get("name")
+        name
         for p in (raw.get("performer") or raw.get("lineup") or [])
-        if isinstance(p, dict) and p.get("name")
+        if isinstance(p, dict) and (name := as_text(p.get("name")))
     ]
+    title = as_text(raw.get("name")) or ""
 
     return Event(
         provider=PROVIDER,
         provider_event_id=event_id,
-        artist_name=performers[0] if performers else (raw.get("name") or ""),
-        title=raw.get("name") or "",
+        artist_name=performers[0] if performers else title,
+        title=title,
         date=day[:10],
         time=(clock[:5] or None),
-        venue=venue.get("name"),
-        city=address.get("addressLocality"),
-        region=address.get("addressRegion"),
+        # every one of these is a string *or* an object in JSON-LD, so none of
+        # them may be taken at face value
+        venue=as_text(venue.get("name")),
+        city=as_text(address.get("addressLocality")),
+        region=as_text(address.get("addressRegion")),
         country=as_country(address.get("addressCountry")),
         lat=as_float(geo.get("latitude")),
         lon=as_float(geo.get("longitude")),

@@ -58,6 +58,14 @@ def match_one(event: Event, by_name: dict, by_mbid: dict) -> Artist | None:
     return best
 
 
+def _text(value) -> str | None:
+    """Last stop before sqlite. Providers are supposed to hand over strings and
+    normalise their own quirks, but one that doesn't must not be able to fail
+    this task: sqlite refuses to bind anything but a scalar, and a failed task
+    is retried, which re-spends the API call that fetched the listing."""
+    return value.strip() or None if isinstance(value, str) else None
+
+
 def ingest(events: list[Event], artists: list[Artist]) -> tuple[int, int]:
     """Store the listings that match the library. Returns (matched, seen)."""
     if not events:
@@ -77,8 +85,13 @@ def ingest(events: list[Event], artists: list[Artist]) -> tuple[int, int]:
         if artist is None:
             continue
         matched += 1
+        # once, up front: the dedupe key reads these too, so coercing them at
+        # the row would still leave a malformed one to blow up on the way there
+        venue, city = _text(event.venue), _text(event.city)
+        country = _text(event.country)
+
         # collapse the same show reported twice by different providers
-        dedupe = event_key(artist.name, event.date, event.city, event.venue)
+        dedupe = event_key(artist.name, event.date, city, venue)
         existing = rows.get(dedupe)
         if existing is not None and existing[13]:  # already has a url
             continue
@@ -87,19 +100,16 @@ def ingest(events: list[Event], artists: list[Artist]) -> tuple[int, int]:
             event.provider,
             artist.key,
             artist.name,
-            event.title,
+            _text(event.title) or "",
             event.date,
-            event.time,
-            event.venue,
-            event.city,
-            event.region,
-            # belt and braces over the provider's own normalising: a malformed
-            # field here would fail the task, and a retried task re-spends the
-            # API call that fetched it
-            (event.country.upper() if isinstance(event.country, str) else None) or None,
+            _text(event.time),
+            venue,
+            city,
+            _text(event.region),
+            country.upper() if country else None,
             event.lat,
             event.lon,
-            event.url,
+            _text(event.url),
             stamp,
             stamp,
         )

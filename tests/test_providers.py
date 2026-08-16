@@ -287,6 +287,60 @@ def _listing_in(country) -> dict:
     }
 
 
+def test_jambase_every_address_field_may_arrive_as_an_object(country_index):
+    """JSON-LD lets any of these be a bare string or a typed object, and
+    JamBase mixes both inside one response. Fixing them one at a time as each
+    crashes costs a billable call per discovery, so they're covered together."""
+    parsed = jambase.parse_event(
+        {
+            "identifier": "jb100",
+            "startDate": "2026-09-12T20:30",
+            "performer": [{"name": "Palehound"}],
+            "location": {
+                "name": {"@type": "Place", "name": "Local 506"},
+                "address": {
+                    "addressLocality": {"@type": "City", "name": "Lakeside"},
+                    "addressRegion": {"@type": "State", "name": "Kansas"},
+                    "addressCountry": {"@type": "Country", "name": "United States"},
+                },
+            },
+        }
+    )
+
+    assert parsed.venue == "Local 506"
+    assert parsed.city == "Lakeside"
+    assert parsed.region == "Kansas"
+    assert parsed.country == "US"
+
+
+def test_ingest_never_hands_sqlite_something_it_cannot_bind(country_index):
+    """The guard of last resort. sqlite raises on a dict, the task fails, and
+    the retry pays JamBase again for a listing we already have."""
+    from api import library, scan
+    from api.providers.base import Event
+
+    db.execute(
+        "INSERT INTO artists(key, name, affinity, listens) VALUES(?,?,?,?)",
+        ("name:palehound", "Palehound", 0.9, 100),
+    )
+    rogue = Event(
+        provider="jambase",
+        provider_event_id="rogue",
+        artist_name="Palehound",
+        date="2026-09-12",
+        venue={"name": "Local 506"},  # type: ignore[arg-type]
+        region={"name": "Kansas"},  # type: ignore[arg-type]
+        country={"name": "United States"},  # type: ignore[arg-type]
+    )
+
+    matched, seen = scan.ingest([rogue], library.all_artists())
+
+    assert (matched, seen) == (1, 1)
+    stored = db.query_one("SELECT venue, region, country FROM events WHERE id = ?",
+                          ("jambase:rogue",))
+    assert (stored["venue"], stored["region"], stored["country"]) == (None, None, None)
+
+
 @pytest.fixture
 def country_index(tmp_path, monkeypatch):
     """Resolving an alpha-3 or a spelled-out name needs the border index, which
