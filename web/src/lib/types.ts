@@ -96,12 +96,4 @@ export interface SettingsPayload {
   settings: SettingSpec[]
   credentials: Record<string, boolean>
   quotas: Quota[]
-  home_managed_by: string | null
-}
-
-export interface GeocodeResult {
-  label: string
-  lat: number
-  lon: number
-  country: string | null
 }

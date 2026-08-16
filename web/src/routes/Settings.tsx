@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
-import type { GeocodeResult, SettingSpec, SettingsPayload } from '../lib/types'
+import type { SettingSpec, SettingsPayload } from '../lib/types'
 
 const THRESHOLD_STOPS = [
   { value: 0.2, label: 'everything' },
@@ -20,22 +20,23 @@ const ON_LOCAL_PAGE = new Set([
 
 const clamp = (value: number) => Math.min(1, Math.max(0, value || 0))
 
-// home_tz rides along with the location rather than being typed in
-const HANDLED_SEPARATELY = new Set([
+// where you live comes from Home Assistant, timezone included. There is
+// nothing to edit here that wouldn't be overwritten on the next sync.
+const FROM_HOME_ASSISTANT = new Set([
   'home_lat',
   'home_lon',
   'home_label',
+  'home_country',
   'home_tz',
-  'notify_min_score',
 ])
+
+const HANDLED_SEPARATELY = new Set(['notify_min_score'])
 
 export function Settings() {
   const [payload, setPayload] = useState<SettingsPayload | null>(null)
   const [draft, setDraft] = useState<Record<string, string | number | boolean>>({})
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [query, setQuery] = useState('')
-  const [results, setResults] = useState<GeocodeResult[]>([])
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -63,34 +64,16 @@ export function Settings() {
     }
   }
 
-  async function search(event: React.FormEvent) {
-    event.preventDefault()
-    setResults((await api.geocode(query)).results)
-  }
-
-  async function chooseHome(result: GeocodeResult) {
-    await api.setHome({
-      lat: result.lat,
-      lon: result.lon,
-      label: result.label,
-      country: result.country ?? undefined,
-    })
-    setResults([])
-    setQuery('')
-    setPayload(await api.settings())
-    setMessage(
-      'Home moved. Drive times are keyed on origin so they re-resolve for the ' +
-        'new place, and coverage is being rebuilt.',
-    )
-  }
-
   if (error && !payload) return <div className="note">{error}</div>
   if (!payload) return <div className="empty">Loading…</div>
 
   const byKey = (key: string) => payload.settings.find((s) => s.key === key)
   const threshold = Number(byKey('notify_min_score')?.value ?? 0.35)
   const editable = payload.settings.filter(
-    (s) => !ON_LOCAL_PAGE.has(s.key) && !HANDLED_SEPARATELY.has(s.key),
+    (s) =>
+      !ON_LOCAL_PAGE.has(s.key) &&
+      !HANDLED_SEPARATELY.has(s.key) &&
+      !FROM_HOME_ASSISTANT.has(s.key),
   )
   const dirty = Object.keys(draft).length > 0
 
@@ -98,47 +81,6 @@ export function Settings() {
     <>
       {message && <div className="progress">{message}</div>}
       {error && <div className="note">{error}</div>}
-
-      <h2>Home</h2>
-      <div className="card stack">
-        <div>
-          Currently <strong>{String(byKey('home_label')?.value ?? '')}</strong>{' '}
-          <span className="muted">
-            ({Number(byKey('home_lat')?.value).toFixed(4)},{' '}
-            {Number(byKey('home_lon')?.value).toFixed(4)}
-            {byKey('home_country')?.value ? `, ${byKey('home_country')?.value}` : ''})
-          </span>
-        </div>
-        {payload.home_managed_by ? (
-          <div className="muted" style={{ fontSize: 14 }}>
-            Kept in sync from {payload.home_managed_by}, so there's one place to
-            change it. Update it there and it lands here on the next sync.
-          </div>
-        ) : (
-        <>
-          <form className="row" onSubmit={search}>
-            <input
-              type="search"
-              placeholder="Search for a place…"
-              aria-label="Search for a place"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              style={{ flex: 1 }}
-            />
-            <button type="submit">Search</button>
-          </form>
-        </>
-        )}
-        {results.map((result) => (
-          <button
-            key={`${result.lat},${result.lon}`}
-            type="button"
-            onClick={() => chooseHome(result)}
-          >
-            {result.label}
-          </button>
-        ))}
-      </div>
 
       <h2>Alerts</h2>
       <div className="card">

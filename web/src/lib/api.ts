@@ -1,11 +1,4 @@
-import type {
-  GeocodeResult,
-  LocalFeed,
-  SettingsPayload,
-  Status,
-  Trip,
-  TripDetail,
-} from './types'
+import type { LocalFeed, SettingsPayload, Status, Trip, TripDetail } from './types'
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
@@ -66,15 +59,6 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify(payload),
     }),
-
-  setHome: (payload: { lat: number; lon: number; label?: string; country?: string }) =>
-    request<{ reindexing: boolean }>('/api/settings/home', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
-
-  geocode: (q: string) =>
-    request<{ results: GeocodeResult[] }>(`/api/geocode?q=${encodeURIComponent(q)}`),
 
   countries: () =>
     request<{ countries: { code: string; name: string }[] }>('/api/countries'),

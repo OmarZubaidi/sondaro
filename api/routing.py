@@ -225,8 +225,7 @@ async def resolve_place(
 
 
 async def geocode(text: str, limit: int = 5) -> list[dict]:
-    """Forward geocode for the home-location search box, so nobody has to type
-    raw coordinates."""
+    """Forward geocode, so a trip can name a city rather than coordinates."""
     if not (available() and text.strip()):
         return []
 

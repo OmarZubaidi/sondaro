@@ -25,7 +25,6 @@ from . import (
     ics,
     library,
     queue,
-    routing,
     scan,
     settings,
     usage,
@@ -377,7 +376,6 @@ async def api_get_settings():
         # presence only — a key is never rendered or returned
         "credentials": config.credential_status(),
         "quotas": usage.snapshot(),
-        "home_managed_by": "home assistant" if homeassistant.available() else None,
     }
 
 
@@ -398,46 +396,6 @@ async def api_patch_settings(payload: dict = Body(...)):
         queue.plan_local(*settings.home(), settings.get("home_horizon_days"))
     worker.worker.nudge()
     return {"updated": updated}
-
-
-@app.post("/api/settings/home")
-async def api_set_home(payload: dict = Body(...)):
-    """Moving house invalidates work rather than just changing a number, so
-    this is a distinct endpoint that says so in its response."""
-    if homeassistant.available():
-        raise HTTPException(
-            status_code=409,
-            detail="Home comes from Home Assistant. Change it there and it syncs here.",
-        )
-
-    lat, lon = payload.get("lat"), payload.get("lon")
-    if lat is None or lon is None:
-        raise HTTPException(status_code=400, detail="lat and lon are required")
-
-    settings.set_value("home_lat", lat)
-    settings.set_value("home_lon", lon)
-    if payload.get("label"):
-        settings.set_value("home_label", payload["label"])
-    # the geocoder answers in alpha-3; every event provider speaks alpha-2
-    country = borders.alpha2_for(str(payload.get("country") or ""))
-    if country:
-        settings.set_value("home_country", country)
-
-    worker.relocate(settings.get("home_lat"), settings.get("home_lon"))
-    return {
-        "home": {
-            "lat": settings.get("home_lat"),
-            "lon": settings.get("home_lon"),
-            "label": settings.get("home_label"),
-        },
-        "reindexing": True,
-        "note": "drive times are keyed on origin, so they re-resolve for the new home",
-    }
-
-
-@app.get("/api/geocode")
-async def api_geocode(q: str = Query(..., min_length=2)):
-    return {"results": await routing.geocode(q)}
 
 
 @app.get("/api/countries")
