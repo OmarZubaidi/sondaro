@@ -42,6 +42,8 @@ TUESDAY = date(2026, 9, 8)
 SATURDAY = date(2026, 9, 12)
 TRIP_START = date(2026, 9, 5)
 TRIP_END = date(2026, 9, 20)
+AWAY_START = date(2026, 9, 7)
+AWAY_END = date(2026, 9, 14)
 
 FRANCE_EAST_LON = 6.10
 BORDER_SAMPLE = {
@@ -193,6 +195,25 @@ def _plays_during(world, name, place):
 @given(parsers.parse('"{name}" plays {place} two days after the trip ends'))
 def _plays_after(world, name, place):
     _make_event(world, name, place, TRIP_END + timedelta(days=2))
+
+
+@given("I am away on a trip that week")
+def _away(world):
+    world["away"] = db.execute(
+        "INSERT INTO trips(name, countries, cities, start_date, end_date, flex_before, "
+        "flex_after, strict_dates, created_at) VALUES(?,?,?,?,?,?,?,?,?)",
+        ("Away", "FR", "", AWAY_START.isoformat(), AWAY_END.isoformat(), 3, 3, 0, now_iso()),
+    )
+
+
+@given(parsers.parse('"{name}" plays {place} during that trip'))
+def _plays_while_away(world, name, place):
+    _make_event(world, name, place, AWAY_START + timedelta(days=2))
+
+
+@given(parsers.parse('"{name}" plays {place} the day before that trip'))
+def _plays_before_away(world, name, place):
+    _make_event(world, name, place, AWAY_START - timedelta(days=1))
 
 
 @given("my home country is the US")

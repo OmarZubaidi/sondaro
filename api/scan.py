@@ -123,6 +123,28 @@ def prune_past() -> int:
 # --------------------------------------------------------------------------
 
 
+def away_windows() -> list[tuple[date, date]]:
+    """Dates you're demonstrably somewhere else.
+
+    Only the booked window counts, not the flex days: slack is "I could move
+    this", whereas start..end is "I am not at home". Recommending a hometown
+    show for a night you're in another country is just wrong.
+    """
+    windows = []
+    for row in db.query(
+        "SELECT start_date, end_date FROM trips WHERE end_date >= ?",
+        (today().isoformat(),),
+    ):
+        start, end = parse_date(row["start_date"]), parse_date(row["end_date"])
+        if start and end:
+            windows.append((start, end))
+    return windows
+
+
+def is_away(day: date, windows: list[tuple[date, date]]) -> bool:
+    return any(start <= day <= end for start, end in windows)
+
+
 def _destinations(rows) -> dict[str, tuple[float, float]]:
     """Distinct venue cities. Routing is per city, never per event — that's the
     difference between a few hundred lifetime lookups and a few hundred a day."""
@@ -161,12 +183,15 @@ def home_candidates() -> list[Candidate]:
                 queue.plan_route(origin, dest, dest_key)
 
     floor = settings.get("min_score")
+    away = away_windows()
     candidates: list[Candidate] = []
 
     for row in rows:
         day = parse_date(row["date"])
         if day is None or row["lat"] is None:
             continue
+        if is_away(day, away):
+            continue  # you're on a trip; you cannot be at this show
 
         dest_key = routing.point_key(row["lat"], row["lon"])
         route = routing.cached(origin_key, dest_key) or routing.estimate(

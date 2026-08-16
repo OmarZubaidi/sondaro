@@ -42,6 +42,20 @@ Feature: Recommending shows worth going to
     When I look at what's on near home
     Then the Saturday show outranks the Tuesday show
 
+  Scenario: A hometown show while I'm away is not a recommendation
+    Given I am away on a trip that week
+    And "The National" is an artist I play constantly
+    And "The National" plays Springfield during that trip
+    When I look at what's on near home
+    Then "The National" is not recommended
+
+  Scenario: Shows either side of a trip are still recommended
+    Given I am away on a trip that week
+    And "The National" is an artist I play constantly
+    And "The National" plays Springfield the day before that trip
+    When I look at what's on near home
+    Then "The National" is recommended
+
   Scenario: Without routing, drive times are estimates and say so
     Given OpenRouteService is not configured
     And "The National" is an artist I play constantly
