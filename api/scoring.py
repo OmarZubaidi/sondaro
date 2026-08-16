@@ -37,6 +37,11 @@ TRIP_BORDER_BASE_MILES = 100.0
 IN_COUNTRY_FLOOR = 0.6  # elsewhere-in-country stays viable when cities are named
 NAMED_CITY_BASE_MILES = 150.0
 
+# Trips don't use the `min_score` filter — that one keeps the everyday local
+# feed short, and raising it shouldn't quietly narrow a trip you're planning
+# once. This fixed floor only drops the genuinely unreachable.
+TRIP_FLOOR = 0.05
+
 # --- date fit ---------------------------------------------------------------
 
 FLEX_FLOOR = 0.5

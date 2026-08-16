@@ -140,7 +140,10 @@ async def pick_counts(artists: list[dict]) -> tuple[dict[str, int], str]:
 
 async def sync() -> dict:
     """Refresh artists and affinity. Safe to run repeatedly."""
-    artists = await lidarr.list_artists()
+    # monitored is about whether Lidarr should be *downloading* an artist. It
+    # says nothing about whether you'd go and see them, which is the only
+    # question here.
+    artists = await lidarr.list_artists(monitored_only=False)
     if not artists:
         return {"artists": 0, "error": "no artists returned from Lidarr"}
 

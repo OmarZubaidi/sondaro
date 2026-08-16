@@ -51,7 +51,7 @@ def jambase_on(routes, monkeypatch):
     return routes
 
 
-def _queue_lookup() -> queue.Task:
+def _queue_lookup(gap_fill: bool = True) -> queue.Task:
     queue.plan_artist_lookup(
         "name:palehound",
         "Palehound",
@@ -59,10 +59,21 @@ def _queue_lookup() -> queue.Task:
         TODAY,
         TODAY + timedelta(days=90),
         scope="local:test",
+        gap_fill=gap_fill,
     )
     task = queue.claim_next()
     assert task is not None and task.kind == queue.ARTIST_LOOKUP
     return task
+
+
+async def test_the_long_tail_never_reaches_jambase(jambase_on):
+    """Only the top of the library earns the fall-through. Without this, one
+    pass over a few hundred artists would spend the whole month's allowance on
+    the ones Ticketmaster has never heard of."""
+    await worker.worker._artist_lookup(_queue_lookup(gap_fill=False))
+
+    assert jambase_on.count("/events") == 0
+    assert usage.used("jambase") == 0
 
 
 async def test_a_failed_store_does_not_re_buy_the_listing(jambase_on, monkeypatch):

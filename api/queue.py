@@ -347,9 +347,16 @@ def plan_artist_lookup(
     scope: str,
     country: str | None = None,
     worldwide: bool = False,
+    gap_fill: bool = False,
 ) -> None:
     """Per-artist lookups, prioritised by affinity — this is the mechanism that
-    finds a favourite playing somewhere a sweep would never look."""
+    finds a favourite playing somewhere a sweep would never look.
+
+    `gap_fill` permits the billable JamBase fall-through when Ticketmaster
+    comes back empty. Off unless asked for: a library of hundreds would
+    otherwise spend a month's JamBase allowance on one pass through the
+    artists nobody has heard of.
+    """
     enqueue(
         ARTIST_LOOKUP,
         f"{scope}:artist:{artist_key_value}",
@@ -361,6 +368,7 @@ def plan_artist_lookup(
             "country": country,
             "worldwide": worldwide,
             "scope": scope,
+            "gap_fill": gap_fill,
         },
         priority=urgency((start - today()).days) * max(affinity, 0.05),
     )

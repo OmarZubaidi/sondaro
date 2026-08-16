@@ -299,7 +299,13 @@ def _points_in(points, country: str):
 
 def trip_candidates(trip) -> list[Candidate]:
     """Everything worth seeing on a trip, scored and ranked. Nothing is hidden
-    and nothing is chosen — the UI shows every option."""
+    and nothing is chosen — the UI shows every option.
+
+    `min_score` is deliberately not consulted — that setting keeps the everyday
+    local feed short, and turning it up shouldn't quietly narrow a trip you're
+    planning once. A fixed `TRIP_FLOOR` drops the unreachable instead, so an
+    artist you've never played still surfaces in a city you'll be standing in.
+    """
     countries = trip_countries(trip)
     cities = trip_cities(trip)
     start, end, window_start, window_end = trip_window(trip)
@@ -308,7 +314,6 @@ def trip_candidates(trip) -> list[Candidate]:
 
     strict = bool(trip["strict_dates"])
     border_base = settings.get("trip_border_base_miles")
-    floor = settings.get("min_score")
     home = settings.home_country()
 
     rows = db.query(
@@ -387,7 +392,7 @@ def trip_candidates(trip) -> list[Candidate]:
             border_base_miles=border_base,
             country_floor=not at_home_country,
         )
-        if score.total < floor:
+        if score.total < scoring.TRIP_FLOOR:
             continue
         candidates.append(_candidate(row, score))
 

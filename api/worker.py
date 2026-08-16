@@ -19,7 +19,11 @@ IDLE_SLEEP = 300.0  # nothing scheduled: check back in five minutes
 MAX_SLEEP = 900.0
 LOCAL_RADIUS_MILES = 150.0
 CITY_RADIUS_MILES = 75.0  # a metro area, for home-country trip cities
-TARGETED_ARTISTS = 60
+# Every artist gets a Ticketmaster lookup — it's free. Only the top of the
+# library earns the JamBase fall-through, which isn't: at ~16 billable calls a
+# day, spending them on the long tail would leave nothing for the artists you'd
+# actually cross a country for.
+GAP_FILL_ARTISTS = 60
 
 
 class Worker:
@@ -188,7 +192,7 @@ class Worker:
         )
 
         billed = False
-        if not events and jambase.available():
+        if not events and task.params.get("gap_fill") and jambase.available():
             # from here on this run has cost money, whatever happens next
             billed = True
             events = await jambase.by_artist_name(name, start, end)
@@ -281,15 +285,22 @@ class Worker:
     # --- planning ----------------------------------------------------------
 
     def _plan_targeted_lookups(self) -> None:
-        """Per-artist lookups for the top of the library, worldwide.
+        """Per-artist lookups for the whole library, worldwide.
 
-        This is what catches a favourite playing somewhere no sweep covers —
-        including just over a border during a trip. It is affinity-gated by
-        construction: only artists you'd travel for get looked up this way.
+        This is what catches an artist playing somewhere no sweep covers —
+        including just over a border during a trip. Every artist gets one:
+        Ticketmaster is free and generous, and the artists a sweep is least
+        likely to stumble on are exactly the obscure ones.
+
+        Not a burst. These are the lowest-priority thing in the queue, ranked
+        by affinity, so the library fills in from the top over days while
+        anything you actually asked for — a trip especially — goes first.
         """
         horizon = settings.horizon_end()
         scope = queue.local_scope(*settings.home())
-        for artist in library.top_artists(TARGETED_ARTISTS):
+        # all_artists is ordered by affinity, so the head of it is the slice
+        # worth paying JamBase for when Ticketmaster draws a blank
+        for rank, artist in enumerate(library.all_artists()):
             queue.plan_artist_lookup(
                 artist.key,
                 artist.name,
@@ -298,6 +309,7 @@ class Worker:
                 horizon,
                 scope=scope,
                 worldwide=True,
+                gap_fill=rank < GAP_FILL_ARTISTS,
             )
 
     async def _announce_new_local_shows(self) -> None:
