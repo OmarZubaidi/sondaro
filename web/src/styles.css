@@ -435,6 +435,12 @@ tbody tr:last-child th {
   margin: 26px 0 10px;
 }
 
+/* same rule h2 gets, so a page that opens with a title row starts at the same
+   height as one that opens with a plain heading */
+.title-row:first-child {
+  margin-top: 0;
+}
+
 .title-row h2 {
   margin: 0;
 }
@@ -483,12 +489,79 @@ tbody tr:last-child th {
 }
 
 .filters {
-  margin-bottom: 16px;
+  margin-bottom: 0;
 }
 
 @media (max-width: 560px) {
   .grid3 {
     grid-template-columns: 1fr;
+  }
+}
+
+/* --- local: filters beside the results ----------------------------------- */
+
+/* the only page with a sidebar, so it's the only one that needs the extra
+   width — everything else stays a single readable column */
+main:has(.local-layout) {
+  max-width: 1060px;
+}
+
+.local-layout {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+
+.local-layout .side {
+  position: sticky;
+  /* clears the sticky topbar, whose height is 24px of padding around a
+     control that is --tap high */
+  top: calc(var(--tap) + 40px);
+}
+
+/* one column: three hour fields side by side don't fit in 250px */
+.local-layout .side .grid3 {
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.side-meta {
+  display: grid;
+  gap: 3px;
+  margin-top: 14px;
+  font-size: 12px;
+  color: color-mix(in srgb, var(--muted) 65%, var(--bg));
+}
+
+@media (max-width: 860px) {
+  main:has(.local-layout) {
+    max-width: 780px;
+  }
+  .local-layout {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .local-layout .side {
+    position: static;
+  }
+  .local-layout .side .grid3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .side-meta {
+    grid-auto-flow: column;
+    justify-content: start;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 560px) {
+  .local-layout .side .grid3 {
+    grid-template-columns: 1fr;
+  }
+  .side-meta {
+    grid-auto-flow: row;
+    gap: 3px;
   }
 }
 

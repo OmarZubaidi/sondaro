@@ -78,38 +78,48 @@ export function Local() {
     <>
       <IndexProgress status={status} />
 
-      <div className="title-row">
-        <h2>Local</h2>
-        <div className="actions">
-          <IconButton label="Calendar feed" icon={<CalendarIcon />} href="/sondaro.ics" />
-        </div>
-      </div>
+      <div className="local-layout">
+        {/* the filters stay put while the list scrolls: they're the reason the
+            list looks the way it does, so scrolling away from them is what
+            makes a result confusing */}
+        <aside className="side">
+          <div className="title-row">
+            <h2>Local</h2>
+            <div className="actions">
+              <IconButton label="Calendar feed" icon={<CalendarIcon />} href="/sondaro.ics" />
+            </div>
+          </div>
 
-      <div className="statusbar">
-        <span>{status.library.artists} artists</span>
-        <span>affinity: {status.library.affinity_source}</span>
-        <span>synced {relativeTime(status.library.synced_at)}</span>
-        <span>{feed.total} upcoming</span>
-      </div>
+          <LocalFilters value={filters} onChange={setFilters} />
 
-      <LocalFilters value={filters} onChange={setFilters} />
+          {/* provenance, not navigation — quiet, and out of the way at the end */}
+          <div className="side-meta">
+            <span>{status.library.artists} artists</span>
+            <span>affinity: {status.library.affinity_source}</span>
+            <span>synced {relativeTime(status.library.synced_at)}</span>
+            <span>{feed.total} upcoming</span>
+          </div>
+        </aside>
 
-      {feed.months.length === 0 && (
-        <div className="empty">
-          Nothing clears these filters.
-          {!status.providers.ticketmaster &&
-            ' Ticketmaster is not configured, so nothing can be found at all.'}
-        </div>
-      )}
+        <div className="feed">
+          {feed.months.length === 0 && (
+            <div className="empty">
+              Nothing clears these filters.
+              {!status.providers.ticketmaster &&
+                ' Ticketmaster is not configured, so nothing can be found at all.'}
+            </div>
+          )}
 
-      {feed.months.map((month) => (
-        <section key={month.label}>
-          <h2>{month.label}</h2>
-          {month.shows.map((show) => (
-            <ShowCard key={show.id} show={show} />
+          {feed.months.map((month) => (
+            <section key={month.label}>
+              <h2>{month.label}</h2>
+              {month.shows.map((show) => (
+                <ShowCard key={show.id} show={show} />
+              ))}
+            </section>
           ))}
-        </section>
-      ))}
+        </div>
+      </div>
     </>
   )
 }
