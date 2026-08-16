@@ -24,8 +24,8 @@ export interface Show {
 
 export interface Quota {
   provider: string
-  period: string
-  period_key: string
+  window_days: number
+  window_start: string
   used: number
   cap: number
   remaining: number

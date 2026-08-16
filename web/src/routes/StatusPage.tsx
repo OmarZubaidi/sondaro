@@ -125,7 +125,8 @@ export function StatusPage() {
                 <td>{quota.provider}</td>
                 <td>{quota.used}</td>
                 <td>
-                  {quota.cap} / {quota.period === 'monthly' ? 'month' : 'day'}
+                  {quota.cap} /{' '}
+                  {quota.window_days === 1 ? 'day' : `${quota.window_days} days`}
                 </td>
                 <td>
                   <div className="meter" style={{ minWidth: 60 }}>

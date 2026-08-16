@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from api import db, http, usage  # noqa: E402
 from api.config import config  # noqa: E402
+from api.util import day_key  # noqa: E402
 from api.providers import jambase, lidarr, ticketmaster  # noqa: E402
 
 TODAY = date(2026, 9, 1)
@@ -215,7 +216,7 @@ async def test_jambase_stops_dead_at_the_cap(routes, monkeypatch):
     _, cap = usage.cap_for("jambase")
     db.execute(
         "INSERT INTO provider_usage(provider, period, calls) VALUES(?,?,?)",
-        ("jambase", usage.period_key(usage.MONTHLY), cap),
+        ("jambase", day_key(), cap),
     )
 
     assert await jambase.by_artist_name("Band", TODAY, TODAY + timedelta(days=30)) == []
@@ -306,8 +307,74 @@ def test_snapshot_reports_exhaustion():
     _, cap = usage.cap_for("ticketmaster")
     db.execute(
         "INSERT INTO provider_usage(provider, period, calls) VALUES(?,?,?)",
-        ("ticketmaster", usage.period_key(usage.DAILY), cap),
+        ("ticketmaster", day_key(), cap),
     )
     row = next(r for r in usage.snapshot() if r["provider"] == "ticketmaster")
     assert row["exhausted"] is True
     assert row["remaining"] == 0
+
+
+def test_the_window_rolls_rather_than_resetting_on_the_1st():
+    """A calendar month would let 500 calls on the 31st and 500 on the 1st
+    through as "half used" twice — 1000 billable calls in two days."""
+    from datetime import timedelta
+
+    from api.util import today
+
+    _, cap = usage.cap_for("jambase")
+    yesterday = (today() - timedelta(days=1)).isoformat()
+    db.execute(
+        "INSERT INTO provider_usage(provider, period, calls) VALUES(?,?,?)",
+        ("jambase", yesterday, cap),
+    )
+
+    assert usage.used("jambase") == cap
+    assert usage.reserve("jambase") is False
+
+
+def test_calls_outside_the_window_stop_counting():
+    from datetime import timedelta
+
+    from api.util import today
+
+    window, cap = usage.cap_for("jambase")
+    long_ago = (today() - timedelta(days=window + 5)).isoformat()
+    db.execute(
+        "INSERT INTO provider_usage(provider, period, calls) VALUES(?,?,?)",
+        ("jambase", long_ago, cap),
+    )
+
+    assert usage.used("jambase") == 0
+    assert usage.reserve("jambase") is True
+
+
+def test_a_daily_cap_only_counts_today():
+    from datetime import timedelta
+
+    from api.util import today
+
+    yesterday = (today() - timedelta(days=1)).isoformat()
+    db.execute(
+        "INSERT INTO provider_usage(provider, period, calls) VALUES(?,?,?)",
+        ("ticketmaster", yesterday, 4500),
+    )
+
+    assert usage.used("ticketmaster") == 0
+
+
+def test_pruning_keeps_the_window_intact():
+    from datetime import timedelta
+
+    from api.util import today
+
+    recent = (today() - timedelta(days=5)).isoformat()
+    ancient = (today() - timedelta(days=200)).isoformat()
+    db.executemany(
+        "INSERT INTO provider_usage(provider, period, calls) VALUES(?,?,?)",
+        [("jambase", recent, 10), ("jambase", ancient, 99)],
+    )
+
+    usage.prune()
+
+    assert usage.used("jambase") == 10
+    assert db.scalar("SELECT COUNT(*) FROM provider_usage WHERE period = ?", (ancient,)) == 0

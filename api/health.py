@@ -77,12 +77,12 @@ async def check_quotas() -> None:
         if row["exhausted"]:
             state = "exhausted"
             body = (
-                f"{provider}: {row['used']}/{row['cap']} calls used this "
-                f"{row['period']}. Scanning continues on the remaining providers."
+                f"{provider}: {row['used']}/{row['cap']} calls in the last "
+                f"{row['window_days']} days. Scanning continues on the remaining providers."
             )
         elif row["fraction"] >= 0.8:
             state = "nearing"
-            body = f"{provider}: {row['used']}/{row['cap']} calls used this {row['period']}."
+            body = f"{provider}: {row['used']}/{row['cap']} calls in the last {row['window_days']} days."
         else:
             state = "ok"
             body = ""
@@ -121,7 +121,7 @@ def status() -> dict:
         degraded.append("Lidarr is not configured — the library cannot sync")
     for row in quotas:
         if row["exhausted"]:
-            degraded.append(f"{row['provider']} quota exhausted for this {row['period']}")
+            degraded.append(f"{row['provider']} quota exhausted for this window")
     if stalled:
         degraded.append(f"{len(stalled)} queue tasks have exhausted their retries")
 

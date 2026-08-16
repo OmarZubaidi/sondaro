@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from api import db, health, queue, routing, settings, usage, worker  # noqa: E402
 from api.config import config  # noqa: E402
 from api.providers import jambase  # noqa: E402
-from api.util import now_iso, today  # noqa: E402
+from api.util import day_key, now_iso, today  # noqa: E402
 
 scenarios("operations.feature")
 
@@ -59,7 +59,7 @@ def _cap_reached():
     _, cap = usage.cap_for("jambase")
     db.execute(
         "INSERT INTO provider_usage(provider, period, calls) VALUES(?,?,?)",
-        ("jambase", usage.period_key(usage.MONTHLY), cap),
+        ("jambase", day_key(), cap),
     )
 
 
