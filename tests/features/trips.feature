@@ -60,6 +60,14 @@ Feature: Planning around a trip
     Then the Toronto show is recommended
     And the Lyon show scores full marks on geography
 
+  Scenario: A country I'm not searching doesn't anchor anything either
+    Given my home country is the US
+    And I am going to the US with no cities named
+    And "The National" is an artist I play constantly
+    And "The National" plays Toronto during the trip
+    When I look at the trip
+    Then nothing is recommended
+
   Scenario: Strict dates admit nothing outside the window
     Given I am going to France and Spain in September
     And the trip dates are strict

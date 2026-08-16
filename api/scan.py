@@ -288,6 +288,14 @@ def trip_candidates(trip) -> list[Candidate]:
     )
 
     named_points = _named_city_points(cities)
+
+    # A country we aren't actually searching must not anchor anything either.
+    # Your home country with no city named contributes nothing, so measuring a
+    # Canadian show's distance to the US border on a "trip to the US" would
+    # offer results from a border we just declined to search.
+    home_has_cities = bool(home) and bool(_points_in(named_points, home))
+    anchor_countries = [c for c in countries if c != home or home_has_cities]
+
     candidates: list[Candidate] = []
 
     for row in rows:
@@ -325,9 +333,9 @@ def trip_candidates(trip) -> list[Candidate]:
                 # York trip, because it is 27 miles from *a* US border — which
                 # is true and completely useless.
                 miles_to_border = _nearest(row["lat"], row["lon"], named_points)
-            else:
+            elif anchor_countries:
                 miles_to_border = borders.distance_to_border(
-                    row["lat"], row["lon"], countries
+                    row["lat"], row["lon"], anchor_countries
                 )
             if miles_to_border is None:
                 continue  # can't place it, so don't guess

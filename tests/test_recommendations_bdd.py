@@ -240,6 +240,17 @@ def _partial_trip(world):
     )
 
 
+@given("I am going to the US with no cities named")
+def _us_no_cities(world):
+    _remember_places("Toronto")
+    world["trip"] = db.execute(
+        "INSERT INTO trips(name, countries, cities, start_date, end_date, flex_before, "
+        "flex_after, strict_dates, created_at) VALUES(?,?,?,?,?,?,?,?,?)",
+        ("US open", "US", "", TRIP_START.isoformat(), TRIP_END.isoformat(),
+         0, 0, 0, now_iso()),
+    )
+
+
 @given("my home country is the US")
 def _home_country():
     settings.set_value("home_country", "US")
@@ -394,6 +405,11 @@ def _off_itinerary(world):
 @then("the show is recommended")
 def _some_show(world):
     assert world["results"]
+
+
+@then("nothing is recommended")
+def _nothing(world):
+    assert world["results"] == [], [c.event.city for c in world["results"]]
 
 
 @then("the show is not recommended")
