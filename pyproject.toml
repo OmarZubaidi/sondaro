@@ -32,4 +32,11 @@ testpaths = ["tests"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 bdd_features_base_dir = "tests/features"
-filterwarnings = ["error::DeprecationWarning"]
+filterwarnings = [
+    # our own deprecations are errors
+    "error::DeprecationWarning",
+    # starlette's TestClient calls asyncio.iscoroutinefunction, deprecated in
+    # 3.14. Not ours to fix, and scoped to that one message so everything else
+    # still fails loudly.
+    "ignore:'asyncio.iscoroutinefunction' is deprecated:DeprecationWarning",
+]

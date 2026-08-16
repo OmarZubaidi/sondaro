@@ -146,10 +146,12 @@ async def api_trips():
     return {"trips": [_trip_summary(row) for row in rows]}
 
 
-@app.post("/api/trips", status_code=201)
-async def api_create_trip(payload: dict = Body(...)):
+def _validate_trip(payload: dict) -> dict:
+    """Shared by create and update so the two can't drift apart."""
     name = str(payload.get("name") or "").strip()
-    countries = [str(c).strip().upper() for c in (payload.get("countries") or []) if str(c).strip()]
+    countries = [
+        str(c).strip().upper() for c in (payload.get("countries") or []) if str(c).strip()
+    ]
     start = parse_date(payload.get("start_date"))
     end = parse_date(payload.get("end_date"))
 
@@ -165,9 +167,53 @@ async def api_create_trip(payload: dict = Body(...)):
         raise HTTPException(status_code=400, detail="end date is before start date")
 
     strict = bool(payload.get("strict_dates", False))
-    flex_before = 0 if strict else max(0, min(int(payload.get("flex_before") or 0), 30))
-    flex_after = 0 if strict else max(0, min(int(payload.get("flex_after") or 0), 30))
-    cities = ",".join(str(c).strip() for c in (payload.get("cities") or []) if str(c).strip())
+    return {
+        "name": name,
+        "countries": ",".join(countries),
+        "cities": ",".join(
+            str(c).strip() for c in (payload.get("cities") or []) if str(c).strip()
+        ),
+        "start_date": start.isoformat(),
+        "end_date": end.isoformat(),
+        "flex_before": 0 if strict else max(0, min(int(payload.get("flex_before") or 0), 30)),
+        "flex_after": 0 if strict else max(0, min(int(payload.get("flex_after") or 0), 30)),
+        "strict_dates": 1 if strict else 0,
+    }
+
+
+# fields that change *what gets searched*; editing one means re-planning, while
+# a rename does not need to spend a single API call
+SCOPE_FIELDS = ("countries", "cities", "start_date", "end_date", "flex_before", "flex_after",
+                "strict_dates")
+
+
+def _replan(trip_id: int) -> int:
+    row = _trip_or_404(trip_id)
+    _, _, window_start, window_end = scan.trip_window(row)
+    queue.clear_coverage(f"trip:{trip_id}:")
+    planned = queue.plan_trip(
+        trip_id,
+        scan.trip_countries(row),
+        window_start,
+        window_end,
+        cities=scan.trip_cities(row),
+        home_country=settings.home_country(),
+    )
+    worker.worker.nudge()
+    return planned
+
+
+@app.post("/api/trips", status_code=201)
+async def api_create_trip(payload: dict = Body(...)):
+    fields = _validate_trip(payload)
+    countries = fields["countries"].split(",")
+    cities = fields["cities"]
+    name = fields["name"]
+    start = parse_date(fields["start_date"])
+    end = parse_date(fields["end_date"])
+    flex_before = fields["flex_before"]
+    flex_after = fields["flex_after"]
+    strict = bool(fields["strict_dates"])
 
     trip_id = db.execute(
         "INSERT INTO trips(name, countries, cities, start_date, end_date, flex_before, "
@@ -233,17 +279,60 @@ async def api_trip(trip_id: int):
     }
 
 
+@app.patch("/api/trips/{trip_id}")
+async def api_update_trip(trip_id: int, payload: dict = Body(...)):
+    """Edit a trip. Plans get narrowed once things are booked, and sometimes a
+    leg is dropped entirely."""
+    before = _trip_or_404(trip_id)
+
+    # merge over what's there, so a partial edit doesn't have to resend
+    # everything just to rename a trip
+    merged = {
+        "name": payload.get("name", before["name"]),
+        "countries": payload.get("countries", scan.trip_countries(before)),
+        "cities": payload.get("cities", scan.trip_cities(before)),
+        "start_date": payload.get("start_date", before["start_date"]),
+        "end_date": payload.get("end_date", before["end_date"]),
+        "flex_before": payload.get("flex_before", before["flex_before"]),
+        "flex_after": payload.get("flex_after", before["flex_after"]),
+        "strict_dates": payload.get("strict_dates", bool(before["strict_dates"])),
+    }
+    fields = _validate_trip(merged)
+
+    scope_changed = any(str(fields[f]) != str(before[f]) for f in SCOPE_FIELDS)
+
+    db.execute(
+        "UPDATE trips SET name=?, countries=?, cities=?, start_date=?, end_date=?, "
+        "flex_before=?, flex_after=?, strict_dates=? WHERE id=?",
+        (
+            fields["name"],
+            fields["countries"],
+            fields["cities"],
+            fields["start_date"],
+            fields["end_date"],
+            fields["flex_before"],
+            fields["flex_after"],
+            fields["strict_dates"],
+            trip_id,
+        ),
+    )
+
+    # dropping a country should take its cached events' relevance with it, and
+    # narrowing to a city shouldn't leave the old country-wide sweep queued
+    planned = _replan(trip_id) if scope_changed else 0
+
+    return {
+        **_trip_summary(_trip_or_404(trip_id)),
+        "rescanned": scope_changed,
+        "queued": planned,
+    }
+
+
 @app.post("/api/trips/{trip_id}/rescan")
 async def api_rescan_trip(trip_id: int):
-    row = _trip_or_404(trip_id)
-    _, _, window_start, window_end = scan.trip_window(row)
-    queue.clear_coverage(f"trip:{trip_id}:")
-    planned = queue.plan_trip(
-        trip_id, scan.trip_countries(row), window_start, window_end,
-        cities=scan.trip_cities(row), home_country=settings.home_country(),
-    )
+    _trip_or_404(trip_id)
+    planned = _replan(trip_id)
     db.execute("UPDATE trips SET scanned_at = ? WHERE id = ?", (now_iso(), trip_id))
-    worker.worker.nudge()
     return {"queued": planned}
 
 
