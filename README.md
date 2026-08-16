@@ -16,7 +16,7 @@ artists from Lidarr, listening from MusicBrainz. combine the 2 to find concerts 
 
 secrets and urls live in `.env`, everything else lives in the database and is edited at `/settings`. env values only seed the database on first run, so after that, editing `.env` needs a redeploy
 
-home comes from home assistant when `HASS_URL` and `HASS_TOKEN` are set — coordinates, name, country and **timezone**, all from the one `/api/config` call. `TZ` in `.env` is only the seed used before the first sync
+home comes from home assistant when `HASS_URL` and `HASS_TOKEN` are set — coordinates, name, country and timezone, all from the one `/api/config` call.
 
 ## Notifications
 

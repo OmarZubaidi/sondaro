@@ -1,16 +1,39 @@
 ---
 services:
+  ts-sondaro:
+    image: tailscale/tailscale:latest
+    container_name: ts-sondaro
+    restart: unless-stopped
+    # tailnet machine name
+    hostname: sondaro
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    environment:
+      - TS_AUTHKEY=${TS_AUTHKEY}
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_SERVE_CONFIG=/config/serve.json
+    volumes:
+      - ts-sondaro-state:/var/lib/tailscale
+      - ./serve.json:/config/serve.json:ro
+    networks: [proxy]
+    logging:
+      driver: "json-file"
+      options: { max-size: "10m", max-file: "3" }
+
   sondaro:
     build: .
     container_name: sondaro
     restart: unless-stopped
     env_file: .env
+    network_mode: "service:ts-sondaro"
+    depends_on:
+      - ts-sondaro
     # this VM will eventually host many containers; sondaro sits still
     mem_limit: 256m
     cpus: 0.5
     volumes:
       - /appdata/sondaro:/config
-    networks: [proxy]
     logging:
       driver: "json-file"
       options: { max-size: "10m", max-file: "3" }
@@ -20,3 +43,6 @@ services:
 networks:
   proxy:
     external: true
+
+volumes:
+  ts-sondaro-state:
