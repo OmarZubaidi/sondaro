@@ -31,9 +31,11 @@ SCHEMA = """
 PRAGMA journal_mode=DELETE;
 
 CREATE TABLE countries (
-    code TEXT PRIMARY KEY,
-    name TEXT NOT NULL
+    code  TEXT PRIMARY KEY,   -- ISO 3166-1 alpha-2
+    code3 TEXT,               -- alpha-3; Pelias geocoding answers in these
+    name  TEXT NOT NULL
 );
+CREATE INDEX countries_code3 ON countries(code3);
 
 CREATE TABLE segments (
     id      INTEGER PRIMARY KEY,
@@ -78,6 +80,14 @@ def _country_code(props: dict[str, Any]) -> str | None:
     return None
 
 
+def _country_code3(props: dict[str, Any]) -> str | None:
+    for field in ("ISO_A3_EH", "ISO_A3", "iso_a3", "ADM0_A3"):
+        value = props.get(field)
+        if value and value not in ("-99", "-999"):
+            return str(value).upper()
+    return None
+
+
 def _country_name(props: dict[str, Any]) -> str:
     for field in ("NAME_EN", "NAME", "ADMIN", "name"):
         value = props.get(field)
@@ -96,7 +106,7 @@ def build(geojson: dict[str, Any], out_path: str | Path) -> dict[str, int]:
     conn = sqlite3.connect(out)
     conn.executescript(SCHEMA)
 
-    countries: dict[str, str] = {}
+    countries: dict[str, tuple[str | None, str]] = {}
     segments: list[tuple[int, str, float, float, float, float]] = []
     boxes: list[tuple[int, float, float, float, float]] = []
     next_id = 1
@@ -106,7 +116,7 @@ def build(geojson: dict[str, Any], out_path: str | Path) -> dict[str, int]:
         code = _country_code(props)
         if not code:
             continue
-        countries.setdefault(code, _country_name(props))
+        countries.setdefault(code, (_country_code3(props), _country_name(props)))
 
         for ring in _rings(feature.get("geometry") or {}):
             previous = None
@@ -130,7 +140,10 @@ def build(geojson: dict[str, Any], out_path: str | Path) -> dict[str, int]:
                     next_id += 1
                 previous = current
 
-    conn.executemany("INSERT INTO countries(code, name) VALUES(?,?)", countries.items())
+    conn.executemany(
+        "INSERT INTO countries(code, code3, name) VALUES(?,?,?)",
+        [(code, code3, name) for code, (code3, name) in countries.items()],
+    )
     conn.executemany(
         "INSERT INTO segments(id, country, lon1, lat1, lon2, lat2) VALUES(?,?,?,?,?,?)",
         segments,

@@ -213,20 +213,14 @@ def trip_window(trip) -> tuple[date, date, date, date]:
     return start, end, start - timedelta(days=before), end + timedelta(days=after)
 
 
-def _named_city_points(cities: list[str], countries: list[str]) -> list[tuple[float, float]]:
-    """Coordinates for named cities, taken from listings we already hold — no
-    geocoding call needed for something the event data already tells us."""
-    if not cities:
-        return []
-    points: list[tuple[float, float]] = []
+def _named_city_points(cities: list[str]) -> list[tuple[float, float]]:
+    """Coordinates for named cities, from the place cache or from listings we
+    already hold. The worker resolves anything still missing."""
+    points = []
     for city in cities:
-        row = db.query_one(
-            "SELECT lat, lon FROM events WHERE lower(city) = lower(?) "
-            "AND lat IS NOT NULL LIMIT 1",
-            (city,),
-        )
-        if row:
-            points.append((row["lat"], row["lon"]))
+        point = routing.cached_place(city)
+        if point:
+            points.append(point)
     return points
 
 
@@ -242,6 +236,7 @@ def trip_candidates(trip) -> list[Candidate]:
     strict = bool(trip["strict_dates"])
     border_base = settings.get("trip_border_base_miles")
     floor = settings.get("min_score")
+    home = settings.home_country()
 
     rows = db.query(
         "SELECT e.*, a.affinity, a.listens "
@@ -250,7 +245,7 @@ def trip_candidates(trip) -> list[Candidate]:
         (max(window_start, today()).isoformat(), window_end.isoformat()),
     )
 
-    named_points = _named_city_points(cities, countries)
+    named_points = _named_city_points(cities)
     candidates: list[Candidate] = []
 
     for row in rows:
@@ -261,10 +256,21 @@ def trip_candidates(trip) -> list[Candidate]:
         country = (row["country"] or "").upper()
         inside = country in countries
 
+        # Your home country is not "somewhere you're visiting". Going to one
+        # city in it doesn't put the rest of the country in play, so only the
+        # cities you named count and there's no country-wide floor.
+        at_home_country = bool(home) and country == home
         miles_to_border = None
         miles_to_named = None
 
-        if inside and named_points and row["lat"] is not None:
+        if inside and at_home_country:
+            if not named_points or row["lat"] is None:
+                continue
+            miles_to_named = min(
+                geo.haversine_miles(row["lat"], row["lon"], plat, plon)
+                for plat, plon in named_points
+            )
+        elif inside and named_points and row["lat"] is not None:
             miles_to_named = min(
                 geo.haversine_miles(row["lat"], row["lon"], plat, plon)
                 for plat, plon in named_points
@@ -290,6 +296,7 @@ def trip_candidates(trip) -> list[Candidate]:
             miles_to_named_city=miles_to_named,
             listens=row["listens"] or 0,
             border_base_miles=border_base,
+            country_floor=not at_home_country,
         )
         if score.total < floor:
             continue

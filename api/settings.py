@@ -35,6 +35,9 @@ SPECS: tuple[Spec, ...] = (
     Spec("home_lon", "Home longitude", "float", -95.0, -180, 180),
     Spec("home_label", "Home", "str", "Home",
          help="Shown on the status page. Set by the location search."),
+    Spec("home_country", "Home country", "str", "US",
+         help="ISO-2. A trip to this country searches only the cities you name, "
+              "since you don't need the whole place swept to visit one city."),
     Spec("home_horizon_days", "How far ahead to look", "int", 180, 30, 365,
          help="Longer horizons cost more API calls on the first fill only."),
     Spec("base_hours_weeknight", "Weeknight drive budget (hours)", "float",
@@ -144,6 +147,10 @@ def describe() -> list[dict[str, Any]]:
 
 def home() -> tuple[float, float]:
     return get("home_lat"), get("home_lon")
+
+
+def home_country() -> str:
+    return str(get("home_country") or "").strip().upper()
 
 
 def origin_key() -> str:

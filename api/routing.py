@@ -172,6 +172,46 @@ def _summary(payload: dict | None) -> tuple[float, float] | None:
     return float(distance), float(duration)
 
 
+def cached_place(name: str) -> tuple[float, float] | None:
+    """Coordinates for a named city, from the cache or from listings we already
+    hold. Sync, so scoring can call it without doing I/O."""
+    key = name.strip().lower()
+    if not key:
+        return None
+
+    row = db.query_one("SELECT lat, lon FROM places WHERE query = ?", (key,))
+    if row and row["lat"] is not None:
+        return row["lat"], row["lon"]
+
+    # an event in that city is as good an answer as a geocoder
+    row = db.query_one(
+        "SELECT lat, lon FROM events WHERE lower(city) = ? AND lat IS NOT NULL LIMIT 1",
+        (key,),
+    )
+    return (row["lat"], row["lon"]) if row else None
+
+
+async def resolve_place(name: str, country: str | None = None) -> tuple[float, float] | None:
+    """Cached-or-geocoded coordinates for a city name."""
+    hit = cached_place(name)
+    if hit:
+        return hit
+
+    query = f"{name}, {country}" if country else name
+    results = await geocode(query, limit=1)
+    if not results:
+        return None
+
+    best = results[0]
+    db.execute(
+        "INSERT INTO places(query, lat, lon, country, resolved_at) VALUES(?,?,?,?,?) "
+        "ON CONFLICT(query) DO UPDATE SET lat=excluded.lat, lon=excluded.lon, "
+        "country=excluded.country, resolved_at=excluded.resolved_at",
+        (name.strip().lower(), best["lat"], best["lon"], best.get("country"), now_iso()),
+    )
+    return best["lat"], best["lon"]
+
+
 async def geocode(text: str, limit: int = 5) -> list[dict]:
     """Forward geocode for the home-location search box, so nobody has to type
     raw coordinates."""

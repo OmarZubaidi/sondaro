@@ -18,6 +18,7 @@ log = logging.getLogger("sondaro.worker")
 IDLE_SLEEP = 300.0  # nothing scheduled: check back in five minutes
 MAX_SLEEP = 900.0
 HOME_RADIUS_MILES = 150.0
+CITY_RADIUS_MILES = 75.0  # a metro area, for home-country trip cities
 TARGETED_ARTISTS = 60
 
 
@@ -76,6 +77,7 @@ class Worker:
         handler = {
             queue.SWEEP_GEO: self._sweep_geo,
             queue.SWEEP_COUNTRY: self._sweep_country,
+            queue.SWEEP_CITY: self._sweep_city,
             queue.ARTIST_LOOKUP: self._artist_lookup,
             queue.ROUTE_LOOKUP: self._route_lookup,
             queue.LIBRARY_SYNC: self._library_sync,
@@ -131,6 +133,30 @@ class Worker:
             seen,
             matched,
         )
+
+        queue.record_coverage(task.params["scope"], start, end, "ticketmaster")
+        if notes:
+            db.set_meta("last_sweep_notes", notes)
+        queue.complete(task, next_due=queue.reschedule_for(start))
+
+    async def _sweep_city(self, task: queue.Task) -> None:
+        """One metro area. Used for trips to your home country, where sweeping
+        the whole place to visit a single city would be waste."""
+        start, end = queue.params_dates(task.params)
+        city, country = task.params["city"], task.params.get("country")
+
+        point = await routing.resolve_place(city, country)
+        if point is None:
+            log.warning("could not place %s, %s — skipping", city, country)
+            queue.complete(task, next_due=datetime.now(timezone.utc) + timedelta(days=1))
+            return
+
+        events, notes = await ticketmaster.sweep(
+            start, end, lat=point[0], lon=point[1], radius_miles=CITY_RADIUS_MILES,
+            chunk_days=7,
+        )
+        matched, seen = scan.ingest(events, library.all_artists())
+        log.info("sweep_city %s %s..%s: %d listings, %d matched", city, start, end, seen, matched)
 
         queue.record_coverage(task.params["scope"], start, end, "ticketmaster")
         if notes:
@@ -237,9 +263,15 @@ def bootstrap() -> None:
     slices = queue.plan_home(lat, lon, settings.get("home_horizon_days"), HOME_RADIUS_MILES)
 
     for row in db.query("SELECT * FROM trips WHERE end_date >= ?", (today().isoformat(),)):
-        countries = scan.trip_countries(row)
         _, _, window_start, window_end = scan.trip_window(row)
-        queue.plan_trip(row["id"], countries, window_start, window_end)
+        queue.plan_trip(
+            row["id"],
+            scan.trip_countries(row),
+            window_start,
+            window_end,
+            cities=scan.trip_cities(row),
+            home_country=settings.home_country(),
+        )
 
     log.info("bootstrap: %d home slices queued", slices)
 

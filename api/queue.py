@@ -34,6 +34,7 @@ log = logging.getLogger("sondaro.queue")
 # task kinds
 SWEEP_GEO = "sweep_geo"
 SWEEP_COUNTRY = "sweep_country"
+SWEEP_CITY = "sweep_city"
 ARTIST_LOOKUP = "artist_lookup"
 ROUTE_LOOKUP = "route_lookup"
 LIBRARY_SYNC = "library_sync"
@@ -250,13 +251,53 @@ def plan_home(lat: float, lon: float, horizon_days: int, radius_miles: float = 1
     return len(slice_windows(start, end))
 
 
-def plan_trip(trip_id: int, countries: list[str], start: date, end: date) -> int:
-    """Country sweeps for a trip, boosted so a trip you just created fills in
-    while you are still looking at it."""
+def plan_trip(
+    trip_id: int,
+    countries: list[str],
+    start: date,
+    end: date,
+    *,
+    cities: list[str] | None = None,
+    home_country: str | None = None,
+) -> int:
+    """Sweeps for a trip, boosted so a trip you just created fills in while you
+    are still looking at it.
+
+    Your *home* country is swept city by city rather than whole: flying to one
+    city in the country you live in doesn't put the rest of it in play, and
+    sweeping the entire US to visit New York would burn the daily budget on
+    listings you'll never look at.
+    """
+    cities = cities or []
+    home = (home_country or "").upper()
     planned = 0
+
     for country in countries:
         scope = trip_scope(trip_id, country)
-        for window_start, window_end, _ in slice_windows(max(start, today()), end):
+        windows = slice_windows(max(start, today()), end)
+
+        if country == home:
+            # no cities named means nothing to search: see api_trip's note
+            for city in cities:
+                for window_start, window_end, _ in windows:
+                    days_out = (window_start - today()).days
+                    enqueue(
+                        SWEEP_CITY,
+                        f"{scope}:{city.lower()}:{window_start.isoformat()}",
+                        {
+                            "city": city,
+                            "country": country,
+                            "start": window_start.isoformat(),
+                            "end": window_end.isoformat(),
+                            "scope": scope,
+                            "trip_id": trip_id,
+                        },
+                        priority=urgency(days_out) + 1.0,
+                    )
+                    planned += 1
+            continue
+
+        for window_start, window_end, _ in windows:
             days_out = (window_start - today()).days
             enqueue(
                 SWEEP_COUNTRY,

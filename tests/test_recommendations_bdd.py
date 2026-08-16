@@ -27,6 +27,8 @@ scenarios("trips.feature")
 HOME = (38.0, -95.0)
 PLACES = {
     "Springfield": (38.2, -95.2, "US", 0.5),
+    "New York": (40.7128, -74.0060, "US", 9.0),
+    "Los Angeles": (34.0522, -118.2437, "US", 40.0),
     "Fairview": (37.5, -97.0, "US", 2.6),
     "Millbrook": (35.5, -100.5, "US", 6.0),
     "Lyon": (45.7640, 4.8357, "FR", 12.0),
@@ -193,6 +195,30 @@ def _plays_after(world, name, place):
     _make_event(world, name, place, TRIP_END + timedelta(days=2))
 
 
+@given("my home country is the US")
+def _home_country():
+    settings.set_value("home_country", "US")
+
+
+@given("I am going to New York in September")
+def _domestic_trip(world):
+    from api import routing
+
+    for city in ("New York", "Los Angeles"):
+        lat, lon, _c, _h = PLACES[city]
+        routing.db.execute(
+            "INSERT INTO places(query, lat, lon, country, resolved_at) VALUES(?,?,?,?,?) "
+            "ON CONFLICT(query) DO NOTHING",
+            (city.lower(), lat, lon, "US", now_iso()),
+        )
+    world["trip"] = db.execute(
+        "INSERT INTO trips(name, countries, cities, start_date, end_date, flex_before, "
+        "flex_after, strict_dates, created_at) VALUES(?,?,?,?,?,?,?,?,?)",
+        ("NYC", "US", "New York", TRIP_START.isoformat(), TRIP_END.isoformat(),
+         0, 0, 0, now_iso()),
+    )
+
+
 @given("I am going to France and Spain in September")
 def _trip(world):
     trip_id = db.execute(
@@ -290,6 +316,17 @@ def _full_geography(world):
     assert "Lyon" in cities and "Barcelona" in cities
     assert cities["Lyon"].score.reach_fit == 1.0
     assert cities["Barcelona"].score.reach_fit == 1.0
+
+
+@then(parsers.parse("the {city} show is recommended"))
+def _city_in(world, city):
+    assert any(c.event.city == city for c in world["results"]), \
+        f"{city} missing from {[c.event.city for c in world['results']]}"
+
+
+@then(parsers.parse("the {city} show is not recommended"))
+def _city_out(world, city):
+    assert not any(c.event.city == city for c in world["results"])
 
 
 @then("the Geneva show is recommended")

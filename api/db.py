@@ -135,6 +135,16 @@ CREATE TABLE IF NOT EXISTS provider_usage (
     PRIMARY KEY (provider, period)
 );
 
+-- resolved place names, so a named trip city has coordinates even when we
+-- never sweep its country
+CREATE TABLE IF NOT EXISTS places (
+    query       TEXT PRIMARY KEY,   -- lowercased city name as typed
+    lat         REAL,
+    lon         REAL,
+    country     TEXT,
+    resolved_at TEXT
+);
+
 -- internal key/value: which ORS host answered, last library sync, and so on.
 -- distinct from `settings`, which is the user-facing surface.
 CREATE TABLE IF NOT EXISTS meta (

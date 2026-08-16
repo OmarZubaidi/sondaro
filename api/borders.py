@@ -55,6 +55,7 @@ def reset() -> None:
             _conn.close()
             _conn = None
     country_name.cache_clear()
+    alpha2_for.cache_clear()
 
 
 def _point_to_segment_miles(
@@ -165,6 +166,24 @@ def country_name(code: str) -> str:
         "SELECT name FROM countries WHERE code = ?", (code.strip().upper(),)
     ).fetchone()
     return row["name"] if row else code.upper()
+
+
+@lru_cache(maxsize=512)
+def alpha2_for(code: str) -> str | None:
+    """ISO-2 for either an ISO-2 or ISO-3 code. Pelias geocoding answers in
+    alpha-3, while every event provider uses alpha-2."""
+    if not code:
+        return None
+    value = code.strip().upper()
+    try:
+        conn = _connect()
+    except BordersUnavailable:
+        return value if len(value) == 2 else None
+
+    row = conn.execute(
+        "SELECT code FROM countries WHERE code = ? OR code3 = ? LIMIT 1", (value, value)
+    ).fetchone()
+    return row["code"] if row else (value if len(value) == 2 else None)
 
 
 def known_countries() -> list[dict[str, str]]:

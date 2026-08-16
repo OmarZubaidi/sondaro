@@ -40,6 +40,16 @@ Feature: Planning around a trip
     Then the show is recommended
     And it is flagged as outside my dates
 
+  Scenario: A trip to my own country searches only the cities I name
+    Given my home country is the US
+    And I am going to New York in September
+    And "The National" is an artist I play constantly
+    And "The National" plays New York during the trip
+    And "The National" plays Los Angeles during the trip
+    When I look at the trip
+    Then the New York show is recommended
+    And the Los Angeles show is not recommended
+
   Scenario: Strict dates admit nothing outside the window
     Given I am going to France and Spain in September
     And the trip dates are strict

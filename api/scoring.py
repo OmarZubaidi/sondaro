@@ -150,6 +150,7 @@ def reach_fit_trip(
     miles_to_border: float | None = None,
     miles_to_named_city: float | None = None,
     border_base_miles: float = TRIP_BORDER_BASE_MILES,
+    country_floor: bool = True,
 ) -> float:
     """Geography fit for a trip.
 
@@ -157,12 +158,18 @@ def reach_fit_trip(
     cities after countries, so nothing in-country is ever penalised. Naming
     cities biases toward them without ever dropping the rest of the country
     below `IN_COUNTRY_FLOOR`.
+
+    `country_floor=False` removes that floor, for your *home* country. Flying
+    to one city there doesn't put the rest of the country in play: living in
+    the US and visiting New York should not surface California.
     """
     if in_visited_country:
         if miles_to_named_city is None:
-            return 1.0
+            return 1.0 if country_floor else 0.0
         reach = NAMED_CITY_BASE_MILES * shape_trip(artist_affinity)
         raw = _decay(miles_to_named_city, reach)
+        if not country_floor:
+            return raw
         return round(IN_COUNTRY_FLOOR + (1.0 - IN_COUNTRY_FLOOR) * raw, 4)
 
     if miles_to_border is None:
@@ -243,6 +250,7 @@ def score_trip(
     miles_to_named_city: float | None = None,
     listens: int = 0,
     border_base_miles: float = TRIP_BORDER_BASE_MILES,
+    country_floor: bool = True,
 ) -> Score:
     fit_date = date_fit(
         day, start, end, flex_before=flex_before, flex_after=flex_after, strict=strict
@@ -253,6 +261,7 @@ def score_trip(
         miles_to_border=miles_to_border,
         miles_to_named_city=miles_to_named_city,
         border_base_miles=border_base_miles,
+        country_floor=country_floor,
     )
 
     flags: list[str] = []

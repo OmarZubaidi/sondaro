@@ -187,7 +187,10 @@ async def api_create_trip(payload: dict = Body(...)):
 
     row = _trip_or_404(trip_id)
     _, _, window_start, window_end = scan.trip_window(row)
-    queue.plan_trip(trip_id, countries, window_start, window_end)
+    queue.plan_trip(
+        trip_id, countries, window_start, window_end,
+        cities=scan.trip_cities(row), home_country=settings.home_country(),
+    )
     worker.worker.nudge()
 
     return _trip_summary(row)
@@ -209,6 +212,14 @@ async def api_trip(trip_id: int):
         queue.slice_windows(max(window_start, today()), window_end)
     )
 
+    notes = []
+    home = settings.home_country()
+    if home in scan.trip_countries(row) and not scan.trip_cities(row):
+        notes.append(
+            f"{home} is your home country, so only cities you name are searched. "
+            "Add at least one city to see anything from it."
+        )
+
     return {
         "trip": _trip_summary(row),
         "total": len(candidates),
@@ -216,6 +227,7 @@ async def api_trip(trip_id: int):
             {"date": day, "shows": shows} for day, shows in sorted(by_date.items())
         ],
         "coverage": queue.coverage_fraction(scope_prefix, expected),
+        "notes": notes,
     }
 
 
@@ -224,7 +236,10 @@ async def api_rescan_trip(trip_id: int):
     row = _trip_or_404(trip_id)
     _, _, window_start, window_end = scan.trip_window(row)
     queue.clear_coverage(f"trip:{trip_id}:")
-    planned = queue.plan_trip(trip_id, scan.trip_countries(row), window_start, window_end)
+    planned = queue.plan_trip(
+        trip_id, scan.trip_countries(row), window_start, window_end,
+        cities=scan.trip_cities(row), home_country=settings.home_country(),
+    )
     db.execute("UPDATE trips SET scanned_at = ? WHERE id = ?", (now_iso(), trip_id))
     worker.worker.nudge()
     return {"queued": planned}
@@ -284,6 +299,10 @@ async def api_set_home(payload: dict = Body(...)):
     settings.set_value("home_lon", lon)
     if payload.get("label"):
         settings.set_value("home_label", payload["label"])
+    # the geocoder answers in alpha-3; every event provider speaks alpha-2
+    country = borders.alpha2_for(str(payload.get("country") or ""))
+    if country:
+        settings.set_value("home_country", country)
 
     worker.relocate(settings.get("home_lat"), settings.get("home_lon"))
     return {
