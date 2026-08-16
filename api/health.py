@@ -124,6 +124,13 @@ def status() -> dict:
             degraded.append(f"{row['provider']} quota exhausted for this window")
     if stalled:
         degraded.append(f"{len(stalled)} queue tasks have exhausted their retries")
+    discarded = queue.discarded()
+    if discarded:
+        degraded.append(
+            f"{len(discarded)} lookups were paid for but couldn't be stored — "
+            "dropped rather than re-bought, and they'll be retried on the next "
+            "scheduled run. The logs say why."
+        )
 
     return {
         "home": {"lat": lat, "lon": lon, "label": settings.get("home_label")},

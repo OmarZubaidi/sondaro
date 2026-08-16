@@ -187,13 +187,27 @@ class Worker:
             country=None if worldwide else task.params.get("country"),
         )
 
+        billed = False
         if not events and jambase.available():
+            # from here on this run has cost money, whatever happens next
+            billed = True
             events = await jambase.by_artist_name(name, start, end)
             if events:
                 log.info("jambase filled a gap for %s (%d events)", name, len(events))
 
-        artists = library.all_artists()
-        scan.ingest(events, artists)
+        try:
+            scan.ingest(events, library.all_artists())
+        except Exception as exc:  # noqa: BLE001
+            if not billed:
+                raise  # free to fetch again, so a retry is the right answer
+            # JamBase has already been paid for these listings. Retrying would
+            # buy the identical answer a second time and, if the fault is
+            # deterministic, keep buying it until the failure ceiling. Drop
+            # them and wait for the next scheduled run instead.
+            log.exception("discarding paid-for listings for %s rather than re-buying", name)
+            queue.complete(task, next_due=queue.reschedule_for(start), error=repr(exc))
+            return
+
         queue.complete(task, next_due=queue.reschedule_for(start))
 
     async def _route_lookup(self, task: queue.Task) -> None:

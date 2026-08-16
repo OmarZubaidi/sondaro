@@ -141,15 +141,22 @@ def next_due_at() -> datetime | None:
     return parse_iso(row["due_at"]) if row else None
 
 
-def complete(task: Task, *, next_due: datetime | None) -> None:
-    """Mark done. `next_due` None retires the task instead of rescheduling."""
+def complete(task: Task, *, next_due: datetime | None, error: str | None = None) -> None:
+    """Mark done. `next_due` None retires the task instead of rescheduling.
+
+    `error` records that the run didn't go cleanly *without* arming a retry —
+    for work that has already been paid for, where trying again would buy the
+    same answer a second time. It's kept off the failure count deliberately:
+    that count exists to back off from a call worth repeating.
+    """
     if next_due is None:
         db.execute("DELETE FROM fetch_tasks WHERE id = ?", (task.id,))
         return
     db.execute(
-        "UPDATE fetch_tasks SET last_ok_at = ?, last_error = NULL, failures = 0, "
+        "UPDATE fetch_tasks SET last_ok_at = ?, last_error = ?, failures = 0, "
         "due_at = ? WHERE id = ?",
-        (now_iso(), next_due.isoformat(timespec="seconds"), task.id),
+        (now_iso(), error[:400] if error else None,
+         next_due.isoformat(timespec="seconds"), task.id),
     )
 
 
@@ -173,6 +180,20 @@ def depth() -> dict[str, int]:
         (now_iso(), MAX_FAILURES),
     )
     return {row["kind"]: {"total": row["n"], "due": row["due"] or 0} for row in rows}
+
+
+def discarded() -> list[dict]:
+    """Tasks that finished badly but weren't retried, because retrying would
+    re-buy what the failed run already paid for. No failure count to hit a
+    ceiling, so this is the only thing that makes them visible. Cleared by the
+    next clean run of the same task."""
+    return [
+        {"task": row["task_key"], "error": row["last_error"]}
+        for row in db.query(
+            "SELECT task_key, last_error FROM fetch_tasks "
+            "WHERE last_error IS NOT NULL AND failures = 0"
+        )
+    ]
 
 
 def stalled() -> list[dict]:
