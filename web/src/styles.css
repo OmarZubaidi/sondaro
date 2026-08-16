@@ -1,16 +1,36 @@
+/* Light is the base palette; dark overrides it below. Written this way so a
+   value can never exist in only one theme. */
 :root {
-  --bg: #14171c;
-  --panel: #1c2027;
-  --panel-2: #232833;
-  --line: #2e3542;
-  --text: #e6e9ef;
-  --muted: #99a2b3;
-  --accent: #6ea8fe;
-  --warm: #f0a05a;
-  --good: #5fd08a;
-  --bad: #f0736a;
+  color-scheme: light dark;
+  --bg: #f6f7f9;
+  --panel: #ffffff;
+  --panel-2: #eef0f4;
+  --line: #d8dce4;
+  --text: #1a1d23;
+  --muted: #5b6373;
+  --accent: #1f6feb;
+  --warm: #a35b12;
+  --good: #1a7f45;
+  --bad: #c0392b;
+  --on-accent: #ffffff;
   --radius: 12px;
   --tap: 44px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14171c;
+    --panel: #1c2027;
+    --panel-2: #232833;
+    --line: #2e3542;
+    --text: #e6e9ef;
+    --muted: #99a2b3;
+    --accent: #6ea8fe;
+    --warm: #f0a05a;
+    --good: #5fd08a;
+    --bad: #f0736a;
+    --on-accent: #10151d;
+  }
 }
 
 * {
@@ -182,15 +202,15 @@ h2:first-child {
 
 .chip.warn {
   color: var(--warm);
-  border-color: #4a3a28;
+  border-color: color-mix(in srgb, var(--warm) 40%, var(--line));
 }
 .chip.info {
   color: var(--accent);
-  border-color: #27384f;
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
 }
 .chip.good {
   color: var(--good);
-  border-color: #2c4a39;
+  border-color: color-mix(in srgb, var(--good) 40%, var(--line));
 }
 
 .score {
@@ -262,7 +282,7 @@ button {
 
 button.primary {
   background: var(--accent);
-  color: #10151d;
+  color: var(--on-accent);
   border-color: var(--accent);
   font-weight: 600;
 }
@@ -303,8 +323,8 @@ button:disabled {
 .note {
   font-size: 14px;
   color: var(--warm);
-  background: #251d13;
-  border: 1px solid #4a3a28;
+  background: color-mix(in srgb, var(--warm) 12%, var(--panel));
+  border: 1px solid color-mix(in srgb, var(--warm) 35%, var(--line));
   border-radius: 10px;
   padding: 10px 12px;
   margin-bottom: 10px;
