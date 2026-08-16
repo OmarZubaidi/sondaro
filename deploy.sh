@@ -10,8 +10,11 @@ HOST="${SONDARO_HOST:-you@your-vm}"
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/"
 
 echo "==> preparing ${HOST}"
-ssh "$HOST" '
+# -t so the rsync install below can prompt for a sudo password. Ubuntu server
+# images don't ship rsync, and the sync step is two lines away.
+ssh -t "$HOST" '
   set -e
+  command -v rsync >/dev/null || sudo apt-get install -y rsync
   docker network inspect proxy >/dev/null 2>&1 || docker network create proxy
   mkdir -p ~/sondaro
 '
@@ -42,10 +45,17 @@ if [ -f "$LOCAL_DB" ]; then
     echo "==> seeding the server with your local cache"
     # checkpoint first so the -wal contents are folded into the file we copy
     sqlite3 "$LOCAL_DB" 'PRAGMA wal_checkpoint(TRUNCATE);' >/dev/null 2>&1 || true
-    ssh "$HOST" 'sudo mkdir -p /appdata/sondaro && sudo chown 3002:3002 /appdata/sondaro'
+    # Land it somewhere writable without sudo, then do every privileged step in
+    # a single `ssh -t`: sudo needs a terminal to prompt for a password, and a
+    # second session would be a second tty and so a second prompt.
     scp -q "$LOCAL_DB" "$HOST:/tmp/sondaro-seed.db"
-    ssh "$HOST" 'sudo mv /tmp/sondaro-seed.db /appdata/sondaro/sondaro.db \
-      && sudo chown 3002:3002 /appdata/sondaro/sondaro.db'
+    echo "    (sudo on the server — it may ask for your password)"
+    ssh -t "$HOST" '
+      set -e
+      sudo mkdir -p /appdata/sondaro
+      sudo mv /tmp/sondaro-seed.db /appdata/sondaro/sondaro.db
+      sudo chown -R 3002:3002 /appdata/sondaro
+    '
   fi
 fi
 
