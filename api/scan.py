@@ -303,7 +303,19 @@ def trip_candidates(trip) -> list[Candidate]:
         elif not inside:
             if row["lat"] is None:
                 continue
-            miles_to_border = borders.distance_to_border(row["lat"], row["lon"], countries)
+            if named_points:
+                # Once you've named cities, they are the anchor. Measuring to
+                # the country border instead puts Toronto 27 miles from a New
+                # York trip, because it is 27 miles from *a* US border — which
+                # is true and completely useless.
+                miles_to_border = min(
+                    geo.haversine_miles(row["lat"], row["lon"], plat, plon)
+                    for plat, plon in named_points
+                )
+            else:
+                miles_to_border = borders.distance_to_border(
+                    row["lat"], row["lon"], countries
+                )
             if miles_to_border is None:
                 continue  # can't place it, so don't guess
 
