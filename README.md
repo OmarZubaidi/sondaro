@@ -4,20 +4,6 @@
 
 artists from Lidarr, listening from MusicBrainz. combine the 2 to find concerts near home and when traveling
 
-## Where things are
-
-| Path              | What's in it                                             |
-| ----------------- | -------------------------------------------------------- |
-| `api/scoring.py`  | The ranking rules. Pure functions, no I/O. Start here.   |
-| `api/settings.py` | Everything tunable from the UI, with defaults and ranges |
-| `api/scan.py`     | Matches listings to your library, builds ranked results  |
-| `api/queue.py`    | Which API calls to make, in what order, how often        |
-| `api/worker.py`   | Background loop that drains the queue                    |
-| `api/providers/`  | One file per external service                            |
-| `api/main.py`     | HTTP routes                                              |
-| `web/src/`        | React UI                                                 |
-| `tests/features/` | Behavior specs in plain English, good for orientation    |
-
 ## Providers
 
 | Provider (\* required) | Role                                              | Limit     |
@@ -29,9 +15,6 @@ artists from Lidarr, listening from MusicBrainz. combine the 2 to find concerts 
 ## Configuration
 
 secrets and urls live in `.env`, everything else lives in the database and is edited at `/settings`. env values only seed the database on first run, so after that, editing `.env` needs a redeploy
-
-- **editable in the UI**: home location, how far ahead to look, the driving-hour budgets, cross-border distance, alert threshold, mute-until
-- **env only**: every api key and token, plus `LIDARR_URL`, `NTFY_URL` and `TZ`
 
 ## Notifications
 
