@@ -153,7 +153,7 @@ def _favourite(name):
 
 @given(parsers.parse('"{name}" is an artist I rarely play'))
 def _midtier(name):
-    # ~0.6 affinity: liked, not beloved
+    # ~0.67 affinity: liked, not beloved
     _add_artist(name, listens=17, ceiling=5000)
 
 
@@ -351,6 +351,13 @@ def _ranks_low(world):
 @then("it is flagged as an estimated drive time")
 def _estimated_flag(world):
     assert any("estimated drive time" in f for c in world["results"] for f in c.score.flags)
+
+
+@then(parsers.parse('"{winner}" outranks "{loser}"'))
+def _outranks(world, winner, loser):
+    top = max(c.total for c in _find(world, winner))
+    bottom = max(c.total for c in _find(world, loser))
+    assert top > bottom, f"{winner} {top} did not outrank {loser} {bottom}"
 
 
 @then("the Saturday show outranks the Tuesday show")

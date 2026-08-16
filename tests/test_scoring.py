@@ -42,21 +42,27 @@ def test_the_ceiling_ignores_a_runaway_favourite():
 
 
 def test_normalising_to_the_max_would_have_compressed_the_scale():
-    """Guards the actual regression: against max, a 50-play favourite scored
-    0.87 and nothing ever cleared the alert threshold."""
-    percentile = scoring.affinity_ceiling(REAL_LIBRARY)
-    worst_case = scoring.affinity(50, max(REAL_LIBRARY))
+    """Guards the actual regression: against the max, a 50-play favourite never
+    reached the top of the scale and nothing cleared the alert threshold.
 
-    assert worst_case < 0.9
-    assert scoring.affinity(50, percentile) > worst_case
+    Stated as a comparison rather than a number — the absolute value moves with
+    LIBRARY_FLOOR, but the gap between the two ceilings is the whole point."""
+    percentile = scoring.affinity_ceiling(REAL_LIBRARY)
+
+    assert scoring.affinity(50, max(REAL_LIBRARY)) < 1.0
+    assert scoring.affinity(50, percentile) == 1.0
 
 
 def test_the_long_tail_still_ranks_below_the_favourites():
+    """Raising the floor lifts the tail; it must not flatten it. Play counts
+    still have to order the library or they mean nothing."""
     ceiling = scoring.affinity_ceiling(REAL_LIBRARY)
 
-    assert scoring.affinity(1, ceiling) < 0.45
+    assert scoring.affinity(1, ceiling) < scoring.affinity(5, ceiling)
     assert scoring.affinity(5, ceiling) < scoring.affinity(17, ceiling)
     assert scoring.affinity(17, ceiling) < scoring.affinity(41, ceiling)
+    # and the spread stays wide enough to be a ranking, not a rounding error
+    assert scoring.affinity(41, ceiling) - scoring.affinity(1, ceiling) > 0.3
 
 
 def test_unlistened_artists_floor_rather_than_zero():

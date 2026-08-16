@@ -22,7 +22,11 @@ from datetime import date
 
 # --- affinity ---------------------------------------------------------------
 
-LIBRARY_FLOOR = 0.25  # in Lidarr, never scrobbled
+# In Lidarr, never scrobbled. Not a low score — adding an artist is itself the
+# signal. A single downloaded track means you went and got them on purpose,
+# which is worth more than a play count that only reflects what's been in
+# rotation lately.
+LIBRARY_FLOOR = 0.5
 
 # --- home reach -------------------------------------------------------------
 
@@ -100,10 +104,16 @@ def affinity(listens: int, ceiling: int) -> float:
 
 
 def shape_home(a: float) -> float:
-    """How much of the full driving reach this artist earns. Superlinear, so
-    the difference between a favourite and a passing interest is a real one."""
+    """How much of the full driving reach this artist earns.
+
+    Affinity already multiplies the final score, so a steep curve here charges
+    for it twice and buries anyone off the top of the library — at 0.12 a
+    one-track artist earned half an hour of a three-hour budget, which is not
+    a ranking, it's an exclusion. Starting at 0.35 gives them about half the
+    budget while the quadratic still separates them from a favourite.
+    """
     a = max(0.0, min(a, 1.0))
-    return 0.12 + 0.88 * a * a
+    return 0.35 + 0.65 * a * a
 
 
 def shape_trip(a: float) -> float:
