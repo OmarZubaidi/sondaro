@@ -146,7 +146,12 @@ async def sync() -> dict:
 
     counts, source = await pick_counts(artists)
 
-    ceiling = max(counts.values()) if counts else 0
+    # normalise against your library's own distribution, not the whole scrobble
+    # history — an artist you play constantly but never added to Lidarr should
+    # not set the bar for the ones you did
+    ceiling = scoring.affinity_ceiling(
+        [counts.get(normalize(a["name"]), 0) for a in artists]
+    )
     stamp = now_iso()
 
     rows = []

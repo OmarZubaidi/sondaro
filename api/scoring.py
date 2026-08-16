@@ -64,11 +64,29 @@ class Score:
     reasons: list[str] = field(default_factory=list)
 
 
+# Affinity is normalised against this percentile of your library's play counts
+# rather than the single highest. Normalising to the max means one outlier
+# defines the top of the scale and everybody else is squashed underneath it:
+# with a 114-play favourite and nothing else above 50, a genuine favourite
+# scores 0.87 and the whole ranking compresses. At p90 the top handful of
+# artists all reach 1.0, which is what "favourite" is supposed to mean.
+AFFINITY_PERCENTILE = 0.90
+
+
+def affinity_ceiling(counts: list[int]) -> int:
+    """The play count that counts as full affinity. Nearest-rank percentile."""
+    listened = sorted(c for c in counts if c > 0)
+    if not listened:
+        return 0
+    index = min(int(math.ceil(AFFINITY_PERCENTILE * len(listened))), len(listened)) - 1
+    return listened[index]
+
+
 def affinity(listens: int, ceiling: int) -> float:
     """Log-scaled play count in [LIBRARY_FLOOR, 1.0].
 
-    Log rather than linear so one obsessively-played artist doesn't flatten the
-    rest of the library to zero.
+    Log rather than linear so the gap between 5 plays and 50 matters more than
+    the gap between 500 and 550. Anything at or above `ceiling` clamps to 1.0.
     """
     if listens <= 0 or ceiling <= 0:
         return LIBRARY_FLOOR
