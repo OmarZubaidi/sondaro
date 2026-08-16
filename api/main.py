@@ -30,6 +30,7 @@ from . import (
     worker,
 )
 from .config import config
+from .providers import homeassistant
 from .util import now_iso, parse_date, today
 
 logging.basicConfig(
@@ -43,6 +44,13 @@ _sync_lock = asyncio.Lock()
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI):
     db.connect()
+    # adopt Home Assistant's location first, so nothing is planned around a
+    # home we're about to replace
+    if homeassistant.available():
+        try:
+            await worker.worker.sync_home_from_hass()
+        except Exception:  # noqa: BLE001 - a missing HA must not block startup
+            log.exception("could not read home from home assistant")
     worker.bootstrap()
 
     task = None
@@ -367,6 +375,7 @@ async def api_get_settings():
         # presence only — a key is never rendered or returned
         "credentials": config.credential_status(),
         "quotas": usage.snapshot(),
+        "home_managed_by": "home assistant" if homeassistant.available() else None,
     }
 
 
@@ -393,6 +402,12 @@ async def api_patch_settings(payload: dict = Body(...)):
 async def api_set_home(payload: dict = Body(...)):
     """Moving house invalidates work rather than just changing a number, so
     this is a distinct endpoint that says so in its response."""
+    if homeassistant.available():
+        raise HTTPException(
+            status_code=409,
+            detail="Home comes from Home Assistant. Change it there and it syncs here.",
+        )
+
     lat, lon = payload.get("lat"), payload.get("lon")
     if lat is None or lon is None:
         raise HTTPException(status_code=400, detail="lat and lon are required")

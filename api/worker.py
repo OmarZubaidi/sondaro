@@ -10,7 +10,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 from . import db, health, library, notify, queue, routing, scan, settings
-from .providers import jambase, ticketmaster
+from .providers import homeassistant, jambase, ticketmaster
 from .util import now_iso, today
 
 log = logging.getLogger("sondaro.worker")
@@ -206,7 +206,37 @@ class Worker:
             # keep it queued in case routing comes back, but don't hammer it
             queue.complete(task, next_due=datetime.now(timezone.utc) + timedelta(days=1))
 
+    async def sync_home_from_hass(self) -> bool:
+        """Adopt Home Assistant's location. Returns True if we moved.
+
+        Home Assistant is the source of truth when configured, so this is the
+        only writer of home_* in that case and the UI stops offering a search.
+        """
+        home = await homeassistant.fetch_home()
+        if not home:
+            return False
+
+        current = (settings.get("home_lat"), settings.get("home_lon"))
+        moved = (
+            abs(current[0] - home["lat"]) > 0.001
+            or abs(current[1] - home["lon"]) > 0.001
+        )
+
+        settings.set_value("home_lat", home["lat"])
+        settings.set_value("home_lon", home["lon"])
+        if home.get("label"):
+            settings.set_value("home_label", home["label"])
+        if home.get("country"):
+            settings.set_value("home_country", home["country"])
+
+        if moved:
+            log.info("home assistant moved home to %s", home.get("label") or home["lat"])
+            relocate(home["lat"], home["lon"])
+        return moved
+
     async def _library_sync(self, task: queue.Task) -> None:
+        await self.sync_home_from_hass()
+
         before = {row["key"] for row in db.query("SELECT key FROM artists")}
         result = await library.sync()
         after = {row["key"] for row in db.query("SELECT key FROM artists")}

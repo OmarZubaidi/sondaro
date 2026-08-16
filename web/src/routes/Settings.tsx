@@ -96,20 +96,30 @@ export function Settings() {
           Currently <strong>{String(byKey('home_label')?.value ?? '')}</strong>{' '}
           <span className="muted">
             ({Number(byKey('home_lat')?.value).toFixed(4)},{' '}
-            {Number(byKey('home_lon')?.value).toFixed(4)})
+            {Number(byKey('home_lon')?.value).toFixed(4)}
+            {byKey('home_country')?.value ? `, ${byKey('home_country')?.value}` : ''})
           </span>
         </div>
-        <form className="row" onSubmit={search}>
-          <input
-            type="search"
-            placeholder="Search for a place…"
-            aria-label="Search for a place"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            style={{ flex: 1 }}
-          />
-          <button type="submit">Search</button>
-        </form>
+        {payload.home_managed_by ? (
+          <div className="muted" style={{ fontSize: 14 }}>
+            Kept in sync from {payload.home_managed_by}, so there's one place to
+            change it. Update it there and it lands here on the next sync.
+          </div>
+        ) : (
+        <>
+          <form className="row" onSubmit={search}>
+            <input
+              type="search"
+              placeholder="Search for a place…"
+              aria-label="Search for a place"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              style={{ flex: 1 }}
+            />
+            <button type="submit">Search</button>
+          </form>
+        </>
+        )}
         {results.map((result) => (
           <button
             key={`${result.lat},${result.lon}`}
