@@ -151,6 +151,13 @@ class Worker:
             queue.complete(task, next_due=datetime.now(timezone.utc) + timedelta(days=1))
             return
 
+        # cities are planned per country before we know where they are; a
+        # Toronto task queued under US is simply the wrong pairing
+        if country and point[2] and point[2].upper() != country.upper():
+            log.info("%s is in %s, not %s — retiring that pairing", city, point[2], country)
+            queue.complete(task, next_due=None)
+            return
+
         events, notes = await ticketmaster.sweep(
             start, end, lat=point[0], lon=point[1], radius_miles=CITY_RADIUS_MILES,
             chunk_days=7,

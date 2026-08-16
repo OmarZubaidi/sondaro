@@ -214,11 +214,13 @@ async def api_trip(trip_id: int):
 
     notes = []
     home = settings.home_country()
-    if home in scan.trip_countries(row) and not scan.trip_cities(row):
-        notes.append(
-            f"{home} is your home country, so only cities you name are searched. "
-            "Add at least one city to see anything from it."
-        )
+    if home in scan.trip_countries(row):
+        points = scan._named_city_points(scan.trip_cities(row))
+        if not scan._points_in(points, home):
+            notes.append(
+                f"{home} is your home country, so only cities you name there are "
+                "searched. Name a city in it to see anything from it."
+            )
 
     return {
         "trip": _trip_summary(row),

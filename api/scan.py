@@ -238,15 +238,32 @@ def trip_window(trip) -> tuple[date, date, date, date]:
     return start, end, start - timedelta(days=before), end + timedelta(days=after)
 
 
-def _named_city_points(cities: list[str]) -> list[tuple[float, float]]:
-    """Coordinates for named cities, from the place cache or from listings we
-    already hold. The worker resolves anything still missing."""
+def _named_city_points(cities: list[str]) -> list[tuple[float, float, str | None]]:
+    """(lat, lon, country) for named cities, from the place cache or from
+    listings we already hold. The worker resolves anything still missing."""
     points = []
     for city in cities:
         point = routing.cached_place(city)
         if point:
             points.append(point)
     return points
+
+
+def _nearest(lat: float, lon: float, points) -> float | None:
+    """Miles to the closest of a set of (lat, lon, country) points."""
+    if not points:
+        return None
+    return min(geo.haversine_miles(lat, lon, plat, plon) for plat, plon, _c in points)
+
+
+def _points_in(points, country: str):
+    """Named cities that actually belong to a given country.
+
+    Cities are matched per country, not globally. Naming only Toronto on a
+    US+Canada trip must not make it the anchor for US shows too — that's the
+    common case where half a trip is booked and the rest isn't.
+    """
+    return [p for p in points if (p[2] or "").upper() == country]
 
 
 def trip_candidates(trip) -> list[Candidate]:
@@ -283,24 +300,23 @@ def trip_candidates(trip) -> list[Candidate]:
 
         # Your home country is not "somewhere you're visiting". Going to one
         # city in it doesn't put the rest of the country in play, so only the
-        # cities you named count and there's no country-wide floor.
+        # cities you named there count, and there's no country-wide floor.
         at_home_country = bool(home) and country == home
+        local_points = _points_in(named_points, country) if inside else []
         miles_to_border = None
         miles_to_named = None
 
-        if inside and at_home_country:
-            if not named_points or row["lat"] is None:
+        if inside:
+            if local_points:
+                if row["lat"] is None:
+                    continue
+                miles_to_named = _nearest(row["lat"], row["lon"], local_points)
+            elif at_home_country:
+                # home country with no city named in it contributes nothing;
+                # api_trip says so rather than leaving it looking empty
                 continue
-            miles_to_named = min(
-                geo.haversine_miles(row["lat"], row["lon"], plat, plon)
-                for plat, plon in named_points
-            )
-        elif inside and named_points and row["lat"] is not None:
-            miles_to_named = min(
-                geo.haversine_miles(row["lat"], row["lon"], plat, plon)
-                for plat, plon in named_points
-            )
-        elif not inside:
+            # else: a country you're visiting with no cities named stays flat
+        else:
             if row["lat"] is None:
                 continue
             if named_points:
@@ -308,10 +324,7 @@ def trip_candidates(trip) -> list[Candidate]:
                 # the country border instead puts Toronto 27 miles from a New
                 # York trip, because it is 27 miles from *a* US border — which
                 # is true and completely useless.
-                miles_to_border = min(
-                    geo.haversine_miles(row["lat"], row["lon"], plat, plon)
-                    for plat, plon in named_points
-                )
+                miles_to_border = _nearest(row["lat"], row["lon"], named_points)
             else:
                 miles_to_border = borders.distance_to_border(
                     row["lat"], row["lon"], countries

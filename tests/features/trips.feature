@@ -50,6 +50,16 @@ Feature: Planning around a trip
     Then the New York show is recommended
     And the Los Angeles show is not recommended
 
+  Scenario: Naming a city in one country leaves the other country open
+    Given my home country is the US
+    And I am going to Canada and France, but have only booked Toronto
+    And "The National" is an artist I play constantly
+    And "The National" plays Toronto during the trip
+    And "The National" plays Lyon during the trip
+    When I look at the trip
+    Then the Toronto show is recommended
+    And the Lyon show scores full marks on geography
+
   Scenario: Strict dates admit nothing outside the window
     Given I am going to France and Spain in September
     And the trip dates are strict

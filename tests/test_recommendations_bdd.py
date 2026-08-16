@@ -32,6 +32,7 @@ PLACES = {
     "Fairview": (37.5, -97.0, "US", 2.6),
     "Millbrook": (35.5, -100.5, "US", 6.0),
     "Lyon": (45.7640, 4.8357, "FR", 12.0),
+    "Toronto": (43.6532, -79.3832, "CA", 11.0),
     "Barcelona": (41.3874, 2.1686, "ES", 14.0),
     "Geneva": (46.2044, 6.1432, "CH", 13.0),
     "Berlin": (52.5200, 13.4050, "DE", 15.0),
@@ -216,6 +217,29 @@ def _plays_before_away(world, name, place):
     _make_event(world, name, place, AWAY_START - timedelta(days=1))
 
 
+def _remember_places(*cities):
+    from api import db as database
+
+    for city in cities:
+        lat, lon, country, _hours = PLACES[city]
+        database.execute(
+            "INSERT INTO places(query, lat, lon, country, resolved_at) VALUES(?,?,?,?,?) "
+            "ON CONFLICT(query) DO NOTHING",
+            (city.lower(), lat, lon, country, now_iso()),
+        )
+
+
+@given("I am going to Canada and France, but have only booked Toronto")
+def _partial_trip(world):
+    _remember_places("Toronto", "Lyon")
+    world["trip"] = db.execute(
+        "INSERT INTO trips(name, countries, cities, start_date, end_date, flex_before, "
+        "flex_after, strict_dates, created_at) VALUES(?,?,?,?,?,?,?,?,?)",
+        ("Partly booked", "CA,FR", "Toronto", TRIP_START.isoformat(),
+         TRIP_END.isoformat(), 0, 0, 0, now_iso()),
+    )
+
+
 @given("my home country is the US")
 def _home_country():
     settings.set_value("home_country", "US")
@@ -225,13 +249,7 @@ def _home_country():
 def _domestic_trip(world):
     from api import routing
 
-    for city in ("New York", "Los Angeles"):
-        lat, lon, _c, _h = PLACES[city]
-        routing.db.execute(
-            "INSERT INTO places(query, lat, lon, country, resolved_at) VALUES(?,?,?,?,?) "
-            "ON CONFLICT(query) DO NOTHING",
-            (city.lower(), lat, lon, "US", now_iso()),
-        )
+    _remember_places("New York", "Los Angeles")
     world["trip"] = db.execute(
         "INSERT INTO trips(name, countries, cities, start_date, end_date, flex_before, "
         "flex_after, strict_dates, created_at) VALUES(?,?,?,?,?,?,?,?,?)",
@@ -329,6 +347,14 @@ def _weekend_wins(world):
     saturday = next(c for c in world["results"] if c.event.date == SATURDAY.isoformat())
     tuesday = next(c for c in world["results"] if c.event.date == TUESDAY.isoformat())
     assert saturday.total > tuesday.total
+
+
+@then(parsers.parse("the {city} show scores full marks on geography"))
+def _city_full_geography(world, city):
+    """France has no city named on this trip, so the whole country stays in
+    play. Matching cities globally would anchor it on Toronto instead."""
+    found = next(c for c in world["results"] if c.event.city == city)
+    assert found.score.reach_fit == 1.0, f"{city} scored {found.score.reach_fit}"
 
 
 @then("both shows score full marks on geography")
