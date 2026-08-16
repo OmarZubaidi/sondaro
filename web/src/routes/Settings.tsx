@@ -30,12 +30,13 @@ const FROM_HOME_ASSISTANT = new Set([
   'home_tz',
 ])
 
+// rendered by hand above the generic list, because a bare 0-to-1 number is a
+// worse control than four named stops
 const HANDLED_SEPARATELY = new Set(['notify_min_score'])
 
 export function Settings() {
   const [payload, setPayload] = useState<SettingsPayload | null>(null)
   const [draft, setDraft] = useState<Record<string, string | number | boolean>>({})
-  const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
@@ -43,22 +44,15 @@ export function Settings() {
     api.settings().then(setPayload).catch((err) => setError(String(err)))
   }, [])
 
-  async function persist(changes: Record<string, unknown>, note: string) {
-    setError(null)
-    try {
-      await api.updateSettings(changes)
-      setPayload(await api.settings())
-      setDraft({})
-      setMessage(note)
-    } catch (err) {
-      setError(String((err as Error).message ?? err))
-    }
-  }
-
   async function saveAll() {
     setSaving(true)
+    setError(null)
     try {
-      await persist(draft, 'Saved. Takes effect on the next scan, no restart needed.')
+      await api.updateSettings(draft)
+      setPayload(await api.settings())
+      setDraft({})
+    } catch (err) {
+      setError(String((err as Error).message ?? err))
     } finally {
       setSaving(false)
     }
@@ -68,7 +62,12 @@ export function Settings() {
   if (!payload) return <div className="empty">Loading…</div>
 
   const byKey = (key: string) => payload.settings.find((s) => s.key === key)
-  const threshold = Number(byKey('notify_min_score')?.value ?? 0.35)
+  const edit = (key: string, value: string | number | boolean) =>
+    setDraft((d) => ({ ...d, [key]: value }))
+
+  // the draft wins while it exists, so a control shows what you typed rather
+  // than what's stored
+  const threshold = Number(draft.notify_min_score ?? byKey('notify_min_score')?.value ?? 0.35)
   const editable = payload.settings.filter(
     (s) =>
       !ON_LOCAL_PAGE.has(s.key) &&
@@ -79,7 +78,6 @@ export function Settings() {
 
   return (
     <>
-      {message && <div className="progress">{message}</div>}
       {error && <div className="note">{error}</div>}
 
       <h2>Alerts</h2>
@@ -93,9 +91,7 @@ export function Settings() {
             max={1}
             step={0.05}
             value={threshold}
-            onChange={(e) =>
-              persist({ notify_min_score: clamp(Number(e.target.value)) }, 'Threshold updated.')
-            }
+            onChange={(e) => edit('notify_min_score', clamp(Number(e.target.value)))}
           />
           <div className="segmented">
             {THRESHOLD_STOPS.map((stop) => (
@@ -103,7 +99,7 @@ export function Settings() {
                 key={stop.value}
                 type="button"
                 aria-pressed={threshold === stop.value}
-                onClick={() => persist({ notify_min_score: stop.value }, 'Threshold updated.')}
+                onClick={() => edit('notify_min_score', stop.value)}
               >
                 {stop.label}
               </button>
@@ -121,7 +117,7 @@ export function Settings() {
           key={spec.key}
           spec={spec}
           value={draft[spec.key] ?? spec.value}
-          onChange={(value) => setDraft((d) => ({ ...d, [spec.key]: value }))}
+          onChange={(value) => edit(spec.key, value)}
         />
       ))}
 
