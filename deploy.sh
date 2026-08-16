@@ -30,6 +30,25 @@ rsync -az --delete \
   --exclude '*.db' \
   "$SRC" "$HOST:sondaro/"
 
+# A local test run builds a real index: hundreds of API calls, and for JamBase
+# some of them billable. Carry it over on first deploy rather than paying twice.
+# Only ever seeds an empty target — an existing database on the server is never
+# overwritten, since by then it's the newer one.
+LOCAL_DB="${SRC}.data/sondaro.db"
+if [ -f "$LOCAL_DB" ]; then
+  if ssh "$HOST" 'test -s /appdata/sondaro/sondaro.db' 2>/dev/null; then
+    echo "==> the server already has a database, leaving it alone"
+  else
+    echo "==> seeding the server with your local cache"
+    # checkpoint first so the -wal contents are folded into the file we copy
+    sqlite3 "$LOCAL_DB" 'PRAGMA wal_checkpoint(TRUNCATE);' >/dev/null 2>&1 || true
+    ssh "$HOST" 'sudo mkdir -p /appdata/sondaro && sudo chown 3002:3002 /appdata/sondaro'
+    scp -q "$LOCAL_DB" "$HOST:/tmp/sondaro-seed.db"
+    ssh "$HOST" 'sudo mv /tmp/sondaro-seed.db /appdata/sondaro/sondaro.db \
+      && sudo chown 3002:3002 /appdata/sondaro/sondaro.db'
+  fi
+fi
+
 echo "==> building and starting"
 ssh "$HOST" '
   set -e
