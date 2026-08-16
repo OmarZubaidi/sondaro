@@ -45,6 +45,12 @@ export const api = {
   createTrip: (payload: Record<string, unknown>) =>
     request<Trip>('/api/trips', { method: 'POST', body: JSON.stringify(payload) }),
 
+  updateTrip: (id: number, payload: Record<string, unknown>) =>
+    request<Trip & { rescanned: boolean; queued: number }>(`/api/trips/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
+
   rescanTrip: (id: number) =>
     request<{ queued: number }>(`/api/trips/${id}/rescan`, { method: 'POST' }),
 

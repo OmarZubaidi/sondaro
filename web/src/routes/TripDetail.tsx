@@ -5,6 +5,7 @@ import type { Show, TripDetail as TripDetailData } from '../lib/types'
 import { percent, prettyDate } from '../lib/format'
 import { DateGroup } from '../components/DateGroup'
 import { ItineraryBuilder } from '../components/ItineraryBuilder'
+import { TripForm, fieldsFromTrip, toPayload, type TripFields } from '../components/TripForm'
 
 export function TripDetail() {
   const { id } = useParams<{ id: string }>()
@@ -15,6 +16,8 @@ export function TripDetail() {
   const [error, setError] = useState<string | null>(null)
   const [picks, setPicks] = useState<Show[]>([])
   const [busy, setBusy] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [countries, setCountries] = useState<{ code: string; name: string }[]>([])
 
   const load = useCallback(() => {
     api
@@ -24,6 +27,25 @@ export function TripDetail() {
   }, [tripId])
 
   useEffect(load, [load])
+
+  useEffect(() => {
+    api.countries().then((d) => setCountries(d.countries)).catch(() => setCountries([]))
+  }, [])
+
+  async function save(fields: TripFields) {
+    setBusy(true)
+    setError(null)
+    try {
+      await api.updateTrip(tripId, toPayload(fields))
+      setEditing(false)
+      setPicks([])  // the shortlist may reference shows no longer in scope
+      load()
+    } catch (err) {
+      setError(String((err as Error).message ?? err))
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const toggle = useCallback((show: Show) => {
     setPicks((current) =>
@@ -72,7 +94,30 @@ export function TripDetail() {
         {data.coverage < 1 && <span>index {percent(data.coverage)}</span>}
       </div>
 
+      {data.notes?.map((note) => (
+        <div className="note" key={note}>
+          {note}
+        </div>
+      ))}
+
+      {editing && (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <h2 style={{ marginTop: 0 }}>Edit trip</h2>
+          <TripForm
+            initial={fieldsFromTrip(trip)}
+            countries={countries}
+            submitLabel="Save changes"
+            busy={busy}
+            onSubmit={save}
+            onCancel={() => setEditing(false)}
+          />
+        </div>
+      )}
+
       <div className="row" style={{ marginBottom: 16 }}>
+        <button type="button" onClick={() => setEditing((v) => !v)}>
+          {editing ? 'Close editor' : 'Edit'}
+        </button>
         <button type="button" onClick={rescan} disabled={busy}>
           {busy ? 'Queueing…' : 'Re-scan'}
         </button>

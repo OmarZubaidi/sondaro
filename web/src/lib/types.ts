@@ -73,6 +73,7 @@ export interface TripDetail {
   total: number
   dates: { date: string; shows: Show[] }[]
   coverage: number
+  notes: string[]
 }
 
 export interface HomeFeed {
