@@ -14,7 +14,7 @@ export default defineConfig({
     proxy: {
       '/api': 'http://localhost:7373',
       '/healthz': 'http://localhost:7373',
-      '/calendar.ics': 'http://localhost:7373',
+      '/sondaro.ics': 'http://localhost:7373',
     },
   },
   test: {

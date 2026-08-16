@@ -8,8 +8,10 @@ rather than through HTTP.
 import asyncio
 import contextlib
 import logging
+import re
 from datetime import date, timedelta
 from pathlib import Path
+from urllib.parse import quote
 
 from fastapi import Body, FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
@@ -448,25 +450,40 @@ async def api_countries():
 # --------------------------------------------------------------------------
 
 
-def _calendar_response(candidates, name: str) -> Response:
+def _disposition(filename: str) -> str:
+    """RFC 6266. The plain `filename` has to be ASCII, so accented trip names
+    get a sanitised fallback plus the real thing in `filename*`."""
+    stem = re.sub(r"[^\w \-.]", "", filename, flags=re.ASCII).strip() or "sondaro"
+    quoted = quote(f"{filename}.ics", safe="")
+    return f'attachment; filename="{stem}.ics"; filename*=UTF-8\'\'{quoted}'
+
+
+def _calendar_response(candidates, name: str, filename: str) -> Response:
     return Response(
         content=ics.build(candidates, name),
         media_type="text/calendar; charset=utf-8",
-        headers={"Cache-Control": "public, max-age=1800"},
+        headers={
+            "Cache-Control": "public, max-age=1800",
+            # a subscribing client ignores this; a browser uses it to name the
+            # file, which is the only time "trips/4.ics" would be unhelpful
+            "Content-Disposition": _disposition(filename),
+        },
     )
 
 
-@app.get("/calendar.ics")
+@app.get("/sondaro.ics")
 async def home_calendar(min_score: float = Query(0.0, ge=0.0, le=1.0)):
     candidates = [c for c in scan.local_candidates() if c.total >= min_score]
-    return _calendar_response(candidates, f"Sondaro — {settings.get('home_label')}")
+    return _calendar_response(
+        candidates, f"Sondaro — {settings.get('home_label')}", "Sondaro"
+    )
 
 
 @app.get("/trips/{trip_id}.ics")
 async def trip_calendar(trip_id: int, min_score: float = Query(0.0, ge=0.0, le=1.0)):
     row = _trip_or_404(trip_id)
     candidates = [c for c in scan.trip_candidates(row) if c.total >= min_score]
-    return _calendar_response(candidates, f"Sondaro — {row['name']}")
+    return _calendar_response(candidates, f"Sondaro — {row['name']}", row["name"])
 
 
 # --------------------------------------------------------------------------
@@ -480,7 +497,7 @@ if _static.is_dir():
     @app.get("/{full_path:path}")
     async def spa(full_path: str, request: Request):
         """Client-side routing: anything not an API route serves the shell."""
-        if full_path.startswith(("api/", "healthz", "calendar.ics")):
+        if full_path.startswith(("api/", "healthz", "sondaro.ics")):
             raise HTTPException(status_code=404, detail="not found")
         candidate = _static / full_path
         if full_path and candidate.is_file():

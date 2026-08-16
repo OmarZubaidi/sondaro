@@ -23,7 +23,7 @@ secrets and urls live in `.env`, everything else lives in the database and is ed
 
 ## Calendar
 
-`/calendar.ics` and `/trips/{id}.ics` are subscribe urls for any calendar app. add `?min_score=0.5` to filter the subscription without changing what the UI shows.
+`/sondaro.ics` and `/trips/{id}.ics` are subscribe urls for any calendar app. add `?min_score=0.5` to filter the subscription without changing what the UI shows. downloading one saves it under the calendar's name — `Sondaro.ics`, `Family trip.ics` — not the url's.
 
 ## Running it
 

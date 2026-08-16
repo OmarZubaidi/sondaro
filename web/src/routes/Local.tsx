@@ -81,7 +81,7 @@ export function Local() {
       <div className="title-row">
         <h2>Local</h2>
         <div className="actions">
-          <IconButton label="Calendar feed" icon={<CalendarIcon />} href="/calendar.ics" />
+          <IconButton label="Calendar feed" icon={<CalendarIcon />} href="/sondaro.ics" />
         </div>
       </div>
 
