@@ -1,11 +1,17 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../lib/api'
-import type { Show, TripDetail as TripDetailData } from '../lib/types'
+import type { TripDetail as TripDetailData } from '../lib/types'
 import { percent, prettyDate } from '../lib/format'
 import { DateGroup } from '../components/DateGroup'
-import { ItineraryBuilder } from '../components/ItineraryBuilder'
 import { TripForm, fieldsFromTrip, toPayload, type TripFields } from '../components/TripForm'
+import {
+  CalendarIcon,
+  EditIcon,
+  IconButton,
+  RescanIcon,
+  TrashIcon,
+} from '../components/IconButton'
 
 export function TripDetail() {
   const { id } = useParams<{ id: string }>()
@@ -14,7 +20,6 @@ export function TripDetail() {
 
   const [data, setData] = useState<TripDetailData | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [picks, setPicks] = useState<Show[]>([])
   const [busy, setBusy] = useState(false)
   const [editing, setEditing] = useState(false)
   const [countries, setCountries] = useState<{ code: string; name: string }[]>([])
@@ -38,7 +43,6 @@ export function TripDetail() {
     try {
       await api.updateTrip(tripId, toPayload(fields))
       setEditing(false)
-      setPicks([])  // the shortlist may reference shows no longer in scope
       load()
     } catch (err) {
       setError(String((err as Error).message ?? err))
@@ -46,14 +50,6 @@ export function TripDetail() {
       setBusy(false)
     }
   }
-
-  const toggle = useCallback((show: Show) => {
-    setPicks((current) =>
-      current.some((p) => p.id === show.id)
-        ? current.filter((p) => p.id !== show.id)
-        : [...current, show],
-    )
-  }, [])
 
   async function rescan() {
     setBusy(true)
@@ -75,11 +71,36 @@ export function TripDetail() {
   if (!data) return <div className="empty">Loading…</div>
 
   const { trip } = data
-  const pickedIds = new Set(picks.map((p) => p.id))
 
   return (
     <>
-      <h2>{trip.name}</h2>
+      <div className="title-row">
+        <h2>{trip.name}</h2>
+        <div className="actions">
+          <IconButton
+            label={editing ? 'Close editor' : 'Edit trip'}
+            icon={<EditIcon />}
+            onClick={() => setEditing((v) => !v)}
+          />
+          <IconButton
+            label="Re-scan"
+            icon={<RescanIcon />}
+            onClick={rescan}
+            disabled={busy}
+          />
+          <IconButton
+            label="Calendar feed"
+            icon={<CalendarIcon />}
+            href={`/trips/${tripId}.ics`}
+          />
+          <IconButton
+            label="Delete trip"
+            icon={<TrashIcon />}
+            onClick={remove}
+            tone="danger"
+          />
+        </div>
+      </div>
       <div className="statusbar">
         <span>{trip.countries.join(' · ')}</span>
         <span>
@@ -114,19 +135,6 @@ export function TripDetail() {
         </div>
       )}
 
-      <div className="row" style={{ marginBottom: 16 }}>
-        <button type="button" onClick={() => setEditing((v) => !v)}>
-          {editing ? 'Close editor' : 'Edit'}
-        </button>
-        <button type="button" onClick={rescan} disabled={busy}>
-          {busy ? 'Queueing…' : 'Re-scan'}
-        </button>
-        <a href={`/trips/${tripId}.ics`}>calendar feed</a>
-        <button type="button" className="danger" onClick={remove}>
-          delete trip
-        </button>
-      </div>
-
       {data.coverage < 1 && (
         <div className="progress">
           <strong>Still filling in</strong>
@@ -138,9 +146,6 @@ export function TripDetail() {
           </div>
         </div>
       )}
-
-      <h2>Your itinerary</h2>
-      <ItineraryBuilder picks={picks} onRemove={toggle} />
 
       {data.dates.length === 0 ? (
         <div className="empty">
@@ -154,10 +159,6 @@ export function TripDetail() {
               key={group.date}
               date={group.date}
               shows={group.shows}
-              selectedId={
-                group.shows.find((s) => pickedIds.has(s.id))?.id ?? null
-              }
-              onToggle={toggle}
             />
           ))}
         </>
