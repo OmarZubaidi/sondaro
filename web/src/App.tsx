@@ -1,11 +1,14 @@
+import { useState } from 'react'
 import { NavLink, Route, Routes } from 'react-router-dom'
 import { Local } from './routes/Local'
 import { Trips } from './routes/Trips'
 import { TripDetail } from './routes/TripDetail'
-import { Settings } from './routes/Settings'
 import { StatusPage } from './routes/StatusPage'
+import { SettingsDrawer } from './components/SettingsDrawer'
 
 export function App() {
+  const [settingsOpen, setSettingsOpen] = useState(false)
+
   return (
     <>
       <header className="topbar">
@@ -20,9 +23,16 @@ export function App() {
           <NavLink to="/status" className={({ isActive }) => (isActive ? 'active' : '')}>
             Status
           </NavLink>
-          <NavLink to="/settings" className={({ isActive }) => (isActive ? 'active' : '')}>
+          {/* not a route: settings open over the page you're on, because
+              that page is usually why you're changing them */}
+          <button
+            type="button"
+            className={`navlike${settingsOpen ? ' active' : ''}`}
+            aria-expanded={settingsOpen}
+            onClick={() => setSettingsOpen(true)}
+          >
             Settings
-          </NavLink>
+          </button>
         </nav>
       </header>
       <main>
@@ -31,10 +41,10 @@ export function App() {
           <Route path="/trips" element={<Trips />} />
           <Route path="/trips/:id" element={<TripDetail />} />
           <Route path="/status" element={<StatusPage />} />
-          <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<div className="empty">Not found.</div>} />
         </Routes>
       </main>
+      <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </>
   )
 }

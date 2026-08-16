@@ -73,6 +73,12 @@ export const CalendarIcon = () => (
   </Svg>
 )
 
+export const CloseIcon = () => (
+  <Svg>
+    <path d="M6 6l12 12M18 6L6 18" />
+  </Svg>
+)
+
 export const TrashIcon = () => (
   <Svg>
     <path d="M4 7h16" />
