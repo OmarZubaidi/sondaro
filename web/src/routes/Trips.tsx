@@ -5,7 +5,6 @@ import { DateGroup } from '../components/DateGroup'
 import { CheckList } from '../components/CheckList'
 import { TripModal } from '../components/TripModal'
 import { EditIcon, IconButton, TrashIcon } from '../components/IconButton'
-import { CalendarLink } from '../components/CalendarLink'
 
 export function Trips() {
   const [feed, setFeed] = useState<TripsFeed | null>(null)
@@ -89,9 +88,6 @@ export function Trips() {
         <aside className="side">
           <div className="title-row">
             <h2>Trips</h2>
-            <div className="actions">
-              <CalendarLink />
-            </div>
           </div>
 
           <button className="primary block" type="button" onClick={() => setEditing('new')}>

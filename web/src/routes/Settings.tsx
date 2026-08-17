@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
 import type { SettingSpec, SettingsPayload } from '../lib/types'
+import { CalendarSubscription } from '../components/CalendarSubscription'
 
 const THRESHOLD_STOPS = [
   { value: 0.2, label: 'everything' },
@@ -110,6 +111,9 @@ export function Settings() {
           Health alerts use a separate topic and are never muted by this.
         </div>
       </div>
+
+      <h2>Calendar</h2>
+      <CalendarSubscription tailnetUrl={payload.tailnet_url} />
 
       <h2>Behaviour</h2>
       {editable.map((spec) => (

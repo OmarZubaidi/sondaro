@@ -129,4 +129,7 @@ export interface SettingsPayload {
   settings: SettingSpec[]
   credentials: Record<string, boolean>
   quotas: Quota[]
+  /** where this app answers from off the LAN. Empty when it couldn't be
+   *  worked out — see `config.tailnet_url`. */
+  tailnet_url: string
 }
