@@ -1,9 +1,11 @@
-"""An empty country has to say which kind of empty it is.
+"""The country filter is also the explanation.
 
 A trip to France that shows nothing can mean the sweep hasn't run, that France
 is your home country and deliberately left alone, or that genuinely nothing in
-your library is playing there. All three render as a blank list, and the first
-is worth waiting for while the third is worth acting on.
+your library is playing there. Leaving the country out of the list entirely
+made all three indistinguishable from "France isn't on any trip", so every
+country a trip touches gets a row — with a zero, a "still going" marker, or a
+reason it will stay empty.
 """
 
 import sys
@@ -105,48 +107,69 @@ def a_show_in_lyon() -> None:
     )
 
 
-def notes(client) -> list[str]:
-    return client.get("/api/trips").json()["notes"]
+def countries(client) -> dict[str, dict]:
+    return {c["name"]: c for c in client.get("/api/trips").json()["countries"]}
 
 
-def test_a_country_still_being_swept_says_so(client):
-    """The common case on a trip you added a minute ago."""
+def test_a_country_with_nothing_still_gets_a_row(client):
+    """The whole point: an empty country you can see is an answer, and an
+    absent one is a question the page used to need a banner to answer."""
     a_trip(client, [{"country": "FR"}])
 
-    assert any("still searching France" in note for note in notes(client))
+    assert "France" in countries(client)
 
 
-def test_a_swept_country_with_nothing_on_says_that_instead(client):
-    """Same blank list, opposite meaning: waiting will not help."""
+def test_a_country_still_being_swept_is_marked_as_such(client):
+    """Zero isn't the final answer yet, and the row says so rather than
+    inviting you to go and edit the trip."""
+    a_trip(client, [{"country": "FR"}])
+
+    assert countries(client)["France"]["searching"] is True
+
+
+def test_a_swept_country_with_nothing_on_is_not(client):
+    """Same zero, opposite meaning: waiting will not help."""
     a_trip(client, [{"country": "FR"}])
     db.execute("UPDATE fetch_tasks SET last_ok_at = ?", (now_iso(),))
 
-    assert any("nothing from your library" in note for note in notes(client))
-    assert not any("still searching" in note for note in notes(client))
+    assert countries(client)["France"]["searching"] is False
 
 
-def test_a_country_that_produced_shows_is_not_mentioned(client):
-    """Notes are for absences. Explaining a country that worked is noise."""
+def test_a_country_that_produced_shows_is_never_marked_as_searching(client):
     a_show_in_lyon()
     a_trip(client, [{"country": "FR"}])
 
-    assert notes(client) == []
+    assert countries(client)["France"] == {
+        "code": "FR",
+        "name": "France",
+        "searching": False,
+        "note": None,
+    }
 
 
-def test_only_the_empty_half_of_a_trip_is_explained(client):
+def test_both_halves_of_a_trip_are_listed(client):
     """The reported shape: cities booked in one country, another left open and
-    showing nothing, with no way to tell why."""
+    showing nothing. Both belong in the filter."""
     a_show_in_lyon()
     a_trip(client, [{"country": "FR"}, {"country": "IS"}])
 
-    reported = notes(client)
-    assert len(reported) == 1
-    assert "Iceland" in reported[0]
+    assert set(countries(client)) == {"France", "Iceland"}
 
 
-def test_the_home_country_still_explains_itself(client):
-    """It is deliberately not swept, which no amount of waiting changes."""
+def test_the_home_country_explains_itself_in_a_tooltip(client):
+    """It is deliberately not swept, which no amount of waiting changes — and
+    that can't be inferred from a zero."""
     settings.set_value("home_country", "FR")
     a_trip(client, [{"country": "FR"}])
 
-    assert any("home country" in note for note in notes(client))
+    entry = countries(client)["France"]
+    assert entry["searching"] is False
+    assert "home country" in entry["note"]
+
+
+def test_a_detour_over_a_border_is_listed_too(client):
+    """A show can turn up somewhere no trip goes. Filtering it needs a row."""
+    a_show_in_lyon()
+    a_trip(client, [{"country": "IS"}, {"country": "FR"}])
+
+    assert "France" in countries(client)

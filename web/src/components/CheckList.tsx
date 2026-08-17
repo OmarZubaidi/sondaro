@@ -1,7 +1,11 @@
 interface Option {
   value: string
   label: string
-  count?: number
+  /** a string lets a row say something other than a number — "…" for a count
+   *  that isn't final yet */
+  count?: number | string
+  /** hover text, for whatever the count can't say on its own */
+  hint?: string
 }
 
 interface Props {
@@ -34,7 +38,7 @@ export function CheckList({ legend, options, selected, onChange }: Props) {
         )}
       </legend>
       {options.map((option) => (
-        <label key={option.value}>
+        <label key={option.value} title={option.hint}>
           <input
             type="checkbox"
             checked={selected.has(option.value)}

@@ -81,13 +81,24 @@ export interface Trip {
   scanned_at: string | null
 }
 
+/** A country a trip touches, whether or not it turned anything up. One that
+ *  found nothing gets a row reading zero rather than being left out — that
+ *  absence is exactly what needed explaining. */
+export interface TripCountry {
+  code: string
+  name: string
+  /** sweeps for it are still queued, so zero may not be the final answer */
+  searching: boolean
+  /** why it will stay empty no matter how long you wait */
+  note: string | null
+}
+
 /** Every trip and everything they turned up, in one feed. */
 export interface TripsFeed {
   trips: Trip[]
   total: number
   dates: { date: string; shows: Show[] }[]
-  countries: { code: string; name: string }[]
-  notes: string[]
+  countries: TripCountry[]
 }
 
 export interface CitySuggestion {

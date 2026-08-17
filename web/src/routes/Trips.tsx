@@ -125,15 +125,26 @@ export function Trips() {
                   />
                 </div>
 
+                {/* every country the trips touch, including the ones showing
+                    nothing — a row reading 0 is what the explanatory banners
+                    used to say, at a fraction of the page */}
                 <CheckList
                   legend="Countries"
                   selected={countryFilter}
                   onChange={setCountryFilter}
-                  options={feed.countries.map((c) => ({
-                    value: c.code,
-                    label: c.name,
-                    count: perCountry.get(c.code) ?? 0,
-                  }))}
+                  options={feed.countries.map((c) => {
+                    const found = perCountry.get(c.code) ?? 0
+                    return {
+                      value: c.code,
+                      label: c.name,
+                      count: found === 0 && c.searching ? '…' : found,
+                      hint:
+                        c.note ??
+                        (found === 0 && c.searching
+                          ? 'Still being searched, so this may not be the final answer.'
+                          : undefined),
+                    }
+                  })}
                 />
               </div>
             </>
@@ -150,12 +161,6 @@ export function Trips() {
         </aside>
 
         <div className="feed">
-          {feed.notes.map((note) => (
-            <div className="note" key={note}>
-              {note}
-            </div>
-          ))}
-
           {feed.trips.length > 0 && (
             <div className="trip-strip">
               {feed.trips.map((trip) => (

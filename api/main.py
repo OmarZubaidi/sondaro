@@ -186,13 +186,8 @@ async def api_trips():
     # labels, scored by whichever trip makes the better case for it.
     bought = scan.purchased_ids()
     merged: dict[str, dict] = {}
-    notes: list[str] = []
     for row, summary in zip(rows, trips):
-        candidates = scan.trip_candidates(row)
-        notes.extend(
-            _trip_notes(row, {(c.event.country or "").upper() for c in candidates})
-        )
-        for candidate in candidates:
+        for candidate in scan.trip_candidates(row):
             shown = scan.serialise(candidate, bought)
             existing = merged.get(shown["id"])
             if existing is None:
@@ -211,55 +206,62 @@ async def api_trips():
     for show in shows:
         by_date.setdefault(show["date"], []).append(show)
 
-    # only the countries that actually have something, so the filter can't
-    # offer you an empty result
-    present = sorted({s["country"] for s in shows if s["country"]})
-
     return {
         "trips": trips,
         "total": len(shows),
         "dates": [{"date": day, "shows": rows_} for day, rows_ in sorted(by_date.items())],
-        "countries": [
-            {"code": code, "name": borders.country_name(code)} for code in present
-        ],
-        "notes": notes,
+        "countries": _country_status(rows, shows),
     }
 
 
-def _trip_notes(row, found: set[str]) -> list[str]:
-    """Why a trip is emptier than it looks, one country at a time.
+def _country_status(rows, shows) -> list[dict]:
+    """Every country the trips touch, whether or not it turned anything up.
 
-    "Nothing here" has three quite different causes — not searched yet, your
-    home country deliberately left alone, or genuinely nothing on — and they
-    are indistinguishable from a blank list. Saying which is the difference
-    between waiting and going and fixing the trip.
+    A country that found nothing is worth a row reading zero. Leaving it out
+    made "France has nothing" indistinguishable from "France isn't on any
+    trip", which is what the explanatory banners were there to patch over —
+    and three banners cost more of the page than the results did.
+
+    `searching` and `note` carry what the banners said, as a marker and a
+    tooltip on the row instead of a paragraph above the feed.
     """
-    legs = scan.trip_legs(row["id"])
     home = settings.home_country()
-    notes = []
+    present = {s["country"] for s in shows if s["country"]}
 
-    for country in scan.trip_countries(row):
-        if country in found:
-            continue
-        where = borders.country_name(country)
-        anchored = any(leg.city for leg in legs if leg.country == country)
+    codes: list[str] = []
+    searching: set[str] = set()
+    unswept_home: set[str] = set()
 
-        if home and country == home and not anchored:
-            notes.append(
-                f"{row['name']}: {where} is your home country, so only cities "
-                "you name there are searched. Name one to see anything from it."
-            )
-        elif remaining := queue.unfetched(queue.trip_scope(row["id"], country)):
-            notes.append(
-                f"{row['name']}: still searching {where} — "
-                f"{remaining} date range{'' if remaining == 1 else 's'} to go."
-            )
-        else:
-            notes.append(
-                f"{row['name']}: nothing from your library is playing in "
-                f"{where} on those dates."
-            )
-    return notes
+    for row in rows:
+        legs = scan.trip_legs(row["id"])
+        for country in scan.trip_countries(row):
+            if country not in codes:
+                codes.append(country)
+            if country in present:
+                continue
+            anchored = any(leg.city for leg in legs if leg.country == country)
+            if home and country == home and not anchored:
+                unswept_home.add(country)
+            elif queue.unfetched(queue.trip_scope(row["id"], country)):
+                searching.add(country)
+
+    # a show can turn up somewhere no trip goes — a detour over a border
+    for code in sorted(present - set(codes)):
+        codes.append(code)
+
+    return [
+        {
+            "code": code,
+            "name": borders.country_name(code),
+            "searching": code in searching,
+            "note": (
+                "Your home country, so only cities you name in it are searched."
+                if code in unswept_home
+                else None
+            ),
+        }
+        for code in sorted(codes, key=borders.country_name)
+    ]
 
 
 def _validate_trip(payload: dict) -> dict:
