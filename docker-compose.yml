@@ -1,11 +1,15 @@
 ---
+# The tailnet machine name, in one place. The sidecar registers under it and
+# the app is told what it is, so the calendar subscription url it hands out
+# can't drift away from the name that actually resolves.
+x-tailnet-host: &tailnet-host sondaro
+
 services:
   ts-sondaro:
     image: tailscale/tailscale:latest
     container_name: ts-sondaro
     restart: unless-stopped
-    # tailnet machine name
-    hostname: sondaro
+    hostname: *tailnet-host
     cap_add:
       - NET_ADMIN
       - NET_RAW
@@ -26,6 +30,9 @@ services:
     container_name: sondaro
     restart: unless-stopped
     env_file: .env
+    environment:
+      # the app can't ask the sidecar what it registered as, so it's told
+      TS_HOSTNAME: *tailnet-host
     network_mode: "service:ts-sondaro"
     depends_on:
       - ts-sondaro

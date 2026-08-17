@@ -13,6 +13,7 @@ first run and never consulted again.
 
 import os
 from dataclasses import dataclass, field
+from urllib.parse import urlsplit
 
 
 def _str(key: str, default: str = "") -> str:
@@ -51,6 +52,9 @@ class Config:
     ntfy_url: str = field(default_factory=lambda: _str("NTFY_URL").rstrip("/"))
     ntfy_topic_alerts: str = field(default_factory=lambda: _str("NTFY_TOPIC_ALERTS", "sondaro"))
     ntfy_topic_status: str = field(default_factory=lambda: _str("NTFY_TOPIC_STATUS", "services"))
+    # the tailnet machine name, set from the sidecar's `hostname:` in
+    # docker-compose.yml so the two can't drift apart
+    ts_hostname: str = field(default_factory=lambda: _str("TS_HOSTNAME"))
 
     # --- credentials --------------------------------------------------------
     lidarr_api_key: str = field(default_factory=lambda: _str("LIDARR_API_KEY"))
@@ -85,6 +89,30 @@ class Config:
 
     def ntfy_endpoint(self, topic: str) -> str:
         return f"{self.ntfy_url}/{topic}" if self.ntfy_url else ""
+
+    def tailnet_domain(self) -> str:
+        """The tailnet's own domain, borrowed from wherever ntfy lives.
+
+        Nothing in this container knows the tailnet name: the sidecar holds it
+        and expands `${TS_CERT_DOMAIN}` privately. But ntfy is already
+        addressed by its tailnet name, so the domain is sitting in an env var
+        we have — strip the machine off the front of `ntfy.<tailnet>.ts.net`.
+
+        Empty unless it really is a `.ts.net` name, since a LAN address would
+        otherwise produce a confident and wrong answer.
+        """
+        host = urlsplit(self.ntfy_url).hostname or ""
+        if not host.endswith(".ts.net"):
+            return ""
+        _machine, _, domain = host.partition(".")
+        return domain
+
+    def tailnet_url(self) -> str:
+        """Where this app answers from anywhere, not just the LAN. Empty when
+        either half is unknown — the caller falls back to the browser's own
+        address and says so, rather than publishing a guess."""
+        domain = self.tailnet_domain()
+        return f"https://{self.ts_hostname}.{domain}" if self.ts_hostname and domain else ""
 
 
 config = Config()

@@ -469,6 +469,10 @@ async def api_get_settings():
         # presence only — a key is never rendered or returned
         "credentials": config.credential_status(),
         "quotas": usage.snapshot(),
+        # Empty when it can't be worked out, so the UI can say the calendar
+        # link only works from where you're standing rather than handing you a
+        # LAN address that a phone off the network will never reach.
+        "tailnet_url": config.tailnet_url(),
     }
 
 
