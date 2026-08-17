@@ -28,6 +28,10 @@ a trip is an itinerary of **legs**, one row per country plus one per city once y
 
 trips share one page. everything they turned up is a single feed, filtered by trip, country or score from the sidebar. there is no per-trip page: "what could i see while i'm away" is one question, and it was being asked once per trip.
 
+a country showing nothing says why, per country: still being swept, deliberately not swept because it's your home country, or genuinely nothing on. all three look identical as a blank list, and only the first is worth waiting out.
+
+**a leg's dates bound what gets fetched and what gets scored.** a show a month after you leave a city is not "in that city", so it doesn't appear — widen the leg if you'd actually extend the trip.
+
 cities are picked from a geocoder typeahead, never typed. a free-text city that doesn't resolve is a leg that silently matches nothing.
 
 ## Notifications
@@ -37,9 +41,15 @@ cities are picked from a geocoder typeahead, never typed. a free-text city that 
 
 ## Calendar
 
-`/sondaro.ics` is the one subscribe url, for any calendar app. near home and every trip, in one feed — add a trip and its shows appear in the subscription you already have. add `?min_score=0.5` to filter the subscription without changing what the UI shows.
+`/sondaro.ics` is the one subscribe url, for any calendar app. **only shows you've marked as bought are in it** — mark one and it appears, unmark it and it goes. suggestions stay in the app; a calendar full of maybes is one you stop trusting.
 
-a show you've marked as bought is `CONFIRMED` and `OPAQUE`; everything else is `TENTATIVE` and `TRANSPARENT`, so suggestions get greyed out and don't block your free/busy.
+it's served inline with `no-cache` and a one-hour `REFRESH-INTERVAL`, so subscribe to it rather than downloading it. a downloaded copy was right the day you saved it and has been drifting ever since. the calendar button in the ui hands you the url and a `webcal://` handoff.
+
+every entry is `CONFIRMED` and `OPAQUE`, because every entry is something you're actually doing.
+
+times are absolute wherever ticketmaster gave us the instant, so an out-of-town show doesn't render hours out when you read it from home. listings with doors still tba stay floating rather than being given an invented timezone.
+
+the feed reads `purchased` joined to `events` directly, not the scored feeds — a decision you made must not depend on the show still clearing a floor, still sitting inside a trip you might have deleted, or still being in range of a home you might have moved.
 
 ## Buying a ticket
 
@@ -73,3 +83,5 @@ npm --prefix web install && npm --prefix web test
 - affinity is charged once in the score and once again in the driving radius it's measured against, so `shape_home` is deliberately shallow — see the comment on it before making it steeper
 - every artist gets a ticketmaster lookup, but only the top 60 by affinity earn the jambase fall-through. jambase bills past its quota
 - a task that fails *after* a jambase call completes is not retried, because the retry would buy the same listing again. `queue.discarded()` surfaces those instead
+- `queue.enqueue` does **not** move an existing task's due date. planning is re-run on every start, so pulling dates forward would let a redeploy re-arm the whole library and re-buy answers. work that really needs re-arming deletes the tasks (`clear_coverage`) or re-dates them explicitly
+- an artist lookup that came back empty waits a week, not a day. nothing anywhere on earth for six months does not change overnight, and on the gap-fill slice a daily recheck buys the same "nothing" from jambase every morning
