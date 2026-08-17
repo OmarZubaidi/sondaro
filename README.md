@@ -1,4 +1,4 @@
-<!-- cSpell:words pytest -->
+<!-- cSpell:words jambase, pytest, webcal -->
 
 # Sondaro
 
@@ -15,8 +15,6 @@ artists from Lidarr, listening from MusicBrainz. combine the 2 to find concerts 
 ## Configuration
 
 secrets and urls live in `.env`, everything else lives in the database and is edited at `/settings`. env values only seed the database on first run, so after that, editing `.env` needs a redeploy
-
-home comes from home assistant when `HASS_URL` and `HASS_TOKEN` are set — coordinates, name, country and timezone, all from the one `/api/config` call.
 
 ## Trips
 
