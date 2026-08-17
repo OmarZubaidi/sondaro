@@ -31,9 +31,12 @@ const FROM_HOME_ASSISTANT = new Set([
   'home_tz',
 ])
 
-// rendered by hand above the generic list, because a bare 0-to-1 number is a
-// worse control than four named stops
-const HANDLED_SEPARATELY = new Set(['notify_min_score'])
+// Everything about alerts, under the one heading. They were split across two
+// sections purely by how they're drawn: the threshold needs a hand-built
+// control, so it was lifted out and the other two were left behind in the
+// generic list at the bottom, a screen away from the thing they qualify.
+const ALERTS = ['notify_min_score', 'notify_max_per_run', 'mute_until']
+const HANDLED_SEPARATELY = new Set(ALERTS)
 
 export function Settings() {
   const [payload, setPayload] = useState<SettingsPayload | null>(null)
@@ -111,6 +114,19 @@ export function Settings() {
           Health alerts use a separate topic and are never muted by this.
         </div>
       </div>
+
+      {/* the threshold is the headline; how many and until when qualify it */}
+      {ALERTS.slice(1).map((key) => {
+        const spec = byKey(key)
+        return spec ? (
+          <SettingRow
+            key={key}
+            spec={spec}
+            value={draft[key] ?? spec.value}
+            onChange={(value) => edit(key, value)}
+          />
+        ) : null
+      })}
 
       <h2>Calendar</h2>
       <CalendarSubscription tailnetUrl={payload.tailnet_url} />
