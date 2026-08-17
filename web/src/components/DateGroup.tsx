@@ -5,11 +5,12 @@ import { ShowCard } from './ShowCard'
 interface Props {
   date: string
   shows: Show[]
+  onChanged?: () => void
 }
 
 /** Every option for a night is listed, highest scoring first. Nothing is
  *  hidden and nothing is chosen — picking is the user's job. */
-export function DateGroup({ date, shows }: Props) {
+export function DateGroup({ date, shows, onChanged }: Props) {
   const ordered = [...shows].sort((a, b) => b.score - a.score)
 
   return (
@@ -21,7 +22,7 @@ export function DateGroup({ date, shows }: Props) {
         )}
       </h2>
       {ordered.map((show) => (
-        <ShowCard key={show.id} show={show} showDate={false} />
+        <ShowCard key={show.id} show={show} showDate={false} onChanged={onChanged} />
       ))}
     </section>
   )

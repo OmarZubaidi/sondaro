@@ -27,6 +27,7 @@ function makeShow(overrides: Partial<Show> = {}): Show {
     lon: -97.0,
     url: 'https://example.test/1',
     provider: 'ticketmaster',
+  purchased: false,
     ...overrides,
   }
 }
@@ -71,9 +72,13 @@ describe('ShowCard', () => {
     expect(screen.queryByText(/major planning/)).not.toBeInTheDocument()
   })
 
-  it('is not interactive unless a toggle handler is supplied', () => {
+  // the card names itself after the act, so queries say which button they mean
+  const selectButton = () => screen.queryByRole('button', { name: /The National/ })
+  const ticketButton = () => screen.getByRole('button', { name: /bought|going/ })
+
+  it('is not selectable unless a toggle handler is supplied', () => {
     render(<ShowCard show={makeShow()} />)
-    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    expect(selectButton()).not.toBeInTheDocument()
   })
 
   it('toggles selection when tapped', async () => {
@@ -81,14 +86,26 @@ describe('ShowCard', () => {
     const show = makeShow()
     render(<ShowCard show={show} onToggle={onToggle} />)
 
-    await userEvent.click(screen.getByRole('button'))
+    await userEvent.click(selectButton()!)
 
     expect(onToggle).toHaveBeenCalledWith(show)
   })
 
   it('reports its selected state to assistive tech', () => {
     render(<ShowCard show={makeShow()} selected onToggle={() => {}} />)
-    expect(screen.getByRole('button')).toHaveAttribute('aria-pressed', 'true')
+    expect(selectButton()).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('offers to mark a ticket as bought, and says so once it is', () => {
+    render(<ShowCard show={makeShow({ purchased: true })} />)
+
+    expect(ticketButton()).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByText('ticket bought')).toBeInTheDocument()
+  })
+
+  it('labels which trip a show turned up for', () => {
+    render(<ShowCard show={makeShow({ trips: [{ id: 1, name: 'Summer in Europe' }] })} />)
+    expect(screen.getByText('Summer in Europe')).toBeInTheDocument()
   })
 
   it('omits the drive line when there is no drive time', () => {

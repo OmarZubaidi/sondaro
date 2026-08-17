@@ -26,6 +26,7 @@ function show(id: string, artist: string, score: number): Show {
     lon: -95.2,
     url: null,
     provider: 'ticketmaster',
+  purchased: false,
   }
 }
 

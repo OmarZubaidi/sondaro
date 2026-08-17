@@ -1,91 +1,222 @@
-import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api'
-import type { Trip } from '../lib/types'
+import type { Trip, TripsFeed } from '../lib/types'
 import { prettyDate } from '../lib/format'
-import { TripForm, toPayload, type TripFields } from '../components/TripForm'
-
-const BLANK: TripFields = {
-  name: '',
-  countries: '',
-  cities: '',
-  start_date: '',
-  end_date: '',
-  flex_before: 3,
-  flex_after: 3,
-  strict_dates: false,
-}
+import { DateGroup } from '../components/DateGroup'
+import { CheckList } from '../components/CheckList'
+import { TripModal } from '../components/TripModal'
+import { CalendarIcon, EditIcon, IconButton, TrashIcon } from '../components/IconButton'
 
 export function Trips() {
-  const [trips, setTrips] = useState<Trip[] | null>(null)
+  const [feed, setFeed] = useState<TripsFeed | null>(null)
   const [countries, setCountries] = useState<{ code: string; name: string }[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
-  const navigate = useNavigate()
+  const [editing, setEditing] = useState<Trip | 'new' | null>(null)
 
-  useEffect(() => {
-    api.trips().then((data) => setTrips(data.trips)).catch((err) => setError(String(err)))
-    api.countries().then((data) => setCountries(data.countries)).catch(() => setCountries([]))
+  const [tripFilter, setTripFilter] = useState<Set<string>>(new Set())
+  const [countryFilter, setCountryFilter] = useState<Set<string>>(new Set())
+  const [minScore, setMinScore] = useState(0.05)
+
+  const load = useCallback(() => {
+    api
+      .trips()
+      .then(setFeed)
+      .catch((err) => setError(String((err as Error).message ?? err)))
   }, [])
 
-  async function create(fields: TripFields) {
-    setSaving(true)
-    setError(null)
-    try {
-      const trip = await api.createTrip(toPayload(fields))
-      navigate(`/trips/${trip.id}`)
-    } catch (err) {
-      setError(String((err as Error).message ?? err))
-    } finally {
-      setSaving(false)
-    }
+  useEffect(load, [load])
+  useEffect(() => {
+    api.countries().then((d) => setCountries(d.countries)).catch(() => setCountries([]))
+  }, [])
+
+  // Filtering is client-side on purpose: every one of these re-reads data
+  // already on the page, so ticking a box is instant and costs nothing.
+  const dates = useMemo(() => {
+    if (!feed) return []
+    return feed.dates
+      .map((group) => ({
+        date: group.date,
+        shows: group.shows.filter((show) => {
+          if (show.purchased) return true // you're going; no filter applies
+          if (show.score < minScore) return false
+          if (countryFilter.size && !countryFilter.has(show.country ?? '')) return false
+          if (tripFilter.size && !show.trips?.some((t) => tripFilter.has(String(t.id))))
+            return false
+          return true
+        }),
+      }))
+      .filter((group) => group.shows.length > 0)
+  }, [feed, minScore, countryFilter, tripFilter])
+
+  const shown = dates.reduce((sum, group) => sum + group.shows.length, 0)
+
+  const perTrip = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const group of feed?.dates ?? [])
+      for (const show of group.shows)
+        for (const trip of show.trips ?? [])
+          counts.set(String(trip.id), (counts.get(String(trip.id)) ?? 0) + 1)
+    return counts
+  }, [feed])
+
+  const perCountry = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const group of feed?.dates ?? [])
+      for (const show of group.shows)
+        if (show.country) counts.set(show.country, (counts.get(show.country) ?? 0) + 1)
+    return counts
+  }, [feed])
+
+  async function remove(trip: Trip) {
+    if (!window.confirm(`Delete "${trip.name}"?`)) return
+    await api.deleteTrip(trip.id)
+    load()
   }
+
+  if (error) return <div className="note">{error}</div>
+  if (!feed) return <div className="empty">Loading…</div>
 
   return (
     <>
-      <h2>Trips</h2>
-      {error && <div className="note">{error}</div>}
-
-      {trips?.length === 0 && <div className="empty">No trips yet. Add one below.</div>}
-
-      {trips?.map((trip) => (
-        <div className="card" key={trip.id}>
-          <div className="show">
-            <div className="body">
-              <div className="artist">
-                <Link to={`/trips/${trip.id}`}>{trip.name}</Link>
-              </div>
-              <div className="where">
-                {trip.countries.join(' · ')} · {prettyDate(trip.start_date)} to{' '}
-                {prettyDate(trip.end_date)}
-              </div>
-              <div className="chips">
-                {trip.strict_dates ? (
-                  <span className="chip warn">strict dates</span>
-                ) : (
-                  <span className="chip">
-                    ±{trip.flex_before}/{trip.flex_after} days slack
-                  </span>
-                )}
-                {trip.cities.length > 0 ? (
-                  <span className="chip">{trip.cities.join(', ')}</span>
-                ) : (
-                  <span className="chip">no cities named</span>
-                )}
-              </div>
+      <div className="local-layout">
+        <aside className="side">
+          <div className="title-row">
+            <h2>Trips</h2>
+            <div className="actions">
+              <IconButton label="Calendar feed" icon={<CalendarIcon />} href="/sondaro.ics" />
             </div>
           </div>
-        </div>
-      ))}
 
-      <h2>New trip</h2>
-      <TripForm
-        initial={BLANK}
-        countries={countries}
-        submitLabel="Create trip"
-        busy={saving}
-        onSubmit={create}
-      />
+          <button className="primary block" type="button" onClick={() => setEditing('new')}>
+            New trip
+          </button>
+
+          {feed.trips.length > 0 && (
+            <div className="card filters">
+              <div className="inline-field">
+                <label htmlFor="trip-min">Hide anything below</label>
+                <input
+                  id="trip-min"
+                  type="number"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={minScore}
+                  onChange={(e) =>
+                    setMinScore(Math.min(1, Math.max(0, Number(e.target.value) || 0)))
+                  }
+                />
+              </div>
+
+              <CheckList
+                legend="Trips"
+                selected={tripFilter}
+                onChange={setTripFilter}
+                options={feed.trips.map((trip) => ({
+                  value: String(trip.id),
+                  label: trip.name,
+                  count: perTrip.get(String(trip.id)) ?? 0,
+                }))}
+              />
+
+              <CheckList
+                legend="Countries"
+                selected={countryFilter}
+                onChange={setCountryFilter}
+                options={feed.countries.map((c) => ({
+                  value: c.code,
+                  label: c.name,
+                  count: perCountry.get(c.code) ?? 0,
+                }))}
+              />
+            </div>
+          )}
+
+          <div className="side-meta">
+            <span>
+              {feed.trips.length} trip{feed.trips.length === 1 ? '' : 's'}
+            </span>
+            <span>
+              {shown} of {feed.total} shown
+            </span>
+          </div>
+        </aside>
+
+        <div className="feed">
+          {feed.notes.map((note) => (
+            <div className="note" key={note}>
+              {note}
+            </div>
+          ))}
+
+          {feed.trips.length > 0 && (
+            <div className="trip-strip">
+              {feed.trips.map((trip) => (
+                <div className="card trip-card" key={trip.id}>
+                  <div>
+                    <strong>{trip.name}</strong>
+                    <div className="muted">
+                      {prettyDate(trip.start_date)} – {prettyDate(trip.end_date)}
+                    </div>
+                    <div className="chips">
+                      {trip.legs.map((leg) => (
+                        <span
+                          className={`chip${leg.city ? '' : ' info'}`}
+                          key={`${leg.country}:${leg.city ?? ''}`}
+                          title={leg.city ? undefined : 'no city named, so the whole country is in play'}
+                        >
+                          {leg.city ?? leg.country}
+                          {leg.start_date && (
+                            <> · {prettyDate(leg.start_date)}
+                              {leg.end_date && `–${prettyDate(leg.end_date)}`}
+                            </>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="actions">
+                    <IconButton
+                      label={`Edit ${trip.name}`}
+                      icon={<EditIcon />}
+                      onClick={() => setEditing(trip)}
+                    />
+                    <IconButton
+                      label={`Delete ${trip.name}`}
+                      icon={<TrashIcon />}
+                      tone="danger"
+                      onClick={() => remove(trip)}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {feed.trips.length === 0 ? (
+            <div className="empty">No trips yet. Add one and anything worth seeing while
+              you're there turns up here — and in the calendar you already subscribe to.</div>
+          ) : dates.length === 0 ? (
+            <div className="empty">Nothing clears these filters.</div>
+          ) : (
+            dates.map((group) => (
+              <DateGroup key={group.date} date={group.date} shows={group.shows} onChanged={load} />
+            ))
+          )}
+        </div>
+      </div>
+
+      {editing && (
+        <TripModal
+          trip={editing === 'new' ? undefined : editing}
+          countries={countries}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null)
+            load()
+          }}
+        />
+      )}
     </>
   )
 }

@@ -20,6 +20,9 @@ export interface Show {
   lon: number | null
   url: string | null
   provider: string
+  purchased: boolean
+  /** which trips this show turned up for; absent on the local feed */
+  trips?: { id: number; name: string }[]
 }
 
 export interface Quota {
@@ -55,9 +58,19 @@ export interface Status {
   degraded: string[]
 }
 
+/** One country of a trip, optionally narrowed to a city and to dates.
+ *  A country with no city is one you're going to but haven't planned. */
+export interface TripLeg {
+  country: string
+  city: string | null
+  start_date: string | null
+  end_date: string | null
+}
+
 export interface Trip {
   id: number
   name: string
+  legs: TripLeg[]
   countries: string[]
   cities: string[]
   start_date: string
@@ -68,12 +81,21 @@ export interface Trip {
   scanned_at: string | null
 }
 
-export interface TripDetail {
-  trip: Trip
+/** Every trip and everything they turned up, in one feed. */
+export interface TripsFeed {
+  trips: Trip[]
   total: number
   dates: { date: string; shows: Show[] }[]
-  coverage: number
+  countries: { code: string; name: string }[]
   notes: string[]
+}
+
+export interface CitySuggestion {
+  name: string
+  label: string
+  country: string
+  lat: number
+  lon: number
 }
 
 export interface LocalFeed {

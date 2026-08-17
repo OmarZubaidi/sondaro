@@ -1,4 +1,11 @@
-import type { LocalFeed, SettingsPayload, Status, Trip, TripDetail } from './types'
+import type {
+  CitySuggestion,
+  LocalFeed,
+  SettingsPayload,
+  Status,
+  Trip,
+  TripsFeed,
+} from './types'
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
@@ -33,9 +40,7 @@ export const api = {
 
   sync: () => request<{ artists: number }>('/api/sync', { method: 'POST' }),
 
-  trips: () => request<{ trips: Trip[] }>('/api/trips'),
-
-  trip: (id: number) => request<TripDetail>(`/api/trips/${id}`),
+  trips: () => request<TripsFeed>('/api/trips'),
 
   createTrip: (payload: Record<string, unknown>) =>
     request<Trip>('/api/trips', { method: 'POST', body: JSON.stringify(payload) }),
@@ -62,4 +67,15 @@ export const api = {
 
   countries: () =>
     request<{ countries: { code: string; name: string }[] }>('/api/countries'),
+
+  cities: (q: string, countries: string[]) =>
+    request<{ cities: CitySuggestion[] }>(
+      `/api/cities?q=${encodeURIComponent(q)}&countries=${countries.join(',')}`,
+    ),
+
+  setPurchased: (eventId: string, purchased: boolean) =>
+    request<{ id: string; purchased: boolean }>(
+      `/api/shows/${encodeURIComponent(eventId)}/purchased`,
+      { method: 'PUT', body: JSON.stringify({ purchased }) },
+    ),
 }
