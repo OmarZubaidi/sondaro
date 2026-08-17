@@ -168,3 +168,105 @@ async def test_geocoding_without_a_key_returns_nothing(routes, monkeypatch):
     monkeypatch.setattr(config, "ors_api_key", "")
     assert await routing.geocode("Home") == []
     assert routes.calls == []
+
+
+# --------------------------------------------------------------------------
+# the city picker
+# --------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def spain_index(tmp_path, monkeypatch):
+    """Pelias answers in alpha-3 and everything downstream speaks alpha-2, so
+    the picker needs the border index to translate."""
+    from api import borders
+    from scripts import build_borders
+
+    path = tmp_path / "borders.db"
+    build_borders.build(
+        {
+            "features": [
+                {
+                    "properties": {"ISO_A2_EH": "ES", "ISO_A3_EH": "ESP", "NAME_EN": "Spain"},
+                    "geometry": {
+                        "type": "Polygon",
+                        "coordinates": [[[0.0, 40.0], [3.0, 40.0], [3.0, 42.0], [0.0, 40.0]]],
+                    },
+                }
+            ]
+        },
+        path,
+    )
+    monkeypatch.setattr(config, "borders_db", str(path))
+    borders.reset()
+    borders.alpha2_for.cache_clear()
+    yield
+    borders.reset()
+    borders.alpha2_for.cache_clear()
+
+
+PICKER_RESPONSE = {
+    "features": [
+        {
+            "geometry": {"type": "Point", "coordinates": [2.1686, 41.3874]},
+            "properties": {
+                "name": "Barcelona",
+                "label": "Barcelona, Catalonia, Spain",
+                "country_a": "ESP",
+            },
+        }
+    ]
+}
+
+
+async def test_the_picker_narrows_to_cities_in_the_trips_countries(routes, monkeypatch):
+    """Unrestricted, "Barcelona" offers streets and a Barcelona in Venezuela."""
+    monkeypatch.setattr(config, "ors_api_key", "key")
+    routes.add("/geocode/autocomplete", PICKER_RESPONSE)
+
+    results = await routing.search_cities("Barcel", ["ES", "FR"])
+
+    assert results[0]["name"] == "Barcelona"
+    assert results[0]["country"] == "ES"  # alpha-3 in, alpha-2 out
+    url = str(routes.calls[0].url)
+    assert "layers=locality%2Clocaladmin" in url or "layers=locality,localadmin" in url
+    assert "boundary.country=ES%2CFR" in url or "boundary.country=ES,FR" in url
+
+
+async def test_picking_a_city_caches_where_it_is(routes, monkeypatch):
+    """So scoring, which reads places synchronously, never has to look it up."""
+    monkeypatch.setattr(config, "ors_api_key", "key")
+    routes.add("/geocode/autocomplete", PICKER_RESPONSE)
+
+    await routing.search_cities("Barcel", ["ES"])
+
+    assert routing.cached_place("Barcelona") == (41.3874, 2.1686, "ES")
+
+
+async def test_a_deployment_without_autocomplete_falls_back_once(routes, monkeypatch):
+    """A missing path costs a quota call per host per keystroke, and looks
+    exactly like an empty result. Find out once, then stop asking."""
+    monkeypatch.setattr(config, "ors_api_key", "key")
+    routes.add_error("/geocode/autocomplete", 404)
+    routes.add("/geocode/search", PICKER_RESPONSE)
+
+    assert await routing.search_cities("Barcel", ["ES"])
+    tried_first_time = routes.count("/geocode/autocomplete")
+
+    assert await routing.search_cities("Madr", ["ES"])
+    assert routes.count("/geocode/autocomplete") == tried_first_time
+
+
+async def test_the_picker_is_off_without_a_key(routes, monkeypatch):
+    monkeypatch.setattr(config, "ors_api_key", "")
+
+    assert await routing.search_cities("Barcel", ["ES"]) == []
+    assert routes.calls == []
+
+
+async def test_one_character_is_not_a_search(routes, monkeypatch):
+    """Every keystroke is a billable-ish call; a single letter can't be useful."""
+    monkeypatch.setattr(config, "ors_api_key", "key")
+
+    assert await routing.search_cities("B", ["ES"]) == []
+    assert routes.calls == []

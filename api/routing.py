@@ -233,6 +233,38 @@ def remember(name: str, lat: float, lon: float, country: str | None) -> None:
     )
 
 
+_PICKER_ENDPOINT_KEY = "ors_picker_endpoint"
+
+
+async def _search_endpoint(params: dict) -> dict | None:
+    """Autocomplete if this deployment has it, plain search otherwise.
+
+    Autocomplete is the right endpoint for a picker — it matches prefixes, so
+    "Barcel" finds Barcelona. But it isn't on every ORS deployment, and a
+    missing path returns the same `None` as an empty result while still
+    spending a call against a 2,000/day quota, once per host tried, on every
+    keystroke. So the working endpoint is remembered, the same way the working
+    host already is.
+
+    Only recorded when the fallback actually answers, which rules out blaming
+    the endpoint for what was really an exhausted quota.
+    """
+    known = db.get_meta(_PICKER_ENDPOINT_KEY)
+    if known:
+        return await _ors_get(known, params)
+
+    payload = await _ors_get("/geocode/autocomplete", params)
+    if payload is not None:
+        db.set_meta(_PICKER_ENDPOINT_KEY, "/geocode/autocomplete")
+        return payload
+
+    payload = await _ors_get("/geocode/search", params)
+    if payload is not None:
+        log.info("openrouteservice: no autocomplete here, using /geocode/search")
+        db.set_meta(_PICKER_ENDPOINT_KEY, "/geocode/search")
+    return payload
+
+
 async def search_cities(text: str, countries: list[str], limit: int = 8) -> list[dict]:
     """Cities only, inside the countries a trip is actually going to.
 
@@ -252,7 +284,7 @@ async def search_cities(text: str, countries: list[str], limit: int = 8) -> list
     if countries:
         params["boundary.country"] = ",".join(c.upper() for c in countries)
 
-    payload = await _ors_get("/geocode/autocomplete", params)
+    payload = await _search_endpoint(params)
     from . import borders
 
     results = []
