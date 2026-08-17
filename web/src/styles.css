@@ -520,6 +520,11 @@ tbody tr:last-child th {
   margin-bottom: 0;
 }
 
+/* stacked filter cards need a gap, or they read as one panel */
+.filters + .filters {
+  margin-top: 10px;
+}
+
 @media (max-width: 560px) {
   .grid3 {
     grid-template-columns: 1fr;
@@ -729,6 +734,11 @@ main:has(.local-layout) {
   border: none;
   padding: 0;
   margin: 14px 0 0;
+}
+
+/* the gap separates it from the control above; there isn't always one */
+.checklist:first-child {
+  margin-top: 0;
 }
 
 .checklist legend {

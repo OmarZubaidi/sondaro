@@ -90,45 +90,52 @@ export function Trips() {
             New trip
           </button>
 
+          {/* Which trips, then how to narrow them. Picking a trip is closer to
+              navigation than to filtering — it's the first thing you reach for
+              and it belongs next to the button that makes one. */}
           {feed.trips.length > 0 && (
-            <div className="card filters">
-              <div className="inline-field">
-                <label htmlFor="trip-min">Hide anything below</label>
-                <input
-                  id="trip-min"
-                  type="number"
-                  min={0}
-                  max={1}
-                  step={0.05}
-                  value={minScore}
-                  onChange={(e) =>
-                    setMinScore(Math.min(1, Math.max(0, Number(e.target.value) || 0)))
-                  }
+            <>
+              <div className="card filters">
+                <CheckList
+                  legend="Trips"
+                  selected={tripFilter}
+                  onChange={setTripFilter}
+                  options={feed.trips.map((trip) => ({
+                    value: String(trip.id),
+                    label: trip.name,
+                    count: perTrip.get(String(trip.id)) ?? 0,
+                  }))}
                 />
               </div>
 
-              <CheckList
-                legend="Trips"
-                selected={tripFilter}
-                onChange={setTripFilter}
-                options={feed.trips.map((trip) => ({
-                  value: String(trip.id),
-                  label: trip.name,
-                  count: perTrip.get(String(trip.id)) ?? 0,
-                }))}
-              />
+              <div className="card filters">
+                <div className="inline-field">
+                  <label htmlFor="trip-min">Hide anything below</label>
+                  <input
+                    id="trip-min"
+                    type="number"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={minScore}
+                    onChange={(e) =>
+                      setMinScore(Math.min(1, Math.max(0, Number(e.target.value) || 0)))
+                    }
+                  />
+                </div>
 
-              <CheckList
-                legend="Countries"
-                selected={countryFilter}
-                onChange={setCountryFilter}
-                options={feed.countries.map((c) => ({
-                  value: c.code,
-                  label: c.name,
-                  count: perCountry.get(c.code) ?? 0,
-                }))}
-              />
-            </div>
+                <CheckList
+                  legend="Countries"
+                  selected={countryFilter}
+                  onChange={setCountryFilter}
+                  options={feed.countries.map((c) => ({
+                    value: c.code,
+                    label: c.name,
+                    count: perCountry.get(c.code) ?? 0,
+                  }))}
+                />
+              </div>
+            </>
           )}
 
           <div className="side-meta">
