@@ -23,6 +23,7 @@ from . import (
     ics,
     library,
     queue,
+    routing,
     scan,
     settings,
     usage,
@@ -470,6 +471,17 @@ async def api_set_purchased(event_id: str, payload: dict = Body(...)):
     purchased = bool(payload.get("purchased", True))
     scan.set_purchased(event_id, purchased)
     return {"id": event_id, "purchased": purchased}
+
+
+@app.get("/api/cities")
+async def api_cities(
+    q: str = Query(..., min_length=2),
+    countries: str = Query("", description="comma separated ISO-2, from the trip"),
+):
+    """Typeahead for the city picker. A trip names cities from this rather than
+    free text, so every city it holds is one we can already place on a map."""
+    wanted = [c.strip().upper() for c in countries.split(",") if c.strip()]
+    return {"cities": await routing.search_cities(q, wanted)}
 
 
 @app.get("/api/countries")

@@ -215,13 +215,67 @@ async def resolve_place(
     from . import borders
 
     resolved = borders.alpha2_for(best.get("country") or "") or (country or None)
+    remember(name, best["lat"], best["lon"], resolved)
+    return best["lat"], best["lon"], resolved
+
+
+def remember(name: str, lat: float, lon: float, country: str | None) -> None:
+    """Cache a place by the name it was typed as. Scoring reads this
+    synchronously, so anything the picker resolves is free at score time."""
+    key = name.strip().lower()
+    if not key:
+        return
     db.execute(
         "INSERT INTO places(query, lat, lon, country, resolved_at) VALUES(?,?,?,?,?) "
         "ON CONFLICT(query) DO UPDATE SET lat=excluded.lat, lon=excluded.lon, "
         "country=excluded.country, resolved_at=excluded.resolved_at",
-        (name.strip().lower(), best["lat"], best["lon"], resolved, now_iso()),
+        (key, lat, lon, country, now_iso()),
     )
-    return best["lat"], best["lon"], resolved
+
+
+async def search_cities(text: str, countries: list[str], limit: int = 8) -> list[dict]:
+    """Cities only, inside the countries a trip is actually going to.
+
+    Both narrowings matter for the picker: unrestricted, "Barcelona" offers a
+    street and a venue named Barcelona, and a trip to Spain offers Barcelona,
+    Venezuela. Results are cached as places, so picking one costs nothing later
+    when scoring needs its coordinates.
+    """
+    if not (available() and len(text.strip()) >= 2):
+        return []
+
+    params: dict[str, object] = {
+        "text": text.strip(),
+        "size": limit,
+        "layers": "locality,localadmin",
+    }
+    if countries:
+        params["boundary.country"] = ",".join(c.upper() for c in countries)
+
+    payload = await _ors_get("/geocode/autocomplete", params)
+    from . import borders
+
+    results = []
+    for feature in (payload or {}).get("features") or []:
+        coords = (feature.get("geometry") or {}).get("coordinates") or []
+        props = feature.get("properties") or {}
+        name = props.get("name")
+        country = borders.alpha2_for(props.get("country_a") or "")
+        if len(coords) < 2 or not name or not country:
+            continue
+        results.append(
+            {
+                "name": name,
+                # "Lyon, Auvergne-Rhône-Alpes, France" — two Springfields need
+                # telling apart, and the region is how you do it
+                "label": props.get("label") or name,
+                "country": country,
+                "lat": float(coords[1]),
+                "lon": float(coords[0]),
+            }
+        )
+        remember(name, float(coords[1]), float(coords[0]), country)
+    return results
 
 
 async def geocode(text: str, limit: int = 5) -> list[dict]:
