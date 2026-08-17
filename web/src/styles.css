@@ -178,8 +178,10 @@ h2:first-child {
   cursor: pointer;
 }
 
+/* wide enough for a whole YYYY-MM-DD, and never allowed to break one in half */
 .show .when {
-  min-width: 74px;
+  min-width: 10ch;
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
   color: var(--muted);
   font-size: 14px;
@@ -449,9 +451,6 @@ tbody tr:last-child th {
 @media (max-width: 560px) {
   .grid2 {
     grid-template-columns: 1fr;
-  }
-  .show .when {
-    min-width: 62px;
   }
 }
 

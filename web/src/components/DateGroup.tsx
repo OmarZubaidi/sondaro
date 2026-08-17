@@ -1,5 +1,5 @@
 import type { Show } from '../lib/types'
-import { prettyDateLong } from '../lib/format'
+import { isWeekend } from '../lib/format'
 import { ShowCard } from './ShowCard'
 
 interface Props {
@@ -16,7 +16,9 @@ export function DateGroup({ date, shows, onChanged }: Props) {
   return (
     <section>
       <h2>
-        {prettyDateLong(date)}
+        {/* the heading is the date and nothing else; a Friday still reads
+            differently, which is the part of the weekday that changes a plan */}
+        <span className={isWeekend(date) ? 'weekend' : undefined}>{date}</span>
         {ordered.length > 1 && (
           <span className="muted"> · {ordered.length} options</span>
         )}

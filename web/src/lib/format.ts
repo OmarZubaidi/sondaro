@@ -1,25 +1,10 @@
 import type { Show } from './types'
 
-export function prettyDate(iso: string): string {
-  const parsed = new Date(`${iso}T12:00:00`)
-  if (Number.isNaN(parsed.getTime())) return iso
-  return parsed.toLocaleDateString(undefined, {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  })
-}
-
-export function prettyDateLong(iso: string): string {
-  const parsed = new Date(`${iso}T12:00:00`)
-  if (Number.isNaN(parsed.getTime())) return iso
-  return parsed.toLocaleDateString(undefined, {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  })
-}
+/* Dates are rendered as the YYYY-MM-DD the API already sends: sortable,
+ * unambiguous, and the same width everywhere — which matters on a page that is
+ * mostly a column of them. There is nothing left to format, so there is no
+ * formatter; the day of the week survives as `isWeekend`, which is the part of
+ * it that changes a decision. */
 
 export function isWeekend(iso: string): boolean {
   const day = new Date(`${iso}T12:00:00`).getDay()

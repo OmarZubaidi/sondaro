@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { api } from '../lib/api'
 import type { Show } from '../lib/types'
-import { driveTime, isWeekend, place, prettyDate } from '../lib/format'
+import { driveTime, isWeekend, place } from '../lib/format'
 import { FlagChip } from './FlagChip'
 import { ScoreBar } from './ScoreBar'
 
@@ -47,7 +47,7 @@ export function ShowCard({
     <>
       {showDate && (
         <div className="when">
-          <span className={weekend ? 'weekend' : undefined}>{prettyDate(show.date)}</span>
+          <span className={weekend ? 'weekend' : undefined}>{show.date}</span>
           {show.time && (
             <>
               <br />

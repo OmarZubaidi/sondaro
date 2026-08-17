@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api'
 import type { Trip, TripsFeed } from '../lib/types'
-import { prettyDate } from '../lib/format'
 import { DateGroup } from '../components/DateGroup'
 import { CheckList } from '../components/CheckList'
 import { TripModal } from '../components/TripModal'
@@ -156,7 +155,7 @@ export function Trips() {
                   <div>
                     <strong>{trip.name}</strong>
                     <div className="muted">
-                      {prettyDate(trip.start_date)} – {prettyDate(trip.end_date)}
+                      {trip.start_date} – {trip.end_date}
                     </div>
                     <div className="chips">
                       {trip.legs.map((leg) => (
@@ -167,8 +166,8 @@ export function Trips() {
                         >
                           {leg.city ?? leg.country}
                           {leg.start_date && (
-                            <> · {prettyDate(leg.start_date)}
-                              {leg.end_date && `–${prettyDate(leg.end_date)}`}
+                            <> · {leg.start_date}
+                              {leg.end_date && `–${leg.end_date}`}
                             </>
                           )}
                         </span>
