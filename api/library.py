@@ -30,7 +30,8 @@ class Artist:
     name: str
     mbid: str | None
     affinity: float
-    listens: int = 0
+    listens: int = 0  # scrobbles
+    tracks: int = 0  # files on disk in Lidarr
 
 
 async def fetch_listenbrainz_counts() -> dict[str, int]:
@@ -168,6 +169,7 @@ async def sync() -> dict:
                 artist["lidarr_id"],
                 artist["monitored"],
                 listens,
+                artist.get("tracks", 0),
                 scoring.affinity(listens, ceiling),
                 stamp,
             )
@@ -175,11 +177,11 @@ async def sync() -> dict:
 
     db.executemany(
         "INSERT INTO artists(key, mbid, name, lidarr_id, monitored, listens, "
-        "affinity, updated_at) VALUES(?,?,?,?,?,?,?,?) "
+        "tracks, affinity, updated_at) VALUES(?,?,?,?,?,?,?,?,?) "
         "ON CONFLICT(key) DO UPDATE SET mbid=excluded.mbid, name=excluded.name, "
         "lidarr_id=excluded.lidarr_id, monitored=excluded.monitored, "
-        "listens=excluded.listens, affinity=excluded.affinity, "
-        "updated_at=excluded.updated_at",
+        "listens=excluded.listens, tracks=excluded.tracks, "
+        "affinity=excluded.affinity, updated_at=excluded.updated_at",
         rows,
     )
 
@@ -204,6 +206,7 @@ def _row_to_artist(row) -> Artist:
         mbid=row["mbid"],
         affinity=row["affinity"],
         listens=row["listens"] or 0,
+        tracks=row["tracks"] or 0,
     )
 
 

@@ -70,12 +70,17 @@ async def list_artists(monitored_only: bool = True) -> list[dict]:
         monitored = bool(raw.get("monitored", True))
         if monitored_only and not monitored:
             continue
+        # trackFileCount is what's actually on disk, which is the honest answer
+        # to "how much of them do I have" — trackCount includes everything
+        # Lidarr merely knows exists.
+        statistics = raw.get("statistics") or {}
         artists.append(
             {
                 "name": name,
                 "mbid": raw.get("foreignArtistId"),
                 "lidarr_id": raw.get("id"),
                 "monitored": 1 if monitored else 0,
+                "tracks": int(statistics.get("trackFileCount") or 0),
             }
         )
     return artists

@@ -94,6 +94,29 @@ async def test_lidarr_lists_artists(routes, monkeypatch):
     assert [a["name"] for a in everything] == ["The National", "Unmonitored"]
 
 
+async def test_lidarr_reports_how_much_of_an_artist_is_on_disk(routes, monkeypatch):
+    """Files, not the catalogue: trackCount is everything Lidarr knows exists,
+    which says nothing about whether you own any of it."""
+    monkeypatch.setattr(config, "lidarr_api_key", "key")
+    routes.add(
+        "/api/v1/artist",
+        [
+            {
+                "artistName": "Sabaton",
+                "foreignArtistId": "abc",
+                "id": 1,
+                "monitored": True,
+                "statistics": {"trackCount": 300, "trackFileCount": 212},
+            },
+            {"artistName": "Nothing Yet", "foreignArtistId": "def", "id": 2, "monitored": True},
+        ],
+    )
+
+    artists = await lidarr.list_artists()
+
+    assert [a["tracks"] for a in artists] == [212, 0]
+
+
 async def test_lidarr_without_a_key_returns_nothing_rather_than_erroring(routes, monkeypatch):
     monkeypatch.setattr(config, "lidarr_api_key", "")
     assert await lidarr.list_artists() == []

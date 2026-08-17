@@ -26,7 +26,8 @@ CREATE TABLE IF NOT EXISTS artists (
     name        TEXT NOT NULL,
     lidarr_id   INTEGER,
     monitored   INTEGER DEFAULT 1,
-    listens     INTEGER DEFAULT 0,
+    listens     INTEGER DEFAULT 0,   -- scrobbles, from ListenBrainz or Last.fm
+    tracks      INTEGER DEFAULT 0,   -- files on disk, from Lidarr
     affinity    REAL    DEFAULT 0.25,
     updated_at  TEXT
 );
@@ -232,6 +233,10 @@ def _migrate(conn: sqlite3.Connection) -> None:
     # fill in on their next refresh.
     if "starts_at" not in {row["name"] for row in conn.execute("PRAGMA table_info(events)")}:
         conn.execute("ALTER TABLE events ADD COLUMN starts_at TEXT")
+
+    # Track counts arrived later too, and the next library sync fills them in.
+    if "tracks" not in {row["name"] for row in conn.execute("PRAGMA table_info(artists)")}:
+        conn.execute("ALTER TABLE artists ADD COLUMN tracks INTEGER DEFAULT 0")
 
     # Trips used to hold comma-separated countries and cities in two columns,
     # which couldn't say *when* you'd be in a city or which country a city
