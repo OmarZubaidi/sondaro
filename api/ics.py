@@ -42,8 +42,14 @@ def _fold(line: str) -> str:
     return "\r\n ".join(chunks)
 
 
-def build(candidates, calendar_name: str) -> str:
-    """`candidates` are `scan.Candidate`s, already filtered by the caller."""
+def build(candidates, calendar_name: str, purchased: set[str] | None = None) -> str:
+    """`candidates` are `scan.Candidate`s, already filtered by the caller.
+
+    A show you hold a ticket for is a real commitment; everything else is a
+    suggestion. RFC 5545 has words for exactly that distinction, and calendar
+    apps grey out a TENTATIVE event, so the two don't look alike at a glance.
+    """
+    purchased = purchased or set()
     lines = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
@@ -69,6 +75,8 @@ def build(candidates, calendar_name: str) -> str:
         end_dt = start_dt + DEFAULT_LENGTH
 
         description = []
+        if event.id in purchased:
+            description.append("ticket bought")
         if candidate.score.drive_hours is not None:
             estimated = "estimated " if "estimated drive time" in candidate.score.flags else ""
             description.append(f"{candidate.score.drive_hours:.1f}h {estimated}drive")
@@ -92,7 +100,12 @@ def build(candidates, calendar_name: str) -> str:
         ]
         if event.url:
             lines.append(_fold(f"URL:{event.url}"))
-        lines += ["STATUS:CONFIRMED", "END:VEVENT"]
+        held = event.id in purchased
+        lines += [
+            f"STATUS:{'CONFIRMED' if held else 'TENTATIVE'}",
+            f"TRANSP:{'OPAQUE' if held else 'TRANSPARENT'}",
+            "END:VEVENT",
+        ]
 
     lines.append("END:VCALENDAR")
     return "\r\n".join(lines) + "\r\n"

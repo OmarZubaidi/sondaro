@@ -131,6 +131,13 @@ CREATE TABLE IF NOT EXISTS trip_legs (
 );
 CREATE INDEX IF NOT EXISTS trip_legs_trip ON trip_legs(trip_id);
 
+-- Tickets you've actually bought. Separate from `events` because that table is
+-- a provider cache that ingest rewrites; a decision you made must outlive it.
+CREATE TABLE IF NOT EXISTS purchased (
+    event_id  TEXT PRIMARY KEY,
+    marked_at TEXT
+);
+
 CREATE TABLE IF NOT EXISTS notified (
     event_id TEXT PRIMARY KEY,
     sent_at  TEXT

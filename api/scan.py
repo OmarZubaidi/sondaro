@@ -215,13 +215,14 @@ def local_candidates(overrides: dict | None = None) -> list[Candidate]:
     if floor is None:
         floor = settings.get("min_score")
     away = away_windows()
+    bought = purchased_ids()
     candidates: list[Candidate] = []
 
     for row in rows:
         day = parse_date(row["date"])
         if day is None or row["lat"] is None:
             continue
-        if is_away(day, away):
+        if is_away(day, away) and row["id"] not in bought:
             continue  # you're on a trip; you cannot be at this show
 
         dest_key = routing.point_key(row["lat"], row["lon"])
@@ -238,7 +239,9 @@ def local_candidates(overrides: dict | None = None) -> list[Candidate]:
             listens=row["listens"] or 0,
             base_hours=_base_hours(day, overrides),
         )
-        if score.total < floor:
+        # a ticket you've bought is never filtered away: the score is advice
+        # about whether to go, and you've already decided
+        if score.total < floor and row["id"] not in bought:
             continue
         candidates.append(_candidate(row, score))
 
@@ -382,6 +385,7 @@ def trip_candidates(trip) -> list[Candidate]:
     border_base = settings.get("trip_border_base_miles")
     home = settings.home_country()
     anchored = anchored_countries(legs)
+    bought = purchased_ids()
 
     rows = db.query(
         "SELECT e.*, a.affinity, a.listens "
@@ -470,7 +474,7 @@ def trip_candidates(trip) -> list[Candidate]:
             border_base_miles=border_base,
             country_floor=not at_home_country,
         )
-        if score.total < scoring.TRIP_FLOOR:
+        if score.total < scoring.TRIP_FLOOR and row["id"] not in bought:
             continue
         candidates.append(_candidate(row, score))
 
@@ -507,10 +511,34 @@ def _candidate(row, score: scoring.Score) -> Candidate:
     )
 
 
-def serialise(candidate: Candidate) -> dict:
+def purchased_ids() -> set[str]:
+    return {row["event_id"] for row in db.query("SELECT event_id FROM purchased")}
+
+
+def is_purchased(event_id: str) -> bool:
+    return (
+        db.query_one("SELECT 1 FROM purchased WHERE event_id = ?", (event_id,))
+        is not None
+    )
+
+
+def set_purchased(event_id: str, purchased: bool) -> bool:
+    if purchased:
+        db.execute(
+            "INSERT INTO purchased(event_id, marked_at) VALUES(?,?) "
+            "ON CONFLICT(event_id) DO NOTHING",
+            (event_id, now_iso()),
+        )
+    else:
+        db.execute("DELETE FROM purchased WHERE event_id = ?", (event_id,))
+    return purchased
+
+
+def serialise(candidate: Candidate, purchased: set[str] | None = None) -> dict:
     event = candidate.event
     score = candidate.score
     return {
+        "purchased": event.id in purchased if purchased is not None else is_purchased(event.id),
         "id": event.id,
         "artist": candidate.artist.name,
         "listens": candidate.artist.listens,

@@ -109,11 +109,12 @@ async def api_local(
         }
     )
 
+    bought = scan.purchased_ids()
     by_month: dict[str, list] = {}
     for candidate in candidates:
         day = parse_date(candidate.event.date)
         bucket = day.strftime("%B %Y") if day else "unknown"
-        by_month.setdefault(bucket, []).append(scan.serialise(candidate))
+        by_month.setdefault(bucket, []).append(scan.serialise(candidate, bought))
 
     return {
         "total": len(candidates),
@@ -182,10 +183,11 @@ async def api_trips():
     # An event can sit inside two trips — overlapping dates, or the same
     # country twice. It's still one show, so it's one card carrying both
     # labels, scored by whichever trip makes the better case for it.
+    bought = scan.purchased_ids()
     merged: dict[str, dict] = {}
     for row, summary in zip(rows, trips):
         for candidate in scan.trip_candidates(row):
-            shown = scan.serialise(candidate)
+            shown = scan.serialise(candidate, bought)
             existing = merged.get(shown["id"])
             if existing is None:
                 shown["trips"] = [{"id": summary["id"], "name": summary["name"]}]
@@ -457,6 +459,19 @@ async def api_patch_settings(payload: dict = Body(...)):
     return {"updated": updated}
 
 
+@app.put("/api/shows/{event_id}/purchased")
+async def api_set_purchased(event_id: str, payload: dict = Body(...)):
+    """Mark a ticket as bought.
+
+    Deliberately accepts an id we've never seen: the events table is a provider
+    cache that gets swept and rewritten, and a decision you made shouldn't be
+    refused because the listing behind it has aged out.
+    """
+    purchased = bool(payload.get("purchased", True))
+    scan.set_purchased(event_id, purchased)
+    return {"id": event_id, "purchased": purchased}
+
+
 @app.get("/api/countries")
 async def api_countries():
     return {"countries": borders.known_countries()}
@@ -469,7 +484,7 @@ async def api_countries():
 
 def _calendar_response(candidates, name: str) -> Response:
     return Response(
-        content=ics.build(candidates, name),
+        content=ics.build(candidates, name, purchased=scan.purchased_ids()),
         media_type="text/calendar; charset=utf-8",
         headers={
             "Cache-Control": "public, max-age=1800",
