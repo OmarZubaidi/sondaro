@@ -24,6 +24,11 @@ CITY_RADIUS_MILES = 75.0  # a metro area, for home-country trip cities
 # day, spending them on the long tail would leave nothing for the artists you'd
 # actually cross a country for.
 GAP_FILL_ARTISTS = 60
+# An artist with no listing anywhere on earth for the next six months is not
+# going to sprout one overnight, and for the gap-fill slice asking again
+# tomorrow buys the identical "nothing" from JamBase a second time. Only a run
+# that actually found something earns the near-term cadence.
+EMPTY_RECHECK_DAYS = 7
 
 
 class Worker:
@@ -212,7 +217,12 @@ class Worker:
             queue.complete(task, next_due=queue.reschedule_for(start), error=repr(exc))
             return
 
-        queue.complete(task, next_due=queue.reschedule_for(start))
+        queue.complete(
+            task,
+            next_due=queue.reschedule_for(start)
+            if events
+            else datetime.now(timezone.utc) + timedelta(days=EMPTY_RECHECK_DAYS),
+        )
 
     async def _route_lookup(self, task: queue.Task) -> None:
         origin = tuple(task.params["origin"])
@@ -326,7 +336,17 @@ def bootstrap() -> None:
     """Seed the queue. Idempotent, so it runs on every start."""
     settings.seed()
     lat, lon = settings.home()
-    queue.enqueue(queue.LIBRARY_SYNC, "library:sync", {}, priority=5.0)
+    # the one task that *should* run on every start: it costs nothing (Lidarr is
+    # on the LAN, the scrobble APIs are free) and everything else is ranked by
+    # the affinity it produces. Explicit, because enqueue otherwise leaves a
+    # scheduled task where it is.
+    queue.enqueue(
+        queue.LIBRARY_SYNC,
+        "library:sync",
+        {},
+        priority=5.0,
+        due_at=datetime.now(timezone.utc),
+    )
     slices = queue.plan_local(lat, lon, settings.get("home_horizon_days"), LOCAL_RADIUS_MILES)
 
     for row in db.query("SELECT * FROM trips WHERE end_date >= ?", (today().isoformat(),)):

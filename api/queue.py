@@ -99,16 +99,29 @@ def enqueue(
     due_at: datetime | None = None,
 ) -> None:
     """Idempotent. Re-enqueuing a pending task keeps the more urgent of the two
-    rather than duplicating it — a trip created twice must not double the work."""
+    rather than duplicating it — a trip created twice must not double the work.
+
+    A task that already exists **keeps its own due date** unless `due_at` is
+    passed explicitly. Planning is re-run constantly — on every start, every
+    library sync, every settings change — and it used to pull each task forward
+    to now, which quietly replaced the whole refresh cadence with "whenever the
+    container restarts". A redeploy re-armed the entire library at once, and
+    for the gap-fill slice that means re-buying JamBase answers we already had.
+
+    Work that genuinely needs re-arming says so: `clear_coverage` deletes the
+    tasks outright, and `_library_sync` re-dates the sweeps by hand when the
+    roster changes.
+    """
+    explicit = due_at is not None
     when = (due_at or datetime.now(timezone.utc)).isoformat(timespec="seconds")
     db.execute(
         "INSERT INTO fetch_tasks(kind, task_key, params, priority, due_at) "
         "VALUES(?,?,?,?,?) "
         "ON CONFLICT(task_key) DO UPDATE SET "
         "  priority = MAX(priority, excluded.priority), "
-        "  due_at = MIN(due_at, excluded.due_at), "
+        "  due_at = CASE WHEN ? THEN MIN(due_at, excluded.due_at) ELSE due_at END, "
         "  params = excluded.params",
-        (kind, task_key, db.json_dumps(params), priority, when),
+        (kind, task_key, db.json_dumps(params), priority, when, 1 if explicit else 0),
     )
 
 
