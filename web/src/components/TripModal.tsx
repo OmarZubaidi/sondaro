@@ -261,30 +261,30 @@ export function TripModal({ trip, countries, onClose, onSaved }: Props) {
               <span style={{ color: 'var(--text)' }}>Dates are booked and immovable</span>
             </label>
 
+            {/* Two full-width number fields under two full-width labels made
+                three days of wiggle room look like a major setting. It reads
+                as the sentence it is instead. */}
             {!draft.strict_dates && (
-              <div className="grid2">
-                <div>
-                  <label htmlFor="flex-before">Days of slack before</label>
-                  <input
-                    id="flex-before"
-                    type="number"
-                    min={0}
-                    max={30}
-                    value={draft.flex_before}
-                    onChange={(e) => set('flex_before', Number(e.target.value))}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="flex-after">Days of slack after</label>
-                  <input
-                    id="flex-after"
-                    type="number"
-                    min={0}
-                    max={30}
-                    value={draft.flex_after}
-                    onChange={(e) => set('flex_after', Number(e.target.value))}
-                  />
-                </div>
+              <div className="slack">
+                <label htmlFor="flex-before">Could shift</label>
+                <input
+                  id="flex-before"
+                  type="number"
+                  min={0}
+                  max={30}
+                  value={draft.flex_before}
+                  onChange={(e) => set('flex_before', Number(e.target.value))}
+                />
+                <span>days earlier, or</span>
+                <input
+                  id="flex-after"
+                  type="number"
+                  min={0}
+                  max={30}
+                  value={draft.flex_after}
+                  onChange={(e) => set('flex_after', Number(e.target.value))}
+                />
+                <label htmlFor="flex-after">days later</label>
               </div>
             )}
           </div>

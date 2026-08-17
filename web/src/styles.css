@@ -926,6 +926,29 @@ main:has(.local-layout) {
   margin-top: 5px;
 }
 
+/* "Could shift [3] days earlier, or [3] days later" — a sentence, so the
+   fields are only as wide as the number they hold */
+.slack {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.slack label {
+  display: inline;
+  margin: 0;
+  font-size: inherit;
+  color: inherit;
+}
+
+.slack input[type='number'] {
+  width: 5.5rem;
+  flex: none;
+}
+
 /* per-city dates */
 .legs {
   display: grid;
