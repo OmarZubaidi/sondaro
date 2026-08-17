@@ -566,6 +566,9 @@ async def calendar():
                 date=row["date"],
                 time=row["time"],
                 starts_at=row["starts_at"],
+                end_date=row["end_date"],
+                end_time=row["end_time"],
+                ends_at=row["ends_at"],
                 where=", ".join(
                     part
                     for part in (row["venue"], row["city"], row["region"], row["country"])

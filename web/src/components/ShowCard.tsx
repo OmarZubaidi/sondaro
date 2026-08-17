@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { api } from '../lib/api'
 import type { Show } from '../lib/types'
-import { driveTime, isWeekend, place } from '../lib/format'
+import { driveTime, isWeekend, place, timeRange } from '../lib/format'
 import { FlagChip } from './FlagChip'
 import { ScoreBar } from './ScoreBar'
 
@@ -22,6 +22,7 @@ export function ShowCard({
   onChanged,
 }: Props) {
   const drive = driveTime(show)
+  const hours = timeRange(show)
   const weekend = isWeekend(show.date)
   const interactive = Boolean(onToggle)
   // optimistic: the round trip is a single row write, and waiting on it makes
@@ -48,10 +49,10 @@ export function ShowCard({
       {showDate && (
         <div className="when">
           <span className={weekend ? 'weekend' : undefined}>{show.date}</span>
-          {show.time && (
+          {hours && (
             <>
               <br />
-              <span className="muted">{show.time}</span>
+              <span className="muted hours">{hours}</span>
             </>
           )}
         </div>

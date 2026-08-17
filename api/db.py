@@ -56,6 +56,12 @@ CREATE TABLE IF NOT EXISTS events (
     -- read from a phone at home is 8pm at home, which is the wrong evening's
     -- worth of hours out.
     starts_at    TEXT,               -- ISO 8601 with an offset, nullable
+    -- When it's over, in the same three shapes, and all nullable for the same
+    -- reason: most listings never say. NULL means unknown, so anything that
+    -- needs a length assumes one rather than reading a missing end as zero.
+    end_date     TEXT,               -- YYYY-MM-DD, venue-local; later for a festival
+    end_time     TEXT,               -- HH:MM, venue-local
+    ends_at      TEXT,               -- ISO 8601 with an offset
     venue        TEXT,
     city         TEXT,
     region       TEXT,
@@ -233,6 +239,14 @@ def _migrate(conn: sqlite3.Connection) -> None:
     # fill in on their next refresh.
     if "starts_at" not in {row["name"] for row in conn.execute("PRAGMA table_info(events)")}:
         conn.execute("ALTER TABLE events ADD COLUMN starts_at TEXT")
+
+    # End times arrived later still, and fill in the same way: on the next
+    # refresh of each listing. Until then the row reads "unknown", which is
+    # what it was before the columns existed.
+    event_columns = {row["name"] for row in conn.execute("PRAGMA table_info(events)")}
+    for column in ("end_date", "end_time", "ends_at"):
+        if column not in event_columns:
+            conn.execute(f"ALTER TABLE events ADD COLUMN {column} TEXT")
 
     # Track counts arrived later too, and the next library sync fills them in.
     if "tracks" not in {row["name"] for row in conn.execute("PRAGMA table_info(artists)")}:

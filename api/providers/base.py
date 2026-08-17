@@ -16,6 +16,12 @@ class Event:
     # the same moment as an absolute instant, when the provider hands one over.
     # Only this can be put in a calendar without guessing the venue's zone.
     starts_at: str | None = None  # ISO 8601 with an offset
+    # When it's over, in the same three shapes. Mostly absent — a promoter
+    # publishes an end for a festival and rarely for a club night — so an
+    # unset end means "unknown", never "same evening".
+    end_date: str | None = None  # YYYY-MM-DD, venue-local; a later day for a festival
+    end_time: str | None = None  # HH:MM, venue-local
+    ends_at: str | None = None  # ISO 8601 with an offset
     venue: str | None = None
     city: str | None = None
     region: str | None = None

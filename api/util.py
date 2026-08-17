@@ -3,11 +3,17 @@ naive `datetime.utcnow()` — every stored timestamp is timezone-aware UTC, and
 every user-facing date is rendered in the configured local zone.
 """
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from functools import lru_cache
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 _UTC = timezone.utc
+
+# How long a show runs when nobody has said. Providers publish an end for
+# festivals and almost never for a club night, so this is the assumption behind
+# both the calendar block and the end time on a card — one number, in one
+# place, so the two can never disagree.
+SET_LENGTH = timedelta(hours=3)
 
 
 @lru_cache(maxsize=8)
@@ -55,6 +61,22 @@ def parse_iso(value: str | None) -> datetime | None:
     except ValueError:
         return None
     return parsed if parsed.tzinfo else parsed.replace(tzinfo=_UTC)
+
+
+def shift_clock(clock: str | None, delta: timedelta) -> tuple[str, int] | None:
+    """`("22:30", 0)` — an HH:MM clock moved by `delta`, plus how many days it
+    rolled over. None when the clock is missing or unparseable.
+
+    Deliberately zone-free: a set is the same three hours long whatever the
+    venue's offset, and adding them needs no timezone. The rollover count is
+    what stops a 23:00 doors quietly ending at 02:00 the same morning.
+    """
+    try:
+        base = datetime.strptime((clock or "").strip(), "%H:%M")
+    except (ValueError, TypeError):
+        return None
+    moved = base + delta
+    return moved.strftime("%H:%M"), (moved.date() - base.date()).days
 
 
 def parse_date(value: str | None) -> date | None:

@@ -16,7 +16,7 @@ from . import borders, db, geo, queue, routing, scoring, settings
 from .library import Artist
 from .match import event_key, normalize, split_billing
 from .providers.base import Event
-from .util import now_iso, parse_date, today
+from .util import SET_LENGTH, now_iso, parse_date, shift_clock, today
 
 log = logging.getLogger("sondaro.scan")
 
@@ -107,6 +107,9 @@ def ingest(events: list[Event], artists: list[Artist]) -> tuple[int, int]:
             "date": event.date,
             "time": _text(event.time),
             "starts_at": _text(event.starts_at),
+            "end_date": _text(event.end_date),
+            "end_time": _text(event.end_time),
+            "ends_at": _text(event.ends_at),
             "venue": venue,
             "city": city,
             "region": _text(event.region),
@@ -120,11 +123,15 @@ def ingest(events: list[Event], artists: list[Artist]) -> tuple[int, int]:
 
     db.executemany(
         "INSERT INTO events(id, provider, artist_key, artist_name, title, date, time, "
-        "starts_at, venue, city, region, country, lat, lon, url, first_seen, last_seen) "
+        "starts_at, end_date, end_time, ends_at, venue, city, region, country, lat, lon, "
+        "url, first_seen, last_seen) "
         "VALUES(:id,:provider,:artist_key,:artist_name,:title,:date,:time,:starts_at,"
+        ":end_date,:end_time,:ends_at,"
         ":venue,:city,:region,:country,:lat,:lon,:url,:first_seen,:last_seen) "
         "ON CONFLICT(id) DO UPDATE SET date=excluded.date, time=excluded.time, "
-        "starts_at=excluded.starts_at, venue=excluded.venue, city=excluded.city, "
+        "starts_at=excluded.starts_at, end_date=excluded.end_date, "
+        "end_time=excluded.end_time, ends_at=excluded.ends_at, "
+        "venue=excluded.venue, city=excluded.city, "
         "url=excluded.url, last_seen=excluded.last_seen",
         rows.values(),
     )
@@ -497,6 +504,9 @@ def _candidate(row, score: scoring.Score) -> Candidate:
             date=row["date"],
             time=row["time"],
             starts_at=row["starts_at"],
+            end_date=row["end_date"],
+            end_time=row["end_time"],
+            ends_at=row["ends_at"],
             venue=row["venue"],
             city=row["city"],
             region=row["region"],
@@ -540,9 +550,37 @@ def set_purchased(event_id: str, purchased: bool) -> bool:
     return purchased
 
 
+def ends(event: Event) -> tuple[str | None, str | None, bool]:
+    """When a show is over: `(HH:MM, YYYY-MM-DD or None, estimated)`.
+
+    The date is only filled in when the show doesn't end on the day it starts —
+    a curfew past midnight, or a festival running for three days — because
+    repeating the start date under the start date tells you nothing.
+
+    Providers publish an end for a minority of listings, so the rest get the
+    same set length the calendar has always assumed. That estimate is *flagged*
+    rather than presented as fact: `~23:00` is a useful thing to plan a drive
+    home around, `23:00` would be a claim we can't make. A listing whose doors
+    are still TBA gets no end at all — there's nothing to add three hours to.
+    """
+    if event.end_time:
+        differs = event.end_date and event.end_date != event.date
+        return event.end_time, event.end_date if differs else None, False
+
+    moved = shift_clock(event.time, SET_LENGTH)
+    if moved is None:
+        return None, None, False
+
+    clock, rollover = moved
+    day = parse_date(event.date)
+    later = (day + timedelta(days=rollover)).isoformat() if day and rollover else None
+    return clock, later, True
+
+
 def serialise(candidate: Candidate, purchased: set[str] | None = None) -> dict:
     event = candidate.event
     score = candidate.score
+    end_time, end_date, end_estimated = ends(event)
     return {
         "purchased": event.id in purchased if purchased is not None else is_purchased(event.id),
         "id": event.id,
@@ -558,6 +596,10 @@ def serialise(candidate: Candidate, purchased: set[str] | None = None) -> dict:
         "miles": score.miles,
         "date": event.date,
         "time": event.time,
+        "end_time": end_time,
+        # only when it isn't the start date — see `ends`
+        "end_date": end_date,
+        "end_estimated": end_estimated,
         "venue": event.venue,
         "city": event.city,
         "region": event.region,

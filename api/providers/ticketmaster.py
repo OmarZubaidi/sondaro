@@ -40,12 +40,32 @@ def _iso(day: date, end: bool = False) -> str:
     return f"{day.isoformat()}T{'23:59:59' if end else '00:00:00'}Z"
 
 
+def _end(dates: dict) -> tuple[str | None, str | None, str | None]:
+    """(end_date, end_time, ends_at) from `dates.end`, all None when absent.
+
+    Discovery carries an end for multi-day runs and for anything the promoter
+    bothered to state a curfew for; most listings have none at all. It also
+    sets `noSpecificTime` when the block is a whole day rather than a time,
+    which is a date masquerading as an end and no use as one.
+    """
+    end = dates.get("end") or {}
+    if not end or end.get("noSpecificTime"):
+        return None, None, None
+    clock = (end.get("localTime") or "")[:5] or None
+    if not clock:
+        return None, None, None
+    return as_text(end.get("localDate")), clock, as_text(end.get("dateTime"))
+
+
 def parse_event(raw: dict) -> Event | None:
     event_id = raw.get("id")
-    start = (raw.get("dates") or {}).get("start") or {}
+    dates = raw.get("dates") or {}
+    start = dates.get("start") or {}
     day = start.get("localDate")
     if not event_id or not day:
         return None
+
+    end_date, end_time, ends_at = _end(dates)
 
     embedded = raw.get("_embedded") or {}
     venues = embedded.get("venues") or []
@@ -73,6 +93,9 @@ def parse_event(raw: dict) -> Event | None:
         # clock, and omits it when the time is still TBA. Taking it means the
         # calendar never has to guess a venue's timezone.
         starts_at=as_text(start.get("dateTime")),
+        end_date=end_date,
+        end_time=end_time,
+        ends_at=ends_at,
         venue=venue.get("name"),
         city=(venue.get("city") or {}).get("name"),
         region=(venue.get("state") or {}).get("stateCode")

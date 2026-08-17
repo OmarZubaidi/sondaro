@@ -64,3 +64,40 @@ def test_a_collision_prefers_the_row_already_named_local():
     assert len(rows) == 1
     assert rows[0]["scope_key"] == "local:1,2"
     assert rows[0]["fetched_at"] == "new"
+
+
+def _drop_end_columns() -> None:
+    """An event cache from before shows had an end."""
+    with db.cursor() as cur:
+        for column in ("end_date", "end_time", "ends_at"):
+            cur.execute(f"ALTER TABLE events DROP COLUMN {column}")
+
+
+def test_an_older_event_cache_gains_the_end_columns_without_being_refetched():
+    """Every cached listing predates these columns. Rebuilding the cache to
+    fill them in would spend the API calls this whole migration exists to
+    protect, so they arrive empty and fill on the next refresh."""
+    db.execute(
+        "INSERT INTO events(id, provider, artist_name, date, time) "
+        "VALUES('ticketmaster:tm1', 'ticketmaster', 'Sabaton', '2026-09-10', '19:30')"
+    )
+    _drop_end_columns()
+
+    db.close()
+    db.connect()  # runs the migration
+
+    row = db.query_one("SELECT * FROM events WHERE id = 'ticketmaster:tm1'")
+    assert row["time"] == "19:30", "the listing itself must survive untouched"
+    assert (row["end_date"], row["end_time"], row["ends_at"]) == (None, None, None)
+
+
+def test_adding_the_end_columns_twice_is_harmless():
+    _drop_end_columns()
+
+    db.close()
+    db.connect()
+    db.close()
+    db.connect()
+
+    columns = {row["name"] for row in db.query("PRAGMA table_info(events)")}
+    assert {"end_date", "end_time", "ends_at"} <= columns

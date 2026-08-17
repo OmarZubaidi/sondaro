@@ -64,6 +64,12 @@ def parse_event(raw: dict) -> Event | None:
     if not day:
         return None
 
+    # schema.org endDate, same shape as startDate and just as optional. Like
+    # the start, no absolute instant is taken from it: these stamps are not
+    # reliably offset-bearing, and a made-up zone is worse than a floating one.
+    end_stamp = str(raw.get("endDate") or "")
+    end_day, _, end_clock = end_stamp.partition("T")
+
     venue = raw.get("location") or raw.get("venue") or {}
     address = venue.get("address") or {}
     geo = venue.get("geo") or {}
@@ -82,6 +88,8 @@ def parse_event(raw: dict) -> Event | None:
         title=title,
         date=day[:10],
         time=(clock[:5] or None),
+        end_date=(end_day[:10] or None),
+        end_time=(end_clock[:5] or None),
         # every one of these is a string *or* an object in JSON-LD, so none of
         # them may be taken at face value
         venue=as_text(venue.get("name")),

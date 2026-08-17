@@ -159,6 +159,54 @@ def test_a_listing_with_the_time_still_tba_has_no_instant():
     assert ticketmaster.parse_event(tm_event()).starts_at is None
 
 
+def test_ticketmaster_keeps_a_published_end():
+    """A curfew the promoter actually stated beats any assumption about it."""
+    raw = tm_event()
+    raw["dates"]["end"] = {
+        "localDate": "2026-09-10",
+        "localTime": "23:00:00",
+        "dateTime": "2026-09-11T03:00:00Z",
+    }
+
+    parsed = ticketmaster.parse_event(raw)
+
+    assert parsed.end_time == "23:00"
+    assert parsed.end_date == "2026-09-10"
+    assert parsed.ends_at == "2026-09-11T03:00:00Z"
+
+
+def test_ticketmaster_keeps_the_last_day_of_a_festival():
+    """A multi-day run ends on a different date than it starts, and losing that
+    would compress three days into one evening."""
+    raw = tm_event()
+    raw["dates"]["end"] = {"localDate": "2026-09-13", "localTime": "22:00:00"}
+
+    parsed = ticketmaster.parse_event(raw)
+
+    assert parsed.date == "2026-09-10"
+    assert parsed.end_date == "2026-09-13"
+
+
+def test_a_listing_with_no_stated_end_has_none():
+    """Most of them. The assumption about how long a show runs is made once,
+    downstream, where it can be labelled as one."""
+    parsed = ticketmaster.parse_event(tm_event())
+    assert (parsed.end_date, parsed.end_time, parsed.ends_at) == (None, None, None)
+
+
+def test_an_all_day_end_is_not_an_end():
+    """`noSpecificTime` marks a date pretending to be a time. Reading 00:00 off
+    it would end the show before it started."""
+    raw = tm_event()
+    raw["dates"]["end"] = {
+        "localDate": "2026-09-10",
+        "localTime": "00:00:00",
+        "noSpecificTime": True,
+    }
+
+    assert ticketmaster.parse_event(raw).end_time is None
+
+
 async def test_sweep_walks_the_window_in_chunks(routes, monkeypatch):
     monkeypatch.setattr(config, "ticketmaster_api_key", "key")
     routes.add("/events.json", tm_page([tm_event()]))
@@ -314,6 +362,19 @@ async def test_jambase_parses_a_listing():
     assert parsed.date == "2026-09-12"
     assert parsed.country == "US"
     assert parsed.mbid is None  # External Identifiers are not on this tier
+    assert parsed.end_time is None  # this listing never stated one
+
+
+def test_jambase_takes_the_schema_org_end_date():
+    parsed = jambase.parse_event(
+        {
+            "identifier": "jb99",
+            "startDate": "2026-09-12T20:30",
+            "endDate": "2026-09-13T01:00",
+            "performer": [{"name": "Palehound"}],
+        }
+    )
+    assert (parsed.end_date, parsed.end_time) == ("2026-09-13", "01:00")
 
 
 def _listing_in(country) -> dict:

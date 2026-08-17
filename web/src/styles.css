@@ -201,6 +201,15 @@ h2:first-child {
   color: var(--good);
 }
 
+/* `20:00 – ~23:00` fits on one line; the rare multi-day festival carries an end
+   date too, and is allowed to wrap rather than widen the column for every
+   card that doesn't need it */
+.show .when .hours {
+  display: inline-block;
+  max-width: 14ch;
+  white-space: normal;
+}
+
 .show .body {
   flex: 1;
   min-width: 0;

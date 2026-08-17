@@ -14,15 +14,20 @@ time is the obvious-looking choice and it's wrong: it renders in whatever zone
 the *reader* is in, so a Toronto show read from a phone at home shows up hours
 out. Only listings whose doors are still TBA stay floating, since the
 alternative is inventing a time.
+
+The end works the same way, with one extra fallback: when a provider published
+one it is used exactly, and otherwise the block is `SET_LENGTH` long. A
+three-day festival that ends when it says it ends must not be a three-hour
+block on its first evening.
 """
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
-from .util import parse_date, parse_iso
+from .util import SET_LENGTH, parse_date, parse_iso
 
 DEFAULT_DOORS = "19:30"
-DEFAULT_LENGTH = timedelta(hours=3)
+DEFAULT_LENGTH = SET_LENGTH
 
 
 @dataclass
@@ -34,6 +39,9 @@ class Entry:
     date: str  # YYYY-MM-DD, venue-local
     time: str | None = None  # HH:MM, venue-local
     starts_at: str | None = None  # the same moment, absolute, when known
+    end_date: str | None = None  # YYYY-MM-DD, venue-local, when it differs
+    end_time: str | None = None  # HH:MM, venue-local
+    ends_at: str | None = None  # the same moment, absolute, when known
     where: str = ""
     url: str | None = None
     drive_hours: float | None = None
@@ -88,12 +96,58 @@ def _description(entry: Entry) -> str:
     return " · ".join(parts)
 
 
+def _local(day: str | None, clock: str, fallback: object = None) -> datetime | None:
+    """A venue-local date and HH:MM as one naive datetime, or None."""
+    parsed = parse_date(day) or fallback
+    if parsed is None:
+        return None
+    try:
+        return datetime.combine(parsed, datetime.strptime(clock, "%H:%M").time())
+    except (ValueError, TypeError):
+        return None
+
+
+def _length(entry: Entry) -> timedelta:
+    """How long the block runs.
+
+    Measured as the gap between the two venue-local clocks rather than read off
+    the end directly, which keeps it zone-free: both clocks are in the same
+    zone whatever that zone is, so their difference is the true duration and
+    can be added to an absolute start. Falls back to `DEFAULT_LENGTH` whenever
+    the provider published no end, or published one that runs backwards.
+    """
+    if not entry.end_time:
+        return DEFAULT_LENGTH
+
+    start_local = _local(entry.date, entry.time or DEFAULT_DOORS)
+    end_local = _local(entry.end_date, entry.end_time, fallback=parse_date(entry.date))
+    if start_local is None or end_local is None:
+        return DEFAULT_LENGTH
+
+    # a curfew of 02:00 against doors at 23:00 is tomorrow morning, and only
+    # says so when the provider didn't spell the date out
+    if end_local <= start_local and not entry.end_date:
+        end_local += timedelta(days=1)
+
+    span = end_local - start_local
+    return span if span > timedelta(0) else DEFAULT_LENGTH
+
+
 def _times(entry: Entry) -> tuple[str, str] | None:
     """(DTSTART, DTEND) property lines, or None if the date is unusable."""
+    length = _length(entry)
+
     instant = parse_iso(entry.starts_at)
     if instant is not None:
         start = instant.astimezone(timezone.utc)
-        end = start + DEFAULT_LENGTH
+        # a published absolute end beats deriving one, and is ignored if it
+        # somehow lands before the doors
+        finish = parse_iso(entry.ends_at)
+        end = (
+            finish.astimezone(timezone.utc)
+            if finish is not None and finish > instant
+            else start + length
+        )
         return (
             f"DTSTART:{start.strftime('%Y%m%dT%H%M%SZ')}",
             f"DTEND:{end.strftime('%Y%m%dT%H%M%SZ')}",
@@ -110,7 +164,7 @@ def _times(entry: Entry) -> tuple[str, str] | None:
         start_dt = datetime.combine(day, datetime.strptime(clock, "%H:%M").time())
     except ValueError:
         start_dt = datetime.combine(day, datetime.strptime(DEFAULT_DOORS, "%H:%M").time())
-    end_dt = start_dt + DEFAULT_LENGTH
+    end_dt = start_dt + length
     return (
         f"DTSTART:{start_dt.strftime('%Y%m%dT%H%M%S')}",
         f"DTEND:{end_dt.strftime('%Y%m%dT%H%M%S')}",

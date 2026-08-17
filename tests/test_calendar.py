@@ -40,6 +40,9 @@ def a_show(
     event_id: str = "tm-1",
     day: date = SOON,
     starts_at: str | None = None,
+    end_date: str | None = None,
+    end_time: str | None = None,
+    ends_at: str | None = None,
     tracks: int = 212,
 ) -> str:
     db.execute(
@@ -56,6 +59,9 @@ def a_show(
                 date=day.isoformat(),
                 time="19:30",
                 starts_at=starts_at,
+                end_date=end_date,
+                end_time=end_time,
+                ends_at=ends_at,
                 venue="History",
                 city="Toronto",
                 country="CA",
@@ -136,6 +142,50 @@ def test_a_show_with_doors_still_tba_stays_floating(client):
     client.put(f"/api/shows/{a_show()}/purchased", json={"purchased": True})
 
     assert f"DTSTART:{SOON.strftime('%Y%m%d')}T193000\r\n" in feed(client)
+
+
+def test_a_published_end_is_used_instead_of_the_assumed_one(client):
+    """Three hours is what we assume when nobody said. When somebody did say,
+    assuming anything is just being wrong on purpose."""
+    event_id = a_show(end_time="23:30")
+    client.put(f"/api/shows/{event_id}/purchased", json={"purchased": True})
+
+    text = feed(client)
+    assert f"DTSTART:{SOON.strftime('%Y%m%d')}T193000\r\n" in text
+    assert f"DTEND:{SOON.strftime('%Y%m%d')}T233000\r\n" in text
+
+
+def test_a_festival_blocks_out_every_day_it_runs(client):
+    """A three-day run that reads as one evening is a calendar that will let
+    you book a flight home on day two."""
+    last_day = SOON + timedelta(days=2)
+    event_id = a_show(end_date=last_day.isoformat(), end_time="22:00")
+    client.put(f"/api/shows/{event_id}/purchased", json={"purchased": True})
+
+    assert f"DTEND:{last_day.strftime('%Y%m%d')}T220000\r\n" in feed(client)
+
+
+def test_a_curfew_past_midnight_lands_the_next_morning(client):
+    """01:00 against doors at 19:30 is tomorrow, and read literally it would be
+    an event that ends eighteen hours before it starts."""
+    event_id = a_show(end_time="01:00")
+    client.put(f"/api/shows/{event_id}/purchased", json={"purchased": True})
+
+    tomorrow = SOON + timedelta(days=1)
+    assert f"DTEND:{tomorrow.strftime('%Y%m%d')}T010000\r\n" in feed(client)
+
+
+def test_a_published_absolute_end_pins_the_finish_to_a_real_moment(client):
+    """Same argument as the start: the reader's timezone is not the venue's."""
+    event_id = a_show(
+        starts_at="2026-09-28T23:30:00Z",
+        ends_at="2026-09-29T02:00:00Z",
+        end_time="22:00",
+        day=date(2026, 9, 28),
+    )
+    client.put(f"/api/shows/{event_id}/purchased", json={"purchased": True})
+
+    assert "DTEND:20260929T020000Z" in feed(client)
 
 
 def test_the_description_is_the_drive_and_the_library(client):
