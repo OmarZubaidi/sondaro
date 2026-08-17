@@ -1,17 +1,44 @@
-"""iCalendar feeds.
+"""The iCalendar subscription.
 
-Format-neutral by design: these are subscribe URLs that work in Google Calendar,
-Outlook, Fastmail, Thunderbird or anything else that speaks RFC 5545. Both
-accept `?min_score=` so you can subscribe to only what's worth your attention
-without changing what the app itself shows.
+One URL, added to a calendar app once, carrying **only the shows you've marked
+as going**. That's the whole editorial decision here: a calendar is a record of
+what you're doing, and filling it with suggestions turns a commitment you can
+trust into a feed you learn to ignore. Suggestions live in the app, where
+they're ranked and filterable and cost nothing to skim past.
+
+Because everything in the feed is bought, every entry is CONFIRMED and OPAQUE —
+it blocks your time, because it does.
+
+Times are absolute wherever the provider gave us the instant. Floating local
+time is the obvious-looking choice and it's wrong: it renders in whatever zone
+the *reader* is in, so a Toronto show read from a phone at home shows up hours
+out. Only listings whose doors are still TBA stay floating, since the
+alternative is inventing a time.
 """
 
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
-from .util import parse_date
+from .util import parse_date, parse_iso
 
 DEFAULT_DOORS = "19:30"
 DEFAULT_LENGTH = timedelta(hours=3)
+
+
+@dataclass
+class Entry:
+    """One show you hold a ticket for."""
+
+    uid: str
+    artist: str
+    date: str  # YYYY-MM-DD, venue-local
+    time: str | None = None  # HH:MM, venue-local
+    starts_at: str | None = None  # the same moment, absolute, when known
+    where: str = ""
+    url: str | None = None
+    drive_hours: float | None = None
+    estimated: bool = False
+    tracks: int = 0  # how much of this artist is in Lidarr
 
 
 def _escape(text: str) -> str:
@@ -42,14 +69,55 @@ def _fold(line: str) -> str:
     return "\r\n ".join(chunks)
 
 
-def build(candidates, calendar_name: str, purchased: set[str] | None = None) -> str:
-    """`candidates` are `scan.Candidate`s, already filtered by the caller.
+def _hours(value: float) -> str:
+    """Hours and minutes. Nobody reads 2.42 as a journey."""
+    hours, minutes = divmod(round(value * 60), 60)
+    if hours and minutes:
+        return f"{hours}h {minutes}m"
+    return f"{hours}h" if hours else f"{minutes}m"
 
-    A show you hold a ticket for is a real commitment; everything else is a
-    suggestion. RFC 5545 has words for exactly that distinction, and calendar
-    apps grey out a TENTATIVE event, so the two don't look alike at a glance.
-    """
-    purchased = purchased or set()
+
+def _description(entry: Entry) -> str:
+    """Two facts, both of which answer a question you'd have standing in front
+    of the calendar entry: how long is the journey, and who is this again."""
+    parts = []
+    if entry.drive_hours is not None:
+        prefix = "~" if entry.estimated else ""
+        parts.append(f"{prefix}{_hours(entry.drive_hours)} drive")
+    parts.append(f"{entry.tracks:,} song{'' if entry.tracks == 1 else 's'} in Lidarr")
+    return " · ".join(parts)
+
+
+def _times(entry: Entry) -> tuple[str, str] | None:
+    """(DTSTART, DTEND) property lines, or None if the date is unusable."""
+    instant = parse_iso(entry.starts_at)
+    if instant is not None:
+        start = instant.astimezone(timezone.utc)
+        end = start + DEFAULT_LENGTH
+        return (
+            f"DTSTART:{start.strftime('%Y%m%dT%H%M%SZ')}",
+            f"DTEND:{end.strftime('%Y%m%dT%H%M%SZ')}",
+        )
+
+    day = parse_date(entry.date)
+    if day is None:
+        return None
+
+    # doors not announced: floating local time is the honest rendering of "that
+    # evening, wherever you are", and beats inventing a zone
+    clock = entry.time or DEFAULT_DOORS
+    try:
+        start_dt = datetime.combine(day, datetime.strptime(clock, "%H:%M").time())
+    except ValueError:
+        start_dt = datetime.combine(day, datetime.strptime(DEFAULT_DOORS, "%H:%M").time())
+    end_dt = start_dt + DEFAULT_LENGTH
+    return (
+        f"DTSTART:{start_dt.strftime('%Y%m%dT%H%M%S')}",
+        f"DTEND:{end_dt.strftime('%Y%m%dT%H%M%S')}",
+    )
+
+
+def build(entries: list[Entry], calendar_name: str = "Sondaro") -> str:
     lines = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
@@ -57,55 +125,32 @@ def build(candidates, calendar_name: str, purchased: set[str] | None = None) -> 
         "CALSCALE:GREGORIAN",
         "METHOD:PUBLISH",
         _fold(f"X-WR-CALNAME:{_escape(calendar_name)}"),
-        "X-PUBLISHED-TTL:PT12H",
+        # marking a ticket as bought should show up in your calendar today, not
+        # tomorrow, so ask for the tightest poll the clients honour
+        "REFRESH-INTERVAL;VALUE=DURATION:PT1H",
+        "X-PUBLISHED-TTL:PT1H",
     ]
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
-    for candidate in candidates:
-        event = candidate.event
-        day = parse_date(event.date)
-        if not day:
+    for entry in entries:
+        times = _times(entry)
+        if times is None:
             continue
-
-        clock = event.time or DEFAULT_DOORS
-        try:
-            start_dt = datetime.combine(day, datetime.strptime(clock, "%H:%M").time())
-        except ValueError:
-            start_dt = datetime.combine(day, datetime.strptime(DEFAULT_DOORS, "%H:%M").time())
-        end_dt = start_dt + DEFAULT_LENGTH
-
-        description = []
-        if event.id in purchased:
-            description.append("ticket bought")
-        if candidate.score.drive_hours is not None:
-            estimated = "estimated " if "estimated drive time" in candidate.score.flags else ""
-            description.append(f"{candidate.score.drive_hours:.1f}h {estimated}drive")
-        description.append(f"score {candidate.score.total:.2f}")
-        description.extend(candidate.score.reasons)
-        description.extend(candidate.score.flags)
-        if event.url:
-            description.append(event.url)
+        start_line, end_line = times
 
         lines += [
             "BEGIN:VEVENT",
-            _fold(f"UID:{event.id}@sondaro"),
+            _fold(f"UID:{entry.uid}@sondaro"),
             f"DTSTAMP:{stamp}",
-            # floating local time: doors are 8pm wherever the venue is, and
-            # pinning a timezone would shift a show by hours on a trip
-            f"DTSTART:{start_dt.strftime('%Y%m%dT%H%M%S')}",
-            f"DTEND:{end_dt.strftime('%Y%m%dT%H%M%S')}",
-            _fold(f"SUMMARY:{_escape(candidate.artist.name)}"),
-            _fold(f"LOCATION:{_escape(event.where)}"),
-            _fold(f"DESCRIPTION:{_escape(' — '.join(description))}"),
+            start_line,
+            end_line,
+            _fold(f"SUMMARY:{_escape(entry.artist)}"),
+            _fold(f"LOCATION:{_escape(entry.where)}"),
+            _fold(f"DESCRIPTION:{_escape(_description(entry))}"),
         ]
-        if event.url:
-            lines.append(_fold(f"URL:{event.url}"))
-        held = event.id in purchased
-        lines += [
-            f"STATUS:{'CONFIRMED' if held else 'TENTATIVE'}",
-            f"TRANSP:{'OPAQUE' if held else 'TRANSPARENT'}",
-            "END:VEVENT",
-        ]
+        if entry.url:
+            lines.append(_fold(f"URL:{entry.url}"))
+        lines += ["STATUS:CONFIRMED", "TRANSP:OPAQUE", "END:VEVENT"]
 
     lines.append("END:VCALENDAR")
     return "\r\n".join(lines) + "\r\n"

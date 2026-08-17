@@ -1,8 +1,8 @@
-"""The calendar feed.
+"""The calendar subscription.
 
-One URL, subscribed to once. A subscription you have to maintain is a
-subscription that goes stale, so adding a trip has to make its shows appear in
-the feed you already have rather than minting a new one to remember.
+One URL, added once, holding only what you've said you're going to. A calendar
+full of suggestions is one you stop trusting, and a downloaded snapshot is a
+calendar that was right the day you saved it.
 """
 
 import sys
@@ -14,15 +14,14 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from api import db, library, scan  # noqa: E402
+from api import db, library, routing, scan  # noqa: E402
 from api.config import config  # noqa: E402
 from api.match import artist_key  # noqa: E402
 from api.providers.base import Event  # noqa: E402
 from api.util import now_iso  # noqa: E402
 
-TRIP_START = date.today() + timedelta(days=30)
-TRIP_END = TRIP_START + timedelta(days=10)
-LYON = (45.7640, 4.8357)
+SOON = date.today() + timedelta(days=30)
+TORONTO = (43.6532, -79.3832)
 
 
 @pytest.fixture
@@ -35,92 +34,166 @@ def client(monkeypatch):
         yield test_client
 
 
-def a_show_in_lyon(name: str = "Palehound", affinity: float = 1.0) -> None:
-    """An artist in the library, playing France during the trip window."""
+def a_show(
+    name: str = "Sabaton",
+    *,
+    event_id: str = "tm-1",
+    day: date = SOON,
+    starts_at: str | None = None,
+    tracks: int = 212,
+) -> str:
     db.execute(
-        "INSERT INTO artists(key, name, affinity, listens, updated_at) VALUES(?,?,?,?,?) "
-        "ON CONFLICT(key) DO NOTHING",
-        (artist_key(None, name), name, affinity, 500, now_iso()),
+        "INSERT INTO artists(key, name, affinity, listens, tracks, updated_at) "
+        "VALUES(?,?,?,?,?,?) ON CONFLICT(key) DO UPDATE SET tracks = excluded.tracks",
+        (artist_key(None, name), name, 1.0, 500, tracks, now_iso()),
     )
     scan.ingest(
         [
             Event(
                 provider="ticketmaster",
-                provider_event_id=f"lyon-{name}",
+                provider_event_id=event_id,
                 artist_name=name,
-                date=(TRIP_START + timedelta(days=2)).isoformat(),
-                time="20:00",
-                venue="Le Transbordeur",
-                city="Lyon",
-                country="FR",
-                lat=LYON[0],
-                lon=LYON[1],
+                date=day.isoformat(),
+                time="19:30",
+                starts_at=starts_at,
+                venue="History",
+                city="Toronto",
+                country="CA",
+                lat=TORONTO[0],
+                lon=TORONTO[1],
             )
         ],
         library.all_artists(),
     )
+    return f"ticketmaster:{event_id}"
 
 
-def make_trip(client, name: str):
-    response = client.post(
-        "/api/trips",
-        json={
-            "name": name,
-            "legs": [{"country": "FR"}],
-            "start_date": TRIP_START.isoformat(),
-            "end_date": TRIP_END.isoformat(),
-        },
-    )
-    assert response.status_code == 201, response.text
-    return response.json()
-
-
-def test_the_feed_lives_at_sondaro_ics(client):
+def feed(client) -> str:
     response = client.get("/sondaro.ics")
-
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/calendar")
-    assert 'filename="Sondaro.ics"' in response.headers["content-disposition"]
+    return response.text
 
 
-def test_adding_a_trip_fills_the_subscription_you_already_have(client):
-    """The whole point of one feed: no new URL to add, nothing to remember."""
-    a_show_in_lyon()
-    assert "Palehound" not in client.get("/sondaro.ics").text
+def test_only_shows_you_are_going_to_appear(client):
+    """The change in what this feed means: a suggestion is not a commitment."""
+    event_id = a_show()
 
-    make_trip(client, "France")
+    assert "Sabaton" not in feed(client)
 
-    assert "Palehound" in client.get("/sondaro.ics").text
+    client.put(f"/api/shows/{event_id}/purchased", json={"purchased": True})
 
-
-def test_a_show_in_two_trips_appears_once(client):
-    """Overlapping trips are one itinerary from the calendar's point of view."""
-    a_show_in_lyon()
-    make_trip(client, "France")
-    make_trip(client, "France again")
-
-    assert client.get("/sondaro.ics").text.count("SUMMARY:Palehound") == 1
+    assert "Sabaton" in feed(client)
 
 
-def test_min_score_still_narrows_the_subscription(client):
-    """Subscribe to only what's worth your attention, without changing what the
-    app itself shows."""
-    a_show_in_lyon("Palehound", affinity=1.0)
-    a_show_in_lyon("Barely Played", affinity=0.5)
-    make_trip(client, "France")
+def test_unmarking_takes_it_back_out(client):
+    """A subscription that only ever grows is a subscription you clean by hand."""
+    event_id = a_show()
+    client.put(f"/api/shows/{event_id}/purchased", json={"purchased": True})
+    assert "Sabaton" in feed(client)
 
-    everything = client.get("/sondaro.ics").text
-    assert "Palehound" in everything and "Barely Played" in everything
+    client.put(f"/api/shows/{event_id}/purchased", json={"purchased": False})
 
-    narrowed = client.get("/sondaro.ics?min_score=0.9").text
-    assert "Palehound" in narrowed
-    assert "Barely Played" not in narrowed
+    assert "Sabaton" not in feed(client)
+
+
+def test_the_feed_is_subscribable_rather_than_a_download(client):
+    """An attachment is a snapshot. It was right the day you saved it and has
+    been drifting ever since, which is the whole bug being fixed."""
+    response = client.get("/sondaro.ics")
+
+    assert "content-disposition" not in response.headers
+    assert "no-cache" in response.headers["cache-control"]
+    assert "REFRESH-INTERVAL;VALUE=DURATION:PT1H" in response.text
+
+
+def test_the_calendar_is_just_called_sondaro(client):
+    assert "X-WR-CALNAME:Sondaro\r\n" in feed(client)
+
+
+def test_a_bought_ticket_blocks_your_time(client):
+    """Everything here is a commitment, so nothing is tentative or see-through."""
+    client.put(f"/api/shows/{a_show()}/purchased", json={"purchased": True})
+
+    text = feed(client)
+    assert "STATUS:CONFIRMED" in text and "TRANSP:OPAQUE" in text
+    assert "TENTATIVE" not in text and "TRANSPARENT" not in text
+
+
+def test_an_out_of_town_show_is_pinned_to_a_real_moment(client):
+    """Floating time renders in the reader's zone, so a Toronto show read from
+    home lands hours out. The provider's instant is the fix."""
+    event_id = a_show(starts_at="2026-09-28T23:30:00Z", day=date(2026, 9, 28))
+    client.put(f"/api/shows/{event_id}/purchased", json={"purchased": True})
+
+    text = feed(client)
+    assert "DTSTART:20260928T233000Z" in text
+    assert "DTEND:20260929T023000Z" in text
+
+
+def test_a_show_with_doors_still_tba_stays_floating(client):
+    """Inventing a timezone is worse than admitting we only know the evening."""
+    client.put(f"/api/shows/{a_show()}/purchased", json={"purchased": True})
+
+    assert f"DTSTART:{SOON.strftime('%Y%m%d')}T193000\r\n" in feed(client)
+
+
+def test_the_description_is_the_drive_and_the_library(client):
+    """It used to carry the score, every reason and every flag, which is
+    reference material for a decision you have already made."""
+    routing.store(
+        routing.point_key(*_home()),
+        routing.point_key(*TORONTO),
+        routing.Route(drive_hours=9.5, miles=620.0, estimated=False),
+    )
+    client.put(f"/api/shows/{a_show(tracks=212)}/purchased", json={"purchased": True})
+
+    line = next(l for l in feed(client).splitlines() if l.startswith("DESCRIPTION:"))
+
+    assert line == "DESCRIPTION:9h 30m drive · 212 songs in Lidarr"
+
+
+def test_a_single_track_is_not_pluralised(client):
+    client.put(f"/api/shows/{a_show(tracks=1)}/purchased", json={"purchased": True})
+
+    assert "1 song in Lidarr" in feed(client)
+
+
+def test_yesterdays_gig_is_not_still_in_your_calendar(client):
+    """Past shows are pruned from the cache, and the feed follows."""
+    event_id = a_show(day=date.today() - timedelta(days=1), event_id="tm-old")
+    client.put(f"/api/shows/{event_id}/purchased", json={"purchased": True})
+
+    assert "Sabaton" not in feed(client)
+
+
+def test_a_show_appears_once_even_when_two_trips_want_it(client):
+    """It used to be assembled from every trip's candidate list, so overlapping
+    trips could emit the same event twice."""
+    event_id = a_show()
+    client.put(f"/api/shows/{event_id}/purchased", json={"purchased": True})
+    for name in ("Canada", "Canada again"):
+        client.post(
+            "/api/trips",
+            json={
+                "name": name,
+                "legs": [{"country": "CA"}],
+                "start_date": SOON.isoformat(),
+                "end_date": (SOON + timedelta(days=5)).isoformat(),
+            },
+        )
+
+    assert feed(client).count("SUMMARY:Sabaton") == 1
 
 
 def test_the_per_trip_feed_is_gone(client):
     """One trip, one URL to add and later remove, was the thing being fixed."""
-    trip = make_trip(client, "France")
-
-    response = client.get(f"/trips/{trip['id']}.ics")
+    response = client.get("/trips/1.ics")
 
     assert not response.headers.get("content-type", "").startswith("text/calendar")
+
+
+def _home() -> tuple[float, float]:
+    from api import settings
+
+    return settings.home()

@@ -8,7 +8,7 @@ rather than through HTTP.
 import asyncio
 import contextlib
 import logging
-from datetime import date, timedelta
+from datetime import date
 from pathlib import Path
 
 from fastapi import Body, FastAPI, HTTPException, Query, Request
@@ -523,42 +523,65 @@ async def api_countries():
 # --------------------------------------------------------------------------
 
 
-def _calendar_response(candidates, name: str) -> Response:
+@app.get("/sondaro.ics")
+async def calendar():
+    """The shows you've said you're going to, and nothing else.
+
+    Subscribe once and it stays current: marking a ticket as bought puts the
+    show in your calendar, unmarking takes it out. Suggestions deliberately
+    don't appear — a calendar full of maybes is one you stop trusting, and the
+    app is a better place to browse them.
+
+    Read straight from `purchased`, not from the scored feeds. A decision you
+    made must not depend on the show still clearing a score floor, still
+    sitting inside a trip you might since have deleted, or still being within
+    driving range of a home you might have moved.
+    """
+    origin = settings.home()
+    origin_key = routing.point_key(*origin)
+
+    entries = []
+    for row in db.query(
+        "SELECT e.*, a.tracks FROM purchased p JOIN events e ON e.id = p.event_id "
+        "LEFT JOIN artists a ON a.key = e.artist_key "
+        "WHERE e.date >= ? ORDER BY e.date, e.time",
+        (today().isoformat(),),
+    ):
+        route = None
+        if row["lat"] is not None and row["lon"] is not None:
+            route = routing.cached(
+                origin_key, routing.point_key(row["lat"], row["lon"])
+            ) or routing.estimate(origin, (row["lat"], row["lon"]))
+
+        entries.append(
+            ics.Entry(
+                uid=row["id"],
+                artist=row["artist_name"],
+                date=row["date"],
+                time=row["time"],
+                starts_at=row["starts_at"],
+                where=", ".join(
+                    part
+                    for part in (row["venue"], row["city"], row["region"], row["country"])
+                    if part
+                ),
+                url=row["url"],
+                drive_hours=route.drive_hours if route else None,
+                estimated=bool(route and route.estimated),
+                tracks=row["tracks"] or 0,
+            )
+        )
+
     return Response(
-        content=ics.build(candidates, name, purchased=scan.purchased_ids()),
+        content=ics.build(entries),
         media_type="text/calendar; charset=utf-8",
         headers={
-            "Cache-Control": "public, max-age=1800",
-            'Content-Disposition': 'attachment; filename="Sondaro.ics"',
+            # A subscription is polled, and a cached copy is the difference
+            # between "I marked it as going" and "it's in my calendar". No
+            # Content-Disposition either: an attachment downloads a snapshot,
+            # which is the stale thing this feed exists to avoid.
+            "Cache-Control": "no-cache, max-age=0",
         },
-    )
-
-
-@app.get("/sondaro.ics")
-async def calendar(min_score: float = Query(0.0, ge=0.0, le=1.0)):
-    """One feed: near home, plus everywhere you're going.
-
-    A subscription is set up once and then forgotten, so a per-trip URL was a
-    calendar you had to remember to add for every trip and remove afterwards.
-    Adding a trip now just makes shows appear in the feed you already have.
-    """
-    candidates = list(scan.local_candidates())
-    for row in db.query("SELECT * FROM trips ORDER BY start_date"):
-        candidates.extend(scan.trip_candidates(row))
-
-    # the same show can be both near home and inside a trip; one event, one
-    # entry, or the calendar shows it twice
-    best: dict[str, object] = {}
-    for candidate in candidates:
-        if candidate.total < min_score:
-            continue
-        seen = best.get(candidate.event.id)
-        if seen is None or candidate.total > seen.total:
-            best[candidate.event.id] = candidate
-
-    return _calendar_response(
-        sorted(best.values(), key=lambda c: c.event.date),
-        f"Sondaro — {settings.get('home_label')}",
     )
 
 

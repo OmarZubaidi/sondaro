@@ -140,22 +140,18 @@ def a_nearby_show(name: str = "Favourite") -> str:
     return "ticketmaster:dur1"
 
 
-def test_the_calendar_tells_a_ticket_from_a_suggestion(client):
-    """Calendar apps grey out a TENTATIVE event and leave TRANSPARENT ones out
-    of your free/busy, so the two shouldn't look alike."""
+def test_marking_a_ticket_is_what_puts_it_in_the_calendar(client):
+    """Buying the ticket is the moment a show stops being a suggestion, so it's
+    the moment it earns a place in your week."""
     event_id = a_nearby_show()
-
-    suggestion = client.get("/sondaro.ics").text
-    assert "STATUS:TENTATIVE" in suggestion
-    assert "TRANSP:TRANSPARENT" in suggestion
-    assert "ticket bought" not in suggestion
+    assert "Favourite" not in client.get("/sondaro.ics").text
 
     client.put(f"/api/shows/{event_id}/purchased", json={"purchased": True})
 
     held = client.get("/sondaro.ics").text
+    assert "Favourite" in held
     assert "STATUS:CONFIRMED" in held
     assert "TRANSP:OPAQUE" in held
-    assert "ticket bought" in held
 
 
 def test_a_bought_ticket_reaches_the_calendar_even_when_the_score_would_not(client):
