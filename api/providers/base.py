@@ -13,6 +13,9 @@ class Event:
     date: str  # YYYY-MM-DD, venue-local
     title: str = ""
     time: str | None = None  # HH:MM, venue-local
+    # the same moment as an absolute instant, when the provider hands one over.
+    # Only this can be put in a calendar without guessing the venue's zone.
+    starts_at: str | None = None  # ISO 8601 with an offset
     venue: str | None = None
     city: str | None = None
     region: str | None = None

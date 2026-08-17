@@ -22,7 +22,7 @@ from ..config import config
 from ..geo import geohash
 from ..match import normalize
 from ..util import now_iso
-from .base import Event, as_float
+from .base import Event, as_float, as_text
 
 log = logging.getLogger("sondaro.ticketmaster")
 
@@ -69,6 +69,10 @@ def parse_event(raw: dict) -> Event | None:
         title=raw.get("name") or "",
         date=day,
         time=(start.get("localTime") or "")[:5] or None,
+        # Discovery hands over the absolute instant alongside the venue-local
+        # clock, and omits it when the time is still TBA. Taking it means the
+        # calendar never has to guess a venue's timezone.
+        starts_at=as_text(start.get("dateTime")),
         venue=venue.get("name"),
         city=(venue.get("city") or {}).get("name"),
         region=(venue.get("state") or {}).get("stateCode")

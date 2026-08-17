@@ -121,6 +121,21 @@ def test_ticketmaster_skips_undated_listings():
     assert ticketmaster.parse_event({"name": "no id"}) is None
 
 
+def test_ticketmaster_keeps_the_absolute_start_instant():
+    """The venue-local clock alone can't go in a calendar: 8pm in Toronto read
+    from a phone at home is 8pm at home. Discovery gives the instant too."""
+    raw = tm_event()
+    raw["dates"]["start"]["dateTime"] = "2026-09-11T00:00:00Z"
+
+    assert ticketmaster.parse_event(raw).starts_at == "2026-09-11T00:00:00Z"
+
+
+def test_a_listing_with_the_time_still_tba_has_no_instant():
+    """Discovery omits dateTime until doors are announced, and a made-up
+    instant is worse than a floating one."""
+    assert ticketmaster.parse_event(tm_event()).starts_at is None
+
+
 async def test_sweep_walks_the_window_in_chunks(routes, monkeypatch):
     monkeypatch.setattr(config, "ticketmaster_api_key", "key")
     routes.add("/events.json", tm_page([tm_event()]))

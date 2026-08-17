@@ -50,6 +50,11 @@ CREATE TABLE IF NOT EXISTS events (
     title        TEXT,
     date         TEXT NOT NULL,      -- YYYY-MM-DD, venue-local
     time         TEXT,               -- HH:MM, venue-local, nullable
+    -- The same moment as an absolute instant, when the provider gave us one.
+    -- Venue-local alone can't be put in a calendar correctly: 8pm in Toronto
+    -- read from a phone at home is 8pm at home, which is the wrong evening's
+    -- worth of hours out.
+    starts_at    TEXT,               -- ISO 8601 with an offset, nullable
     venue        TEXT,
     city         TEXT,
     region       TEXT,
@@ -222,6 +227,12 @@ def _migrate(conn: sqlite3.Connection) -> None:
     )
     conn.execute("DELETE FROM fetch_tasks WHERE task_key LIKE 'home:%'")
 
+    # Absolute start instants arrived after the event cache did. Backfilling
+    # would mean re-fetching every listing, so existing rows stay floating and
+    # fill in on their next refresh.
+    if "starts_at" not in {row["name"] for row in conn.execute("PRAGMA table_info(events)")}:
+        conn.execute("ALTER TABLE events ADD COLUMN starts_at TEXT")
+
     # Trips used to hold comma-separated countries and cities in two columns,
     # which couldn't say *when* you'd be in a city or which country a city
     # belonged to. Fold them into trip_legs, then drop the columns — a city
@@ -296,7 +307,7 @@ def execute(sql: str, params: tuple = ()) -> int:
         return cur.lastrowid or 0
 
 
-def executemany(sql: str, rows: Iterable[tuple]) -> None:
+def executemany(sql: str, rows: Iterable[tuple | dict]) -> None:
     batch = list(rows)
     if not batch:
         return

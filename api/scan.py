@@ -77,7 +77,10 @@ def ingest(events: list[Event], artists: list[Artist]) -> tuple[int, int]:
     by_mbid = index_by_mbid(artists)
 
     stamp = now_iso()
-    rows: dict[str, tuple] = {}
+    # Named rather than positional: this tuple has already cost real money once,
+    # when adding a column silently moved the index the dedupe check reads and
+    # the resulting crash re-bought the listings on every retry.
+    rows: dict[str, dict] = {}
     matched = 0
 
     for event in events:
@@ -93,34 +96,36 @@ def ingest(events: list[Event], artists: list[Artist]) -> tuple[int, int]:
         # collapse the same show reported twice by different providers
         dedupe = event_key(artist.name, event.date, city, venue)
         existing = rows.get(dedupe)
-        if existing is not None and existing[13]:  # already has a url
+        if existing is not None and existing["url"]:
             continue
-        rows[dedupe] = (
-            event.id,
-            event.provider,
-            artist.key,
-            artist.name,
-            _text(event.title) or "",
-            event.date,
-            _text(event.time),
-            venue,
-            city,
-            _text(event.region),
-            country.upper() if country else None,
-            event.lat,
-            event.lon,
-            _text(event.url),
-            stamp,
-            stamp,
-        )
+        rows[dedupe] = {
+            "id": event.id,
+            "provider": event.provider,
+            "artist_key": artist.key,
+            "artist_name": artist.name,
+            "title": _text(event.title) or "",
+            "date": event.date,
+            "time": _text(event.time),
+            "starts_at": _text(event.starts_at),
+            "venue": venue,
+            "city": city,
+            "region": _text(event.region),
+            "country": country.upper() if country else None,
+            "lat": event.lat,
+            "lon": event.lon,
+            "url": _text(event.url),
+            "first_seen": stamp,
+            "last_seen": stamp,
+        }
 
     db.executemany(
         "INSERT INTO events(id, provider, artist_key, artist_name, title, date, time, "
-        "venue, city, region, country, lat, lon, url, first_seen, last_seen) "
-        "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) "
+        "starts_at, venue, city, region, country, lat, lon, url, first_seen, last_seen) "
+        "VALUES(:id,:provider,:artist_key,:artist_name,:title,:date,:time,:starts_at,"
+        ":venue,:city,:region,:country,:lat,:lon,:url,:first_seen,:last_seen) "
         "ON CONFLICT(id) DO UPDATE SET date=excluded.date, time=excluded.time, "
-        "venue=excluded.venue, city=excluded.city, url=excluded.url, "
-        "last_seen=excluded.last_seen",
+        "starts_at=excluded.starts_at, venue=excluded.venue, city=excluded.city, "
+        "url=excluded.url, last_seen=excluded.last_seen",
         rows.values(),
     )
     return matched, len(events)
@@ -491,6 +496,7 @@ def _candidate(row, score: scoring.Score) -> Candidate:
             title=row["title"] or "",
             date=row["date"],
             time=row["time"],
+            starts_at=row["starts_at"],
             venue=row["venue"],
             city=row["city"],
             region=row["region"],
