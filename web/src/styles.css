@@ -94,6 +94,16 @@ a:hover {
   letter-spacing: 0.4px;
 }
 
+/* a link, but it should read as the wordmark it replaced */
+.topbar h1 a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.topbar h1 a:hover {
+  color: var(--accent);
+}
+
 .topbar nav {
   display: flex;
   gap: 4px;

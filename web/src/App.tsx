@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NavLink, Route, Routes } from 'react-router-dom'
+import { Link, NavLink, Route, Routes } from 'react-router-dom'
 import { Local } from './routes/Local'
 import { Trips } from './routes/Trips'
 import { StatusPage } from './routes/StatusPage'
@@ -11,7 +11,10 @@ export function App() {
   return (
     <>
       <header className="topbar">
-        <h1>Sondaro</h1>
+        {/* the wordmark goes home, because every other site's does */}
+        <h1>
+          <Link to="/">Sondaro</Link>
+        </h1>
         <nav>
           <NavLink to="/" end className={({ isActive }) => (isActive ? 'active' : '')}>
             Local
