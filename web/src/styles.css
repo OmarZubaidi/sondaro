@@ -926,6 +926,48 @@ main:has(.local-layout) {
   margin-top: 5px;
 }
 
+/* --- the calendar subscription ------------------------------------------- */
+
+.calendar-link {
+  position: relative;
+}
+
+/* right-aligned: the button lives at the end of a title row, and a 250px
+   sidebar has no room to hang a panel off the other side */
+.calendar-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  width: min(320px, 80vw);
+  margin-bottom: 0;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 35%);
+}
+
+.calendar-pop p {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.calendar-pop input {
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+/* an anchor that has to sit beside a button and not look like a link */
+.button-ish {
+  display: inline-flex;
+  align-items: center;
+  padding: 11px 16px;
+  min-height: var(--tap);
+  border-radius: 10px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+  text-decoration: none;
+}
+
 /* "Could shift [3] days earlier, or [3] days later" — a sentence, so the
    fields are only as wide as the number they hold */
 .slack {

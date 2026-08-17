@@ -4,7 +4,7 @@ import type { LocalFeed, SettingSpec } from '../lib/types'
 import { relativeTime } from '../lib/format'
 import { ShowCard } from '../components/ShowCard'
 import { IndexProgress } from '../components/IndexProgress'
-import { CalendarIcon, IconButton } from '../components/IconButton'
+import { CalendarLink } from '../components/CalendarLink'
 import { LocalFilters, type Filters } from '../components/LocalFilters'
 
 const DEFAULTS: Filters = {
@@ -86,7 +86,7 @@ export function Local() {
           <div className="title-row">
             <h2>Local</h2>
             <div className="actions">
-              <IconButton label="Calendar feed" icon={<CalendarIcon />} href="/sondaro.ics" />
+              <CalendarLink />
             </div>
           </div>
 

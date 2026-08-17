@@ -4,7 +4,8 @@ import type { Trip, TripsFeed } from '../lib/types'
 import { DateGroup } from '../components/DateGroup'
 import { CheckList } from '../components/CheckList'
 import { TripModal } from '../components/TripModal'
-import { CalendarIcon, EditIcon, IconButton, TrashIcon } from '../components/IconButton'
+import { EditIcon, IconButton, TrashIcon } from '../components/IconButton'
+import { CalendarLink } from '../components/CalendarLink'
 
 export function Trips() {
   const [feed, setFeed] = useState<TripsFeed | null>(null)
@@ -82,7 +83,7 @@ export function Trips() {
           <div className="title-row">
             <h2>Trips</h2>
             <div className="actions">
-              <IconButton label="Calendar feed" icon={<CalendarIcon />} href="/sondaro.ics" />
+              <CalendarLink />
             </div>
           </div>
 
