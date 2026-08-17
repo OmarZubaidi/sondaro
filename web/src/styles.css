@@ -798,23 +798,37 @@ main:has(.local-layout) {
 
 .trip-list summary {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
+  align-items: center;
+  gap: 10px;
   cursor: pointer;
   font-size: 13px;
   color: var(--muted);
   list-style: none;
+  /* the whole row is the control, not just the word */
+  min-height: var(--tap);
+  margin: -6px 0;
 }
 
-/* a caret drawn by hand, so it can point the right way in both states */
+.trip-list summary:hover {
+  color: var(--text);
+}
+
+/* Drawn rather than typed. The ▸ glyph is sized by the font, which put a 10px
+   arrow next to 13px text and made the only affordance the smallest thing in
+   the row; this matches the stroke weight of the icon buttons instead. */
 .trip-list summary::before {
-  content: '▸';
-  font-size: 10px;
+  content: '';
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-right: 1.8px solid currentColor;
+  border-bottom: 1.8px solid currentColor;
+  transform: rotate(-45deg);
   transition: transform 0.15s ease;
 }
 
 .trip-list[open] summary::before {
-  transform: rotate(90deg);
+  transform: rotate(45deg);
 }
 
 .trip-list summary::-webkit-details-marker {
