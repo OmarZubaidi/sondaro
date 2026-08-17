@@ -104,9 +104,7 @@ CREATE TABLE IF NOT EXISTS coverage (
 CREATE TABLE IF NOT EXISTS trips (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     name         TEXT NOT NULL,
-    countries    TEXT NOT NULL,     -- comma separated ISO-2; trips are multi-country
-    cities       TEXT DEFAULT '',   -- optional, chosen after the countries
-    start_date   TEXT NOT NULL,
+    start_date   TEXT NOT NULL,     -- the whole trip; legs may narrow it
     end_date     TEXT NOT NULL,
     flex_before  INTEGER DEFAULT 0,
     flex_after   INTEGER DEFAULT 0,
@@ -114,6 +112,24 @@ CREATE TABLE IF NOT EXISTS trips (
     created_at   TEXT,
     scanned_at   TEXT
 );
+
+-- Where a trip goes, and when. One row per country, plus one per city once
+-- you know which cities.
+--
+-- A country with no city row is *loosely planned*: you're going, you don't yet
+-- know where, so the whole country stays in play and a show just over its
+-- border is still a detour worth knowing about. Naming a city anchors that
+-- country and nothing else — booking Barcelona shouldn't make France, which
+-- you haven't planned at all, measure its distance from Spain.
+CREATE TABLE IF NOT EXISTS trip_legs (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    trip_id    INTEGER NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+    country    TEXT NOT NULL,      -- ISO-2
+    city       TEXT,               -- NULL = the country itself, unplanned
+    start_date TEXT,               -- NULL = the trip's own dates
+    end_date   TEXT
+);
+CREATE INDEX IF NOT EXISTS trip_legs_trip ON trip_legs(trip_id);
 
 CREATE TABLE IF NOT EXISTS notified (
     event_id TEXT PRIMARY KEY,
@@ -198,6 +214,39 @@ def _migrate(conn: sqlite3.Connection) -> None:
         "WHERE task_key LIKE 'home:%'"
     )
     conn.execute("DELETE FROM fetch_tasks WHERE task_key LIKE 'home:%'")
+
+    # Trips used to hold comma-separated countries and cities in two columns,
+    # which couldn't say *when* you'd be in a city or which country a city
+    # belonged to. Fold them into trip_legs, then drop the columns — a city
+    # lands on the country it geocodes to, or on the only country if there's
+    # one, and otherwise stays a country-level leg.
+    columns = {row["name"] for row in conn.execute("PRAGMA table_info(trips)")}
+    if "countries" in columns:
+        for trip in conn.execute("SELECT id, countries, cities FROM trips").fetchall():
+            countries = [c.strip().upper() for c in (trip["countries"] or "").split(",") if c.strip()]
+            cities = [c.strip() for c in (trip["cities"] or "").split(",") if c.strip()]
+            placed: set[str] = set()
+            for city in cities:
+                row = conn.execute(
+                    "SELECT country FROM places WHERE query = ?", (city.lower(),)
+                ).fetchone()
+                owner = (row["country"] if row else None) or (
+                    countries[0] if len(countries) == 1 else None
+                )
+                if owner in countries:
+                    conn.execute(
+                        "INSERT INTO trip_legs(trip_id, country, city) VALUES(?,?,?)",
+                        (trip["id"], owner, city),
+                    )
+                    placed.add(owner)
+            for country in countries:
+                if country not in placed:
+                    conn.execute(
+                        "INSERT INTO trip_legs(trip_id, country, city) VALUES(?,?,NULL)",
+                        (trip["id"], country),
+                    )
+        conn.execute("ALTER TABLE trips DROP COLUMN countries")
+        conn.execute("ALTER TABLE trips DROP COLUMN cities")
 
 
 def close() -> None:

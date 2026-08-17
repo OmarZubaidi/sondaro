@@ -8,10 +8,8 @@ rather than through HTTP.
 import asyncio
 import contextlib
 import logging
-import re
 from datetime import date, timedelta
 from pathlib import Path
-from urllib.parse import quote
 
 from fastapi import Body, FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
@@ -146,9 +144,19 @@ def _trip_or_404(trip_id: int):
 
 
 def _trip_summary(row) -> dict:
+    legs = scan.trip_legs(row["id"])
     return {
         "id": row["id"],
         "name": row["name"],
+        "legs": [
+            {
+                "country": leg.country,
+                "city": leg.city,
+                "start_date": leg.start.isoformat() if leg.start else None,
+                "end_date": leg.end.isoformat() if leg.end else None,
+            }
+            for leg in legs
+        ],
         "countries": scan.trip_countries(row),
         "cities": scan.trip_cities(row),
         "start_date": row["start_date"],
@@ -162,25 +170,74 @@ def _trip_summary(row) -> dict:
 
 @app.get("/api/trips")
 async def api_trips():
-    rows = db.query("SELECT * FROM trips ORDER BY start_date DESC")
-    return {"trips": [_trip_summary(row) for row in rows]}
+    """Every trip and everything they turned up, in one merged feed.
+
+    Per-trip pages made you check each one in turn to answer "what is there to
+    see while I'm away", which is a single question. The filtering that used to
+    be a page each is a sidebar instead.
+    """
+    rows = db.query("SELECT * FROM trips ORDER BY start_date")
+    trips = [_trip_summary(row) for row in rows]
+
+    # An event can sit inside two trips — overlapping dates, or the same
+    # country twice. It's still one show, so it's one card carrying both
+    # labels, scored by whichever trip makes the better case for it.
+    merged: dict[str, dict] = {}
+    for row, summary in zip(rows, trips):
+        for candidate in scan.trip_candidates(row):
+            shown = scan.serialise(candidate)
+            existing = merged.get(shown["id"])
+            if existing is None:
+                shown["trips"] = [{"id": summary["id"], "name": summary["name"]}]
+                merged[shown["id"]] = shown
+                continue
+            existing["trips"].append({"id": summary["id"], "name": summary["name"]})
+            if shown["score"] > existing["score"]:
+                existing.update(
+                    {k: v for k, v in shown.items() if k != "trips"}
+                )
+
+    shows = sorted(merged.values(), key=lambda s: (s["date"], -s["score"]))
+
+    by_date: dict[str, list] = {}
+    for show in shows:
+        by_date.setdefault(show["date"], []).append(show)
+
+    # only the countries that actually have something, so the filter can't
+    # offer you an empty result
+    present = sorted({s["country"] for s in shows if s["country"]})
+
+    return {
+        "trips": trips,
+        "total": len(shows),
+        "dates": [{"date": day, "shows": rows_} for day, rows_ in sorted(by_date.items())],
+        "countries": [
+            {"code": code, "name": borders.country_name(code)} for code in present
+        ],
+        "notes": [note for row in rows for note in _trip_notes(row)],
+    }
+
+
+def _trip_notes(row) -> list[str]:
+    """Why a trip might be emptier than it looks."""
+    legs = scan.trip_legs(row["id"])
+    home = settings.home_country()
+    if home and any(leg.country == home and not leg.city for leg in legs):
+        return [
+            f"{row['name']}: {home} is your home country, so only cities you "
+            "name there are searched. Name one to see anything from it."
+        ]
+    return []
 
 
 def _validate_trip(payload: dict) -> dict:
     """Shared by create and update so the two can't drift apart."""
     name = str(payload.get("name") or "").strip()
-    countries = [
-        str(c).strip().upper() for c in (payload.get("countries") or []) if str(c).strip()
-    ]
     start = parse_date(payload.get("start_date"))
     end = parse_date(payload.get("end_date"))
 
     if not name:
         raise HTTPException(status_code=400, detail="name is required")
-    if not countries:
-        raise HTTPException(status_code=400, detail="at least one country is required")
-    if any(len(c) != 2 for c in countries):
-        raise HTTPException(status_code=400, detail="countries must be 2-letter ISO codes")
     if not (start and end):
         raise HTTPException(status_code=400, detail="dates must be YYYY-MM-DD")
     if end < start:
@@ -189,22 +246,78 @@ def _validate_trip(payload: dict) -> dict:
     strict = bool(payload.get("strict_dates", False))
     return {
         "name": name,
-        "countries": ",".join(countries),
-        "cities": ",".join(
-            str(c).strip() for c in (payload.get("cities") or []) if str(c).strip()
-        ),
         "start_date": start.isoformat(),
         "end_date": end.isoformat(),
         "flex_before": 0 if strict else max(0, min(int(payload.get("flex_before") or 0), 30)),
         "flex_after": 0 if strict else max(0, min(int(payload.get("flex_after") or 0), 30)),
         "strict_dates": 1 if strict else 0,
+        "legs": _validate_legs(payload, start, end),
     }
+
+
+def _validate_legs(payload: dict, start: date, end: date) -> list[dict]:
+    """Legs are the whole itinerary: a country you're visiting, optionally
+    narrowed to a city and to the days you'll be in it."""
+    raw = payload.get("legs")
+    if not isinstance(raw, list) or not raw:
+        raise HTTPException(status_code=400, detail="at least one country is required")
+
+    legs = []
+    for item in raw:
+        if not isinstance(item, dict):
+            raise HTTPException(status_code=400, detail="each leg must be an object")
+        country = str(item.get("country") or "").strip().upper()
+        if len(country) != 2:
+            raise HTTPException(
+                status_code=400, detail="each leg needs a 2-letter ISO country"
+            )
+
+        city = str(item.get("city") or "").strip() or None
+        leg_start = parse_date(item.get("start_date")) if item.get("start_date") else None
+        leg_end = parse_date(item.get("end_date")) if item.get("end_date") else None
+
+        if (item.get("start_date") and not leg_start) or (
+            item.get("end_date") and not leg_end
+        ):
+            raise HTTPException(status_code=400, detail="leg dates must be YYYY-MM-DD")
+        if leg_start and leg_end and leg_end < leg_start:
+            raise HTTPException(
+                status_code=400, detail=f"{city or country}: end date is before start date"
+            )
+        # a leg outside the trip it belongs to is a typo, not an itinerary
+        for when in (leg_start, leg_end):
+            if when and not (start <= when <= end):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"{city or country}: {when} is outside the trip",
+                )
+
+        legs.append(
+            {
+                "country": country,
+                "city": city,
+                "start_date": leg_start.isoformat() if leg_start else None,
+                "end_date": leg_end.isoformat() if leg_end else None,
+            }
+        )
+    return legs
+
+
+def _write_legs(trip_id: int, legs: list[dict]) -> None:
+    db.execute("DELETE FROM trip_legs WHERE trip_id = ?", (trip_id,))
+    db.executemany(
+        "INSERT INTO trip_legs(trip_id, country, city, start_date, end_date) "
+        "VALUES(?,?,?,?,?)",
+        [
+            (trip_id, leg["country"], leg["city"], leg["start_date"], leg["end_date"])
+            for leg in legs
+        ],
+    )
 
 
 # fields that change *what gets searched*; editing one means re-planning, while
 # a rename does not need to spend a single API call
-SCOPE_FIELDS = ("countries", "cities", "start_date", "end_date", "flex_before", "flex_after",
-                "strict_dates")
+SCOPE_FIELDS = ("start_date", "end_date", "flex_before", "flex_after", "strict_dates")
 
 
 def _replan(trip_id: int) -> int:
@@ -213,10 +326,9 @@ def _replan(trip_id: int) -> int:
     queue.clear_coverage(f"trip:{trip_id}:")
     planned = queue.plan_trip(
         trip_id,
-        scan.trip_countries(row),
+        scan.trip_legs(trip_id),
         window_start,
         window_end,
-        cities=scan.trip_cities(row),
         home_country=settings.home_country(),
     )
     worker.worker.nudge()
@@ -226,77 +338,24 @@ def _replan(trip_id: int) -> int:
 @app.post("/api/trips", status_code=201)
 async def api_create_trip(payload: dict = Body(...)):
     fields = _validate_trip(payload)
-    countries = fields["countries"].split(",")
-    cities = fields["cities"]
-    name = fields["name"]
-    start = parse_date(fields["start_date"])
-    end = parse_date(fields["end_date"])
-    flex_before = fields["flex_before"]
-    flex_after = fields["flex_after"]
-    strict = bool(fields["strict_dates"])
 
     trip_id = db.execute(
-        "INSERT INTO trips(name, countries, cities, start_date, end_date, flex_before, "
-        "flex_after, strict_dates, created_at) VALUES(?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO trips(name, start_date, end_date, flex_before, flex_after, "
+        "strict_dates, created_at) VALUES(?,?,?,?,?,?,?)",
         (
-            name,
-            ",".join(countries),
-            cities,
-            start.isoformat(),
-            end.isoformat(),
-            flex_before,
-            flex_after,
-            1 if strict else 0,
+            fields["name"],
+            fields["start_date"],
+            fields["end_date"],
+            fields["flex_before"],
+            fields["flex_after"],
+            fields["strict_dates"],
             now_iso(),
         ),
     )
+    _write_legs(trip_id, fields["legs"])
+    _replan(trip_id)
 
-    row = _trip_or_404(trip_id)
-    _, _, window_start, window_end = scan.trip_window(row)
-    queue.plan_trip(
-        trip_id, countries, window_start, window_end,
-        cities=scan.trip_cities(row), home_country=settings.home_country(),
-    )
-    worker.worker.nudge()
-
-    return _trip_summary(row)
-
-
-@app.get("/api/trips/{trip_id}")
-async def api_trip(trip_id: int):
-    row = _trip_or_404(trip_id)
-    candidates = scan.trip_candidates(row)
-
-    # grouped by date, every option shown — the UI chooses nothing
-    by_date: dict[str, list] = {}
-    for candidate in candidates:
-        by_date.setdefault(candidate.event.date, []).append(scan.serialise(candidate))
-
-    scope_prefix = f"trip:{trip_id}:"
-    _, _, window_start, window_end = scan.trip_window(row)
-    expected = len(scan.trip_countries(row)) * len(
-        queue.slice_windows(max(window_start, today()), window_end)
-    )
-
-    notes = []
-    home = settings.home_country()
-    if home in scan.trip_countries(row):
-        points = scan._named_city_points(scan.trip_cities(row))
-        if not scan._points_in(points, home):
-            notes.append(
-                f"{home} is your home country, so only cities you name there are "
-                "searched. Name a city in it to see anything from it."
-            )
-
-    return {
-        "trip": _trip_summary(row),
-        "total": len(candidates),
-        "dates": [
-            {"date": day, "shows": shows} for day, shows in sorted(by_date.items())
-        ],
-        "coverage": queue.coverage_fraction(scope_prefix, expected),
-        "notes": notes,
-    }
+    return _trip_summary(_trip_or_404(trip_id))
 
 
 @app.patch("/api/trips/{trip_id}")
@@ -304,13 +363,13 @@ async def api_update_trip(trip_id: int, payload: dict = Body(...)):
     """Edit a trip. Plans get narrowed once things are booked, and sometimes a
     leg is dropped entirely."""
     before = _trip_or_404(trip_id)
+    before_legs = _trip_summary(before)["legs"]
 
     # merge over what's there, so a partial edit doesn't have to resend
     # everything just to rename a trip
     merged = {
         "name": payload.get("name", before["name"]),
-        "countries": payload.get("countries", scan.trip_countries(before)),
-        "cities": payload.get("cities", scan.trip_cities(before)),
+        "legs": payload.get("legs", before_legs),
         "start_date": payload.get("start_date", before["start_date"]),
         "end_date": payload.get("end_date", before["end_date"]),
         "flex_before": payload.get("flex_before", before["flex_before"]),
@@ -320,14 +379,13 @@ async def api_update_trip(trip_id: int, payload: dict = Body(...)):
     fields = _validate_trip(merged)
 
     scope_changed = any(str(fields[f]) != str(before[f]) for f in SCOPE_FIELDS)
+    scope_changed = scope_changed or fields["legs"] != before_legs
 
     db.execute(
-        "UPDATE trips SET name=?, countries=?, cities=?, start_date=?, end_date=?, "
+        "UPDATE trips SET name=?, start_date=?, end_date=?, "
         "flex_before=?, flex_after=?, strict_dates=? WHERE id=?",
         (
             fields["name"],
-            fields["countries"],
-            fields["cities"],
             fields["start_date"],
             fields["end_date"],
             fields["flex_before"],
@@ -336,6 +394,7 @@ async def api_update_trip(trip_id: int, payload: dict = Body(...)):
             trip_id,
         ),
     )
+    _write_legs(trip_id, fields["legs"])
 
     # dropping a country should take its cached events' relevance with it, and
     # narrowing to a city shouldn't leave the old country-wide sweep queued
@@ -408,40 +467,43 @@ async def api_countries():
 # --------------------------------------------------------------------------
 
 
-def _disposition(filename: str) -> str:
-    """RFC 6266. The plain `filename` has to be ASCII, so accented trip names
-    get a sanitised fallback plus the real thing in `filename*`."""
-    stem = re.sub(r"[^\w \-.]", "", filename, flags=re.ASCII).strip() or "sondaro"
-    quoted = quote(f"{filename}.ics", safe="")
-    return f'attachment; filename="{stem}.ics"; filename*=UTF-8\'\'{quoted}'
-
-
-def _calendar_response(candidates, name: str, filename: str) -> Response:
+def _calendar_response(candidates, name: str) -> Response:
     return Response(
         content=ics.build(candidates, name),
         media_type="text/calendar; charset=utf-8",
         headers={
             "Cache-Control": "public, max-age=1800",
-            # a subscribing client ignores this; a browser uses it to name the
-            # file, which is the only time "trips/4.ics" would be unhelpful
-            "Content-Disposition": _disposition(filename),
+            'Content-Disposition': 'attachment; filename="Sondaro.ics"',
         },
     )
 
 
 @app.get("/sondaro.ics")
-async def home_calendar(min_score: float = Query(0.0, ge=0.0, le=1.0)):
-    candidates = [c for c in scan.local_candidates() if c.total >= min_score]
+async def calendar(min_score: float = Query(0.0, ge=0.0, le=1.0)):
+    """One feed: near home, plus everywhere you're going.
+
+    A subscription is set up once and then forgotten, so a per-trip URL was a
+    calendar you had to remember to add for every trip and remove afterwards.
+    Adding a trip now just makes shows appear in the feed you already have.
+    """
+    candidates = list(scan.local_candidates())
+    for row in db.query("SELECT * FROM trips ORDER BY start_date"):
+        candidates.extend(scan.trip_candidates(row))
+
+    # the same show can be both near home and inside a trip; one event, one
+    # entry, or the calendar shows it twice
+    best: dict[str, object] = {}
+    for candidate in candidates:
+        if candidate.total < min_score:
+            continue
+        seen = best.get(candidate.event.id)
+        if seen is None or candidate.total > seen.total:
+            best[candidate.event.id] = candidate
+
     return _calendar_response(
-        candidates, f"Sondaro — {settings.get('home_label')}", "Sondaro"
+        sorted(best.values(), key=lambda c: c.event.date),
+        f"Sondaro — {settings.get('home_label')}",
     )
-
-
-@app.get("/trips/{trip_id}.ics")
-async def trip_calendar(trip_id: int, min_score: float = Query(0.0, ge=0.0, le=1.0)):
-    row = _trip_or_404(trip_id)
-    candidates = [c for c in scan.trip_candidates(row) if c.total >= min_score]
-    return _calendar_response(candidates, f"Sondaro — {row['name']}", row["name"])
 
 
 # --------------------------------------------------------------------------

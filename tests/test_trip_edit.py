@@ -31,11 +31,15 @@ def client(monkeypatch):
         yield test_client
 
 
+def legs(*pairs):
+    """(country, city or None) -> the leg payload the API takes."""
+    return [{"country": c, "city": city} for c, city in pairs]
+
+
 def make_trip(client, **overrides):
     payload = {
         "name": "Europe",
-        "countries": ["FR", "ES"],
-        "cities": [],
+        "legs": legs(("FR", None), ("ES", None)),
         "start_date": "2026-09-20",
         "end_date": "2026-09-30",
         "flex_before": 2,
@@ -71,7 +75,7 @@ def test_dropping_a_country_removes_its_sweeps(client):
     trip = make_trip(client)
     assert task_countries() == {"FR", "ES"}
 
-    response = client.patch(f"/api/trips/{trip['id']}", json={"countries": ["FR"]})
+    response = client.patch(f"/api/trips/{trip['id']}", json={"legs": legs(("FR", None))})
 
     assert response.status_code == 200
     assert response.json()["countries"] == ["FR"]
@@ -80,10 +84,10 @@ def test_dropping_a_country_removes_its_sweeps(client):
 
 
 def test_adding_a_country_plans_it(client):
-    trip = make_trip(client, countries=["FR"])
+    trip = make_trip(client, legs=legs(("FR", None)))
     assert task_countries() == {"FR"}
 
-    client.patch(f"/api/trips/{trip['id']}", json={"countries": ["FR", "IT"]})
+    client.patch(f"/api/trips/{trip['id']}", json={"legs": legs(("FR", None), ("IT", None))})
 
     assert task_countries() == {"FR", "IT"}
 
@@ -91,7 +95,9 @@ def test_adding_a_country_plans_it(client):
 def test_narrowing_to_a_city_once_it_is_booked(client):
     trip = make_trip(client)
 
-    response = client.patch(f"/api/trips/{trip['id']}", json={"cities": ["Lyon"]})
+    response = client.patch(
+        f"/api/trips/{trip['id']}", json={"legs": legs(("FR", "Lyon"), ("ES", None))}
+    )
 
     assert response.json()["cities"] == ["Lyon"]
     assert response.json()["rescanned"] is True
@@ -99,7 +105,7 @@ def test_narrowing_to_a_city_once_it_is_booked(client):
 
 def test_a_partial_edit_keeps_everything_else(client):
     """You should be able to rename without resending the whole trip."""
-    trip = make_trip(client, cities=["Lyon"])
+    trip = make_trip(client, legs=legs(("FR", "Lyon"), ("ES", None)))
 
     updated = client.patch(f"/api/trips/{trip['id']}", json={"name": "Just the name"}).json()
 
@@ -140,7 +146,9 @@ def test_an_invalid_edit_changes_nothing(client):
 
     assert response.status_code == 400
     assert "before start date" in response.json()["detail"]
-    unchanged = client.get(f"/api/trips/{trip['id']}").json()["trip"]
+    unchanged = next(
+        t for t in client.get("/api/trips").json()["trips"] if t["id"] == trip["id"]
+    )
     assert unchanged["end_date"] == "2026-09-30"
 
 
@@ -153,7 +161,7 @@ def test_dropping_a_country_also_drops_its_coverage(client):
     queue.record_coverage(f"trip:{trip['id']}:ES", *_window(), "ticketmaster")
     assert db.scalar("SELECT COUNT(*) FROM coverage WHERE scope_key LIKE 'trip:%'") > 0
 
-    client.patch(f"/api/trips/{trip['id']}", json={"countries": ["FR"]})
+    client.patch(f"/api/trips/{trip['id']}", json={"legs": legs(("FR", None))})
 
     remaining = db.query("SELECT scope_key FROM coverage WHERE scope_key LIKE 'trip:%'")
     assert not any("ES" in row["scope_key"] for row in remaining)

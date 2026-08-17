@@ -198,12 +198,34 @@ def _plays_after(world, name, place):
     _make_event(world, name, place, TRIP_END + timedelta(days=2))
 
 
+def _make_trip(name: str, legs, start=None, end=None, **extra) -> int:
+    """A trip and its legs. A leg is (country, city or None) — a country with
+    no city is one you're going to but haven't planned."""
+    trip_id = db.execute(
+        "INSERT INTO trips(name, start_date, end_date, flex_before, flex_after, "
+        "strict_dates, created_at) VALUES(?,?,?,?,?,?,?)",
+        (
+            name,
+            (start or TRIP_START).isoformat(),
+            (end or TRIP_END).isoformat(),
+            extra.get("flex_before", 0),
+            extra.get("flex_after", 0),
+            extra.get("strict_dates", 0),
+            now_iso(),
+        ),
+    )
+    for country, city in legs:
+        db.execute(
+            "INSERT INTO trip_legs(trip_id, country, city) VALUES(?,?,?)",
+            (trip_id, country, city),
+        )
+    return trip_id
+
+
 @given("I am away on a trip that week")
 def _away(world):
-    world["away"] = db.execute(
-        "INSERT INTO trips(name, countries, cities, start_date, end_date, flex_before, "
-        "flex_after, strict_dates, created_at) VALUES(?,?,?,?,?,?,?,?,?)",
-        ("Away", "FR", "", AWAY_START.isoformat(), AWAY_END.isoformat(), 3, 3, 0, now_iso()),
+    world["away"] = _make_trip(
+        "Away", [("FR", None)], AWAY_START, AWAY_END, flex_before=3, flex_after=3
     )
 
 
@@ -232,23 +254,24 @@ def _remember_places(*cities):
 @given("I am going to Canada and France, but have only booked Toronto")
 def _partial_trip(world):
     _remember_places("Toronto", "Lyon")
-    world["trip"] = db.execute(
-        "INSERT INTO trips(name, countries, cities, start_date, end_date, flex_before, "
-        "flex_after, strict_dates, created_at) VALUES(?,?,?,?,?,?,?,?,?)",
-        ("Partly booked", "CA,FR", "Toronto", TRIP_START.isoformat(),
-         TRIP_END.isoformat(), 0, 0, 0, now_iso()),
+    world["trip"] = _make_trip(
+        "Partly booked", [("CA", "Toronto"), ("FR", None)]
     )
+
+
+@given("I am going to France and Spain, but have only booked Barcelona")
+def _spain_booked_france_open(world):
+    """The case the old pooled anchoring got wrong: once *any* city was named
+    it became the anchor for everything, so Geneva was measured against
+    Barcelona — 350 miles — rather than the French border it sits on."""
+    _remember_places("Barcelona", "Lyon")
+    world["trip"] = _make_trip("Europe", [("ES", "Barcelona"), ("FR", None)])
 
 
 @given("I am going to the US with no cities named")
 def _us_no_cities(world):
     _remember_places("Toronto")
-    world["trip"] = db.execute(
-        "INSERT INTO trips(name, countries, cities, start_date, end_date, flex_before, "
-        "flex_after, strict_dates, created_at) VALUES(?,?,?,?,?,?,?,?,?)",
-        ("US open", "US", "", TRIP_START.isoformat(), TRIP_END.isoformat(),
-         0, 0, 0, now_iso()),
-    )
+    world["trip"] = _make_trip("US open", [("US", None)])
 
 
 @given("my home country is the US")
@@ -258,35 +281,13 @@ def _home_country():
 
 @given("I am going to New York in September")
 def _domestic_trip(world):
-    from api import routing
-
     _remember_places("New York", "Los Angeles")
-    world["trip"] = db.execute(
-        "INSERT INTO trips(name, countries, cities, start_date, end_date, flex_before, "
-        "flex_after, strict_dates, created_at) VALUES(?,?,?,?,?,?,?,?,?)",
-        ("NYC", "US", "New York", TRIP_START.isoformat(), TRIP_END.isoformat(),
-         0, 0, 0, now_iso()),
-    )
+    world["trip"] = _make_trip("NYC", [("US", "New York")])
 
 
 @given("I am going to France and Spain in September")
 def _trip(world):
-    trip_id = db.execute(
-        "INSERT INTO trips(name, countries, cities, start_date, end_date, flex_before, "
-        "flex_after, strict_dates, created_at) VALUES(?,?,?,?,?,?,?,?,?)",
-        (
-            "Europe",
-            "FR,ES",
-            "",
-            TRIP_START.isoformat(),
-            TRIP_END.isoformat(),
-            0,
-            0,
-            0,
-            now_iso(),
-        ),
-    )
-    world["trip"] = trip_id
+    world["trip"] = _make_trip("Europe", [("FR", None), ("ES", None)])
 
 
 @given(parsers.parse("the trip has {days:d} days of slack either side"))

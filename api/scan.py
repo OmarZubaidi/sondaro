@@ -251,12 +251,55 @@ def local_candidates(overrides: dict | None = None) -> list[Candidate]:
 # --------------------------------------------------------------------------
 
 
+@dataclass(frozen=True)
+class Leg:
+    """One country of a trip, optionally narrowed to a city and to dates."""
+
+    country: str
+    city: str | None = None
+    start: date | None = None
+    end: date | None = None
+
+    def window(self, trip_start: date, trip_end: date) -> tuple[date, date]:
+        """A leg with no dates of its own spans the whole trip."""
+        return (self.start or trip_start, self.end or trip_end)
+
+
+def trip_legs(trip_id: int) -> list[Leg]:
+    return [
+        Leg(
+            country=(row["country"] or "").strip().upper(),
+            city=(row["city"] or "").strip() or None,
+            start=parse_date(row["start_date"]),
+            end=parse_date(row["end_date"]),
+        )
+        for row in db.query(
+            # dated legs read as an itinerary; undated ones keep the order you
+            # entered them, which is the only order they have
+            "SELECT country, city, start_date, end_date FROM trip_legs "
+            "WHERE trip_id = ? ORDER BY start_date IS NULL, start_date, id",
+            (trip_id,),
+        )
+    ]
+
+
 def trip_countries(trip) -> list[str]:
-    return [c.strip().upper() for c in (trip["countries"] or "").split(",") if c.strip()]
+    """Every country the trip touches, in the order the legs were given."""
+    seen: list[str] = []
+    for leg in trip_legs(trip["id"]):
+        if leg.country and leg.country not in seen:
+            seen.append(leg.country)
+    return seen
 
 
 def trip_cities(trip) -> list[str]:
-    return [c.strip() for c in (trip["cities"] or "").split(",") if c.strip()]
+    return [leg.city for leg in trip_legs(trip["id"]) if leg.city]
+
+
+def anchored_countries(legs: list[Leg]) -> set[str]:
+    """Countries you've named a city in. Those are planned; the rest are not,
+    and being unplanned is what keeps a whole country in play."""
+    return {leg.country for leg in legs if leg.city}
 
 
 def trip_window(trip) -> tuple[date, date, date, date]:
@@ -297,6 +340,29 @@ def _points_in(points, country: str):
     return [p for p in points if (p[2] or "").upper() == country]
 
 
+def _leg_city_points(legs: list[Leg], country: str):
+    """Geocoded points for the cities named in one country."""
+    return _named_city_points([leg.city for leg in legs if leg.country == country and leg.city])
+
+
+def _leg_window(
+    legs: list[Leg], country: str, trip_start: date, trip_end: date
+) -> tuple[date, date]:
+    """The dates you'd be in a country, across all its legs.
+
+    Two weeks in Spain split into Madrid then Barcelona is still two weeks in
+    Spain, so the country's window is the span of its legs. A show outside the
+    trip entirely is judged against the whole trip, since there's no leg it
+    belongs to.
+    """
+    windows = [
+        leg.window(trip_start, trip_end) for leg in legs if leg.country == country
+    ]
+    if not windows:
+        return trip_start, trip_end
+    return min(w[0] for w in windows), max(w[1] for w in windows)
+
+
 def trip_candidates(trip) -> list[Candidate]:
     """Everything worth seeing on a trip, scored and ranked. Nothing is hidden
     and nothing is chosen — the UI shows every option.
@@ -306,15 +372,16 @@ def trip_candidates(trip) -> list[Candidate]:
     planning once. A fixed `TRIP_FLOOR` drops the unreachable instead, so an
     artist you've never played still surfaces in a city you'll be standing in.
     """
-    countries = trip_countries(trip)
-    cities = trip_cities(trip)
+    legs = trip_legs(trip["id"])
+    countries = [c for c in {leg.country for leg in legs} if c]
     start, end, window_start, window_end = trip_window(trip)
-    if not (start and end):
+    if not (start and end) or not legs:
         return []
 
     strict = bool(trip["strict_dates"])
     border_base = settings.get("trip_border_base_miles")
     home = settings.home_country()
+    anchored = anchored_countries(legs)
 
     rows = db.query(
         "SELECT e.*, a.affinity, a.listens "
@@ -323,14 +390,17 @@ def trip_candidates(trip) -> list[Candidate]:
         (max(window_start, today()).isoformat(), window_end.isoformat()),
     )
 
-    named_points = _named_city_points(cities)
+    # Anchors, per country rather than pooled. Booking Barcelona anchors Spain
+    # and says nothing about France, so a Geneva show is still measured from
+    # the French border it's actually near.
+    city_points = {c: _leg_city_points(legs, c) for c in anchored}
 
-    # A country we aren't actually searching must not anchor anything either.
-    # Your home country with no city named contributes nothing, so measuring a
-    # Canadian show's distance to the US border on a "trip to the US" would
-    # offer results from a border we just declined to search.
-    home_has_cities = bool(home) and bool(_points_in(named_points, home))
-    anchor_countries = [c for c in countries if c != home or home_has_cities]
+    # Countries still open, whose borders can pull in a show from outside. Your
+    # home country never qualifies: flying to one city in the country you live
+    # in doesn't put the rest of it, or its neighbours, in play.
+    loose_countries = [
+        c for c in countries if c not in anchored and (not home or c != home)
+    ]
 
     candidates: list[Candidate] = []
 
@@ -341,46 +411,54 @@ def trip_candidates(trip) -> list[Candidate]:
 
         country = (row["country"] or "").upper()
         inside = country in countries
-
-        # Your home country is not "somewhere you're visiting". Going to one
-        # city in it doesn't put the rest of the country in play, so only the
-        # cities you named there count, and there's no country-wide floor.
         at_home_country = bool(home) and country == home
-        local_points = _points_in(named_points, country) if inside else []
         miles_to_border = None
         miles_to_named = None
 
+        # Dates come from the leg you'd be there for, so a Barcelona show on
+        # the day you're in Toronto scores as being outside your dates.
+        leg_start, leg_end = _leg_window(legs, country, start, end)
+
         if inside:
-            if local_points:
+            if country in anchored:
                 if row["lat"] is None:
                     continue
-                miles_to_named = _nearest(row["lat"], row["lon"], local_points)
+                miles_to_named = _nearest(row["lat"], row["lon"], city_points[country])
+                if miles_to_named is None:
+                    continue  # cities named but not yet geocoded; the worker will
             elif at_home_country:
                 # home country with no city named in it contributes nothing;
-                # api_trip says so rather than leaving it looking empty
+                # api_trips says so rather than leaving it looking empty
                 continue
-            # else: a country you're visiting with no cities named stays flat
+            # else: a country you're visiting but haven't planned stays flat
         else:
             if row["lat"] is None:
                 continue
-            if named_points:
-                # Once you've named cities, they are the anchor. Measuring to
-                # the country border instead puts Toronto 27 miles from a New
-                # York trip, because it is 27 miles from *a* US border — which
-                # is true and completely useless.
-                miles_to_border = _nearest(row["lat"], row["lon"], named_points)
-            elif anchor_countries:
-                miles_to_border = borders.distance_to_border(
-                    row["lat"], row["lon"], anchor_countries
+            # nearest of: a border you haven't planned behind, or a city you
+            # have. Whichever is genuinely closer is the honest answer.
+            options = [
+                m
+                for m in (
+                    borders.distance_to_border(row["lat"], row["lon"], loose_countries)
+                    if loose_countries
+                    else None,
+                    _nearest(
+                        row["lat"],
+                        row["lon"],
+                        [p for pts in city_points.values() for p in pts],
+                    ),
                 )
-            if miles_to_border is None:
+                if m is not None
+            ]
+            if not options:
                 continue  # can't place it, so don't guess
+            miles_to_border = min(options)
 
         score = scoring.score_trip(
             artist_affinity=row["affinity"],
             day=day,
-            start=start,
-            end=end,
+            start=leg_start,
+            end=leg_end,
             flex_before=int(trip["flex_before"] or 0),
             flex_after=int(trip["flex_after"] or 0),
             strict=strict,

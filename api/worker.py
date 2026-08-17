@@ -333,10 +333,9 @@ def bootstrap() -> None:
         _, _, window_start, window_end = scan.trip_window(row)
         queue.plan_trip(
             row["id"],
-            scan.trip_countries(row),
+            scan.trip_legs(row["id"]),
             window_start,
             window_end,
-            cities=scan.trip_cities(row),
             home_country=settings.home_country(),
         )
 

@@ -272,54 +272,53 @@ def plan_local(lat: float, lon: float, horizon_days: int, radius_miles: float = 
     return len(slice_windows(start, end))
 
 
-def plan_trip(
-    trip_id: int,
-    countries: list[str],
-    start: date,
-    end: date,
-    *,
-    cities: list[str] | None = None,
-    home_country: str | None = None,
-) -> int:
+def plan_trip(trip_id: int, legs, start: date, end: date, *, home_country: str | None = None) -> int:
     """Sweeps for a trip, boosted so a trip you just created fills in while you
     are still looking at it.
+
+    Each leg is searched over its own dates, so a fortnight split between two
+    cities doesn't sweep both of them for the whole fortnight.
 
     Your *home* country is swept city by city rather than whole: flying to one
     city in the country you live in doesn't put the rest of it in play, and
     sweeping the entire US to visit New York would burn the daily budget on
     listings you'll never look at.
     """
-    cities = cities or []
     home = (home_country or "").upper()
     planned = 0
 
-    for country in countries:
+    for leg in legs:
+        country = leg.country
+        if not country:
+            continue
         scope = trip_scope(trip_id, country)
-        windows = slice_windows(max(start, today()), end)
+        leg_start, leg_end = leg.window(start, end)
+        windows = slice_windows(max(leg_start, today()), leg_end)
+
+        # A city leg is searched as a city. A country leg in your home country
+        # is searched as nothing at all: see api_trips's note.
+        if leg.city:
+            for window_start, window_end, _ in windows:
+                enqueue(
+                    SWEEP_CITY,
+                    f"{scope}:{leg.city.lower()}:{window_start.isoformat()}",
+                    {
+                        "city": leg.city,
+                        "country": country,
+                        "start": window_start.isoformat(),
+                        "end": window_end.isoformat(),
+                        "scope": scope,
+                        "trip_id": trip_id,
+                    },
+                    priority=urgency((window_start - today()).days) + 1.0,
+                )
+                planned += 1
+            continue
 
         if country == home:
-            # no cities named means nothing to search: see api_trip's note
-            for city in cities:
-                for window_start, window_end, _ in windows:
-                    days_out = (window_start - today()).days
-                    enqueue(
-                        SWEEP_CITY,
-                        f"{scope}:{city.lower()}:{window_start.isoformat()}",
-                        {
-                            "city": city,
-                            "country": country,
-                            "start": window_start.isoformat(),
-                            "end": window_end.isoformat(),
-                            "scope": scope,
-                            "trip_id": trip_id,
-                        },
-                        priority=urgency(days_out) + 1.0,
-                    )
-                    planned += 1
             continue
 
         for window_start, window_end, _ in windows:
-            days_out = (window_start - today()).days
             enqueue(
                 SWEEP_COUNTRY,
                 f"{scope}:{window_start.isoformat()}",
@@ -331,7 +330,7 @@ def plan_trip(
                     "trip_id": trip_id,
                 },
                 # a trip is an explicit request, so it outranks background work
-                priority=urgency(days_out) + 1.0,
+                priority=urgency((window_start - today()).days) + 1.0,
             )
             planned += 1
     return planned
