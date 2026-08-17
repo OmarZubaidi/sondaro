@@ -59,6 +59,13 @@ export function Trips() {
     return counts
   }, [feed])
 
+  // a bare "FR" on a leg is a code you have to decode; the picker already
+  // loaded the names for the modal
+  const countryNames = useMemo(
+    () => new Map(countries.map((c) => [c.code, c.name])),
+    [countries],
+  )
+
   const perCountry = useMemo(() => {
     const counts = new Map<string, number>()
     for (const group of feed?.dates ?? [])
@@ -91,11 +98,60 @@ export function Trips() {
             New trip
           </button>
 
-          {/* Which trips, then how to narrow them. Picking a trip is closer to
-              navigation than to filtering — it's the first thing you reach for
-              and it belongs next to the button that makes one. */}
+          {/* The itinerary, then which trips, then how to narrow them.
+              Collapsible because it's reference material: you read it when
+              you're wondering where you'll be, not on every visit. */}
           {feed.trips.length > 0 && (
             <>
+              <details className="card filters trip-list" open>
+                <summary>
+                  Itinerary <em>{feed.trips.length}</em>
+                </summary>
+                {feed.trips.map((trip) => (
+                  <div className="trip-row" key={trip.id}>
+                    <div className="trip-row-head">
+                      <strong title={trip.name}>{trip.name}</strong>
+                      <IconButton
+                        label={`Edit ${trip.name}`}
+                        icon={<EditIcon />}
+                        onClick={() => setEditing(trip)}
+                      />
+                      <IconButton
+                        label={`Delete ${trip.name}`}
+                        icon={<TrashIcon />}
+                        tone="danger"
+                        onClick={() => remove(trip)}
+                      />
+                    </div>
+                    <div className="muted trip-span">
+                      {trip.start_date} – {trip.end_date}
+                    </div>
+                    <ul className="trip-legs">
+                      {trip.legs.map((leg) => (
+                        <li key={`${leg.country}:${leg.city ?? ''}`}>
+                          <span className={leg.city ? undefined : 'loose'}>
+                            {leg.city ?? countryNames.get(leg.country) ?? leg.country}
+                          </span>
+                          {leg.start_date ? (
+                            <span className="muted">
+                              {leg.start_date}
+                              {leg.end_date && ` – ${leg.end_date}`}
+                            </span>
+                          ) : (
+                            <span
+                              className="muted"
+                              title="no city named, so the whole country stays in play"
+                            >
+                              anywhere, any day
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </details>
+
               <div className="card filters">
                 <CheckList
                   legend="Trips"
@@ -160,51 +216,9 @@ export function Trips() {
           </div>
         </aside>
 
+        {/* nothing but results: the itinerary that used to sit on top of them
+            is in the sidebar, where it doesn't push the answer below the fold */}
         <div className="feed">
-          {feed.trips.length > 0 && (
-            <div className="trip-strip">
-              {feed.trips.map((trip) => (
-                <div className="card trip-card" key={trip.id}>
-                  <div>
-                    <strong>{trip.name}</strong>
-                    <div className="muted">
-                      {trip.start_date} – {trip.end_date}
-                    </div>
-                    <div className="chips">
-                      {trip.legs.map((leg) => (
-                        <span
-                          className={`chip${leg.city ? '' : ' info'}`}
-                          key={`${leg.country}:${leg.city ?? ''}`}
-                          title={leg.city ? undefined : 'no city named, so the whole country is in play'}
-                        >
-                          {leg.city ?? leg.country}
-                          {leg.start_date && (
-                            <> · {leg.start_date}
-                              {leg.end_date && `–${leg.end_date}`}
-                            </>
-                          )}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="actions">
-                    <IconButton
-                      label={`Edit ${trip.name}`}
-                      icon={<EditIcon />}
-                      onClick={() => setEditing(trip)}
-                    />
-                    <IconButton
-                      label={`Delete ${trip.name}`}
-                      icon={<TrashIcon />}
-                      tone="danger"
-                      onClick={() => remove(trip)}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
           {feed.trips.length === 0 ? (
             <div className="empty">No trips yet. Add one and anything worth seeing while
               you're there turns up here — and in the calendar you already subscribe to.</div>

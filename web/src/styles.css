@@ -784,24 +784,101 @@ main:has(.local-layout) {
   font-size: 12px;
 }
 
-/* the itinerary summary above the results */
-.trip-strip {
-  display: grid;
-  gap: 10px;
-  margin-bottom: 18px;
+/* --- the itinerary, in a 250px column ------------------------------------ */
+
+.trip-list summary {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--muted);
+  list-style: none;
 }
 
-.trip-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  margin-bottom: 0;
+/* a caret drawn by hand, so it can point the right way in both states */
+.trip-list summary::before {
+  content: '▸';
+  font-size: 10px;
+  transition: transform 0.15s ease;
 }
 
-.trip-card .actions {
-  display: flex;
-  gap: 4px;
+.trip-list[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.trip-list summary::-webkit-details-marker {
+  display: none;
+}
+
+.trip-list summary em {
   margin-left: auto;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+}
+
+.trip-row {
+  margin-top: 14px;
+}
+
+.trip-row-head {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* the name takes what's left and truncates; the two actions never shrink */
+.trip-row-head strong {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+}
+
+/* sized off --tap, so squeezing these into a sidebar doesn't cost a finger a
+   target it can hit — that variable is already 44px on a coarse pointer */
+.trip-row-head .icon-button {
+  flex: none;
+  width: var(--tap);
+  height: var(--tap);
+  min-height: var(--tap);
+}
+
+.trip-span {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Each leg is two stacked lines rather than one chip: "Reykjavik ·
+   2026-09-25–2026-09-28" is 40 characters and there are 218 of them to play
+   with once the card's padding is gone. */
+.trip-legs {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0 0 0 9px;
+  border-left: 2px solid var(--line);
+  display: grid;
+  gap: 6px;
+}
+
+.trip-legs li {
+  display: grid;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.trip-legs li span:last-child {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* a country with no city named — the whole place is in play, and it reads
+   differently from a booked stop */
+.trip-legs .loose {
+  color: var(--accent);
 }
 
 /* --- a bought ticket ------------------------------------------------------ */
