@@ -245,6 +245,24 @@ def clear_coverage(scope_prefix: str) -> int:
     return rows[0]["n"] if rows else 0
 
 
+def unfetched(scope_prefix: str) -> int:
+    """Sweeps for a scope that have never run cleanly.
+
+    `last_ok_at` rather than a due date: what a trip needs to say is "we have
+    not looked there yet", and a task scheduled for its next refresh has
+    already looked once. Without this an empty country reads identically
+    whether it was searched and came back bare or was never searched at all.
+    """
+    return int(
+        db.scalar(
+            "SELECT COUNT(*) FROM fetch_tasks WHERE task_key LIKE ? "
+            "AND last_ok_at IS NULL AND failures < ?",
+            (f"{scope_prefix}%", MAX_FAILURES),
+            0,
+        )
+    )
+
+
 def coverage_fraction(scope_prefix: str, expected: int) -> float:
     if expected <= 0:
         return 1.0

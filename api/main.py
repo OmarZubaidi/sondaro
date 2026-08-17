@@ -186,8 +186,13 @@ async def api_trips():
     # labels, scored by whichever trip makes the better case for it.
     bought = scan.purchased_ids()
     merged: dict[str, dict] = {}
+    notes: list[str] = []
     for row, summary in zip(rows, trips):
-        for candidate in scan.trip_candidates(row):
+        candidates = scan.trip_candidates(row)
+        notes.extend(
+            _trip_notes(row, {(c.event.country or "").upper() for c in candidates})
+        )
+        for candidate in candidates:
             shown = scan.serialise(candidate, bought)
             existing = merged.get(shown["id"])
             if existing is None:
@@ -217,20 +222,44 @@ async def api_trips():
         "countries": [
             {"code": code, "name": borders.country_name(code)} for code in present
         ],
-        "notes": [note for row in rows for note in _trip_notes(row)],
+        "notes": notes,
     }
 
 
-def _trip_notes(row) -> list[str]:
-    """Why a trip might be emptier than it looks."""
+def _trip_notes(row, found: set[str]) -> list[str]:
+    """Why a trip is emptier than it looks, one country at a time.
+
+    "Nothing here" has three quite different causes — not searched yet, your
+    home country deliberately left alone, or genuinely nothing on — and they
+    are indistinguishable from a blank list. Saying which is the difference
+    between waiting and going and fixing the trip.
+    """
     legs = scan.trip_legs(row["id"])
     home = settings.home_country()
-    if home and any(leg.country == home and not leg.city for leg in legs):
-        return [
-            f"{row['name']}: {home} is your home country, so only cities you "
-            "name there are searched. Name one to see anything from it."
-        ]
-    return []
+    notes = []
+
+    for country in scan.trip_countries(row):
+        if country in found:
+            continue
+        where = borders.country_name(country)
+        anchored = any(leg.city for leg in legs if leg.country == country)
+
+        if home and country == home and not anchored:
+            notes.append(
+                f"{row['name']}: {where} is your home country, so only cities "
+                "you name there are searched. Name one to see anything from it."
+            )
+        elif remaining := queue.unfetched(queue.trip_scope(row["id"], country)):
+            notes.append(
+                f"{row['name']}: still searching {where} — "
+                f"{remaining} date range{'' if remaining == 1 else 's'} to go."
+            )
+        else:
+            notes.append(
+                f"{row['name']}: nothing from your library is playing in "
+                f"{where} on those dates."
+            )
+    return notes
 
 
 def _validate_trip(payload: dict) -> dict:
