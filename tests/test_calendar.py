@@ -129,12 +129,13 @@ def test_a_bought_ticket_blocks_your_time(client):
 def test_an_out_of_town_show_is_pinned_to_a_real_moment(client):
     """Floating time renders in the reader's zone, so a Toronto show read from
     home lands hours out. The provider's instant is the fix."""
-    event_id = a_show(starts_at="2026-09-28T23:30:00Z", day=date(2026, 9, 28))
+    event_id = a_show(starts_at=f"{SOON.isoformat()}T23:30:00Z", day=SOON)
     client.put(f"/api/shows/{event_id}/purchased", json={"purchased": True})
 
+    next_day = SOON + timedelta(days=1)
     text = feed(client)
-    assert "DTSTART:20260928T233000Z" in text
-    assert "DTEND:20260929T023000Z" in text
+    assert f"DTSTART:{SOON.strftime('%Y%m%d')}T233000Z" in text
+    assert f"DTEND:{next_day.strftime('%Y%m%d')}T023000Z" in text
 
 
 def test_a_show_with_doors_still_tba_stays_floating(client):
@@ -177,15 +178,16 @@ def test_a_curfew_past_midnight_lands_the_next_morning(client):
 
 def test_a_published_absolute_end_pins_the_finish_to_a_real_moment(client):
     """Same argument as the start: the reader's timezone is not the venue's."""
+    next_day = SOON + timedelta(days=1)
     event_id = a_show(
-        starts_at="2026-09-28T23:30:00Z",
-        ends_at="2026-09-29T02:00:00Z",
+        starts_at=f"{SOON.isoformat()}T23:30:00Z",
+        ends_at=f"{next_day.isoformat()}T02:00:00Z",
         end_time="22:00",
-        day=date(2026, 9, 28),
+        day=SOON,
     )
     client.put(f"/api/shows/{event_id}/purchased", json={"purchased": True})
 
-    assert "DTEND:20260929T020000Z" in feed(client)
+    assert f"DTEND:{next_day.strftime('%Y%m%d')}T020000Z" in feed(client)
 
 
 def test_the_description_is_the_drive_and_the_library(client):

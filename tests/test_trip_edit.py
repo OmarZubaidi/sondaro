@@ -7,6 +7,7 @@ while removing a country must not leave its sweeps queued.
 """
 
 import sys
+from datetime import timedelta
 from pathlib import Path
 
 import pytest
@@ -16,6 +17,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from api import db, queue, settings  # noqa: E402
 from api.config import config  # noqa: E402
+from api.util import today  # noqa: E402
+
+START = today() + timedelta(days=30)
+END = START + timedelta(days=10)
+LATER_START = START + timedelta(days=11)
+LATER_END = LATER_START + timedelta(days=9)
+BEFORE_START = START - timedelta(days=19)
 
 
 @pytest.fixture
@@ -40,8 +48,8 @@ def make_trip(client, **overrides):
     payload = {
         "name": "Europe",
         "legs": legs(("FR", None), ("ES", None)),
-        "start_date": "2026-09-20",
-        "end_date": "2026-09-30",
+        "start_date": START.isoformat(),
+        "end_date": END.isoformat(),
         "flex_before": 2,
         "flex_after": 2,
     }
@@ -112,7 +120,7 @@ def test_a_partial_edit_keeps_everything_else(client):
     assert updated["name"] == "Just the name"
     assert updated["countries"] == ["FR", "ES"]
     assert updated["cities"] == ["Lyon"]
-    assert updated["start_date"] == "2026-09-20"
+    assert updated["start_date"] == START.isoformat()
     assert updated["flex_before"] == 2
 
 
@@ -120,10 +128,11 @@ def test_changing_dates_replans(client):
     trip = make_trip(client)
 
     response = client.patch(
-        f"/api/trips/{trip['id']}", json={"start_date": "2026-10-01", "end_date": "2026-10-10"}
+        f"/api/trips/{trip['id']}",
+        json={"start_date": LATER_START.isoformat(), "end_date": LATER_END.isoformat()},
     )
 
-    assert response.json()["start_date"] == "2026-10-01"
+    assert response.json()["start_date"] == LATER_START.isoformat()
     assert response.json()["rescanned"] is True
 
 
@@ -141,7 +150,7 @@ def test_an_invalid_edit_changes_nothing(client):
     trip = make_trip(client)
 
     response = client.patch(
-        f"/api/trips/{trip['id']}", json={"end_date": "2026-09-01"}  # before the start
+        f"/api/trips/{trip['id']}", json={"end_date": BEFORE_START.isoformat()}
     )
 
     assert response.status_code == 400
@@ -149,7 +158,7 @@ def test_an_invalid_edit_changes_nothing(client):
     unchanged = next(
         t for t in client.get("/api/trips").json()["trips"] if t["id"] == trip["id"]
     )
-    assert unchanged["end_date"] == "2026-09-30"
+    assert unchanged["end_date"] == END.isoformat()
 
 
 def test_editing_a_missing_trip_is_a_404(client):
@@ -168,6 +177,4 @@ def test_dropping_a_country_also_drops_its_coverage(client):
 
 
 def _window():
-    from datetime import date
-
-    return date(2026, 9, 20), date(2026, 9, 30)
+    return START, END

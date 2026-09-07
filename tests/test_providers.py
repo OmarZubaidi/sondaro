@@ -4,7 +4,7 @@ reaching out.
 """
 
 import sys
-from datetime import date, timedelta
+from datetime import timedelta
 from pathlib import Path
 
 import pytest
@@ -13,10 +13,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from api import db, http, usage  # noqa: E402
 from api.config import config  # noqa: E402
-from api.util import day_key  # noqa: E402
+from api.util import day_key, today  # noqa: E402
 from api.providers import jambase, lidarr, ticketmaster  # noqa: E402
 
-TODAY = date(2026, 9, 1)
+TODAY = today()
 
 
 def tm_event(event_id="tm1", name="The National", day="2026-09-10", city="Fairview"):

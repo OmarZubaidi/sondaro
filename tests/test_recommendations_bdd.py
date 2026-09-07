@@ -18,7 +18,7 @@ from api import borders, db, library, routing, scan, settings  # noqa: E402
 from api.config import config  # noqa: E402
 from api.match import artist_key  # noqa: E402
 from api.providers.base import Event  # noqa: E402
-from api.util import now_iso  # noqa: E402
+from api.util import now_iso, today  # noqa: E402
 from scripts import build_borders  # noqa: E402
 
 scenarios("recommendations.feature")
@@ -38,13 +38,14 @@ PLACES = {
     "Berlin": (52.5200, 13.4050, "DE", 15.0),
 }
 
-# A Tuesday and a Saturday in the same week, comfortably in the future.
-TUESDAY = date(2026, 9, 8)
-SATURDAY = date(2026, 9, 12)
-TRIP_START = date(2026, 9, 5)
-TRIP_END = date(2026, 9, 20)
-AWAY_START = date(2026, 9, 7)
-AWAY_END = date(2026, 9, 14)
+# A Tuesday and a Saturday in the same week
+_ANCHOR = today() + timedelta(days=14)
+TUESDAY = _ANCHOR + timedelta(days=(1 - _ANCHOR.weekday()) % 7)
+SATURDAY = TUESDAY + timedelta(days=4)
+TRIP_START = TUESDAY - timedelta(days=3)
+TRIP_END = TUESDAY + timedelta(days=12)
+AWAY_START = TUESDAY - timedelta(days=1)
+AWAY_END = AWAY_START + timedelta(days=7)
 
 FRANCE_EAST_LON = 6.10
 BORDER_SAMPLE = {
