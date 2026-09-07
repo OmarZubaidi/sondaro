@@ -1,0 +1,58 @@
+{
+  "$schema": "https://raw.githubusercontent.com/streetsidesoftware/cspell/main/cspell.schema.json",
+  "version": "0.2",
+  "name": "sondaro",
+  "description": "Spell checker configuration for sondaro",
+  "language": "en,en-US",
+  "useGitignore": true,
+  "enabledFileTypes": {
+    "*": true
+  },
+  "dictionaries": [
+    "en_US",
+    "softwareTerms",
+    "bash",
+    "css",
+    "filetypes",
+    "html",
+    "node",
+    "npm",
+    "python",
+    "typescript"
+  ],
+  "ignorePaths": ["**/package.json", "**/package-lock.json", ".vscode"],
+  "flagWords": ["hte"],
+  "words": [
+    "authkey",
+    "brainz",
+    "datetime",
+    "explo",
+    "fastapi",
+    "geojson",
+    "haversine",
+    "healthcheck",
+    "httpx",
+    "icalendar",
+    "jambase",
+    "jsdom",
+    "lidarr",
+    "navidrome",
+    "ntfy",
+    "puid",
+    "rescan",
+    "resolv",
+    "rtree",
+    "scrobble",
+    "scrobbles",
+    // my concert tracking app
+    "sondaro",
+    "starlette",
+    "tailnet",
+    "ticketmaster",
+    "uvicorn",
+    "venv",
+    "vitest",
+    "webcal",
+    "zoneinfo"
+  ]
+}

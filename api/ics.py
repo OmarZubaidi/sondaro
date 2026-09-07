@@ -175,7 +175,7 @@ def build(entries: list[Entry], calendar_name: str = "Sondaro") -> str:
     lines = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
-        "PRODID:-//sondaro//homelab//EN",
+        "PRODID:-//sondaro//concert tracker//EN",
         "CALSCALE:GREGORIAN",
         "METHOD:PUBLISH",
         _fold(f"X-WR-CALNAME:{_escape(calendar_name)}"),

@@ -1,0 +1,23 @@
+# secrets — the live copy lives on the VM and deploy.sh never overwrites it
+.env
+
+# python
+.venv
+.python-version
+**/__pycache__/
+**/.pytest_cache/
+**/*.egg-info/
+
+# node
+**/node_modules/
+**/dist/
+**/tsconfig.tsbuildinfo
+
+# the local index. hundreds of api calls, some of them billable, so it is worth
+# keeping on disk — but it is a cache, not source.
+**/.data/
+**/*.db
+# sqlite writes -wal and -shm sidecars next to the db; *.db does not catch them
+**/*.db-wal
+**/*.db-shm
+**/*.db-journal

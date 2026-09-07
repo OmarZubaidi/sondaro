@@ -39,4 +39,7 @@ filterwarnings = [
     # 3.14. Not ours to fix, and scoped to that one message so everything else
     # still fails loudly.
     "ignore:'asyncio.iscoroutinefunction' is deprecated:DeprecationWarning",
+    # same deal: anyio 4.15 deprecated the anyio.abc.BlockingPortal alias that
+    # starlette 0.41.3 (pinned by fastapi 0.115.6) still imports.
+    "ignore:The anyio.abc.BlockingPortal alias is deprecated:DeprecationWarning",
 ]

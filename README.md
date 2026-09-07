@@ -1,5 +1,3 @@
-<!-- cSpell:words jambase, pytest, webcal -->
-
 # Sondaro
 
 artists from Lidarr, listening from MusicBrainz. combine the 2 to find concerts near home and when traveling
@@ -32,9 +30,9 @@ a `webcal://` subscription of events you've marked as purchased
 ## Running it
 
 ```sh
-make sondaro-deploy    # from the repo root, first install and every update
-make sondaro-logs
-make sondaro-test
+make deploy    # first install and every update
+make logs
+make test
 ```
 
 a pull-based updater won't work here
