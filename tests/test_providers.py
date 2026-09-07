@@ -78,6 +78,7 @@ async def test_lidarr_refuses_paths_outside_the_allowlist(routes, monkeypatch):
 
 async def test_lidarr_lists_artists(routes, monkeypatch):
     monkeypatch.setattr(config, "lidarr_api_key", "key")
+    monkeypatch.setattr(config, "lidarr_url", "http://lidarr.test:8686")
     routes.add(
         "/api/v1/artist",
         [
@@ -98,6 +99,7 @@ async def test_lidarr_reports_how_much_of_an_artist_is_on_disk(routes, monkeypat
     """Files, not the catalogue: trackCount is everything Lidarr knows exists,
     which says nothing about whether you own any of it."""
     monkeypatch.setattr(config, "lidarr_api_key", "key")
+    monkeypatch.setattr(config, "lidarr_url", "http://lidarr.test:8686")
     routes.add(
         "/api/v1/artist",
         [

@@ -35,7 +35,7 @@ make logs
 make test
 ```
 
-a pull-based updater won't work here
+the image is built locally, so `docker compose pull` is a no-op — `make deploy` is the only update path
 
 local development:
 

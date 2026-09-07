@@ -117,7 +117,7 @@ def status() -> dict:
         degraded.append("Ticketmaster is not configured — no events can be found")
     if not config.ors_api_key:
         degraded.append("OpenRouteService is not configured — drive times are estimates")
-    if not config.lidarr_api_key:
+    if not (config.lidarr_api_key and config.lidarr_url):
         degraded.append("Lidarr is not configured — the library cannot sync")
     for row in quotas:
         if row["exhausted"]:

@@ -40,13 +40,13 @@ services:
     mem_limit: 256m
     cpus: 0.5
     volumes:
-      - /appdata/sondaro:/config
+      - ${SONDARO_DATA_DIR:-/appdata/sondaro}:/config
     logging:
       driver: "json-file"
       options: { max-size: "10m", max-file: "3" }
 
-# no published ports: the reverse proxy reaches this by service name over the shared
-# network, so sondaro consumes no entry in the host port table
+# no published ports: the reverse proxy reaches this by service name over the
+# shared network, so sondaro consumes no entry in the host port table
 networks:
   proxy:
     external: true

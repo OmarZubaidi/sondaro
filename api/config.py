@@ -46,9 +46,7 @@ class Config:
     static_dir: str = field(default_factory=lambda: _str("SONDARO_STATIC_DIR", "/app/static"))
 
     # --- wiring -------------------------------------------------------------
-    lidarr_url: str = field(
-        default_factory=lambda: _str("LIDARR_URL", "http://192.168.1.10:8686").rstrip("/")
-    )
+    lidarr_url: str = field(default_factory=lambda: _str("LIDARR_URL").rstrip("/"))
     ntfy_url: str = field(default_factory=lambda: _str("NTFY_URL").rstrip("/"))
     ntfy_topic_alerts: str = field(default_factory=lambda: _str("NTFY_TOPIC_ALERTS", "sondaro"))
     ntfy_topic_status: str = field(default_factory=lambda: _str("NTFY_TOPIC_STATUS", "services"))

@@ -29,7 +29,7 @@ class ReadOnlyViolation(RuntimeError):
 
 
 def available() -> bool:
-    return bool(config.lidarr_api_key)
+    return bool(config.lidarr_api_key and config.lidarr_url)
 
 
 async def _request(method: str, path: str) -> dict | list | None:

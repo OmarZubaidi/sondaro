@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
-# Sync this folder to the server and rebuild. Same command for first
-# install and every update afterwards.
+# Sync this folder to the server and rebuild. Same command for first install
+# and every update afterwards.
 #
-# `docker compose pull` is a no-op for a
-# locally-built image, so this script is sondaro's update path, not sondaro-update.
+# `docker compose pull` is a no-op for a locally-built image, so this script is
+# the update path — a pull-based updater will never rebuild it.
 set -euo pipefail
 
-HOST="${SONDARO_HOST:-you@your-vm}"
+HOST="${SONDARO_HOST:?not set — the deploy target, e.g. SONDARO_HOST=you@your-vm ./deploy.sh}"
+DATA_DIR="${SONDARO_DATA_DIR:-/appdata/sondaro}"
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/"
 
 echo "==> preparing ${HOST}"
@@ -39,7 +40,7 @@ rsync -az --delete \
 # overwritten, since by then it's the newer one.
 LOCAL_DB="${SRC}.data/sondaro.db"
 if [ -f "$LOCAL_DB" ]; then
-  if ssh "$HOST" 'test -s /appdata/sondaro/sondaro.db' 2>/dev/null; then
+  if ssh "$HOST" "test -s '$DATA_DIR/sondaro.db'" 2>/dev/null; then
     echo "==> the server already has a database, leaving it alone"
   else
     echo "==> seeding the server with your local cache"
@@ -50,12 +51,12 @@ if [ -f "$LOCAL_DB" ]; then
     # second session would be a second tty and so a second prompt.
     scp -q "$LOCAL_DB" "$HOST:/tmp/sondaro-seed.db"
     echo "    (sudo on the server — it may ask for your password)"
-    ssh -t "$HOST" '
+    ssh -t "$HOST" "
       set -e
-      sudo mkdir -p /appdata/sondaro
-      sudo mv /tmp/sondaro-seed.db /appdata/sondaro/sondaro.db
-      sudo chown -R 3002:3002 /appdata/sondaro
-    '
+      sudo mkdir -p '$DATA_DIR'
+      sudo mv /tmp/sondaro-seed.db '$DATA_DIR/sondaro.db'
+      sudo chown -R 3002:3002 '$DATA_DIR'
+    "
   fi
 fi
 
