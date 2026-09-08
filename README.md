@@ -30,7 +30,7 @@ a `webcal://` subscription of events you've marked as purchased
 ## Running it
 
 ```sh
-make deploy    # first install and every update
+make deploy SONDARO_HOST=you@your-vm    # first install and every update
 make logs
 make test
 ```

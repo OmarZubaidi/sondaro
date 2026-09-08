@@ -18,7 +18,7 @@ require-host:
 		exit 1; \
 	}
 
-deploy:  ## sync source to the server and rebuild
+deploy: require-host  ## sync source to the server and rebuild
 	@./deploy.sh
 
 logs: require-host  ## tail the running container
