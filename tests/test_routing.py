@@ -103,9 +103,9 @@ async def test_without_a_key_it_estimates_and_says_so(routes, monkeypatch):
     route = await routing.drive_time(HOME, MILLBROOK)
 
     assert route.estimated is True
-    assert route.miles == pytest.approx(355, abs=2)
+    assert route.miles == pytest.approx(350, abs=2)
     # great-circle * 1.25 / 55mph
-    assert route.drive_hours == pytest.approx(8.07, abs=0.1)
+    assert route.drive_hours == pytest.approx(7.95, abs=0.1)
     assert routes.calls == []
 
 
@@ -152,21 +152,21 @@ async def test_geocoding_powers_the_home_search_box(routes, monkeypatch):
             "features": [
                 {
                     "geometry": {"coordinates": [-95.0, 38.0]},
-                    "properties": {"label": "Home, USA", "country_a": "USA"},
+                    "properties": {"label": "Fairview, KS, USA", "country_a": "USA"},
                 }
             ]
         },
     )
 
-    results = await routing.geocode("Home")
+    results = await routing.geocode("Fairview")
     assert results == [
-        {"label": "Home, USA", "lat": 38.0, "lon": -95.0, "country": "USA"}
+        {"label": "Fairview, KS, USA", "lat": 38.0, "lon": -95.0, "country": "USA"}
     ]
 
 
 async def test_geocoding_without_a_key_returns_nothing(routes, monkeypatch):
     monkeypatch.setattr(config, "ors_api_key", "")
-    assert await routing.geocode("Home") == []
+    assert await routing.geocode("Fairview") == []
     assert routes.calls == []
 
 

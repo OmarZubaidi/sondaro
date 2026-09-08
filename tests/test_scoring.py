@@ -15,8 +15,8 @@ from api import scoring  # noqa: E402
 TUESDAY = date(2026, 9, 8)
 SATURDAY = date(2026, 9, 12)
 
-# hours from Home
-SPRINGFIELD, NEARBY, FAIRVIEW, DC, MILLBROOK = 0.5, 1.3, 2.6, 4.4, 6.0
+# drive hours from home
+IN_TOWN, NEARBY, MID_STATE, LONG_DRIVE, TOO_FAR = 0.5, 1.3, 2.6, 4.4, 6.0
 
 
 # --------------------------------------------------------------------------
@@ -95,14 +95,14 @@ def test_affinity_is_monotonic():
 @pytest.mark.parametrize(
     "hours,day,expected",
     [
-        (SPRINGFIELD, TUESDAY, 1.00),
+        (IN_TOWN, TUESDAY, 1.00),
         (NEARBY, TUESDAY, 0.97),
-        (FAIRVIEW, TUESDAY, 0.64),
-        (DC, TUESDAY, 0.18),
-        (MILLBROOK, TUESDAY, 0.06),
-        (FAIRVIEW, SATURDAY, 0.90),
-        (DC, SATURDAY, 0.52),
-        (MILLBROOK, SATURDAY, 0.24),
+        (MID_STATE, TUESDAY, 0.64),
+        (LONG_DRIVE, TUESDAY, 0.18),
+        (TOO_FAR, TUESDAY, 0.06),
+        (MID_STATE, SATURDAY, 0.90),
+        (LONG_DRIVE, SATURDAY, 0.52),
+        (TOO_FAR, SATURDAY, 0.24),
     ],
 )
 def test_a_favourite_matches_the_calibration_table(hours, day, expected):
@@ -110,13 +110,13 @@ def test_a_favourite_matches_the_calibration_table(hours, day, expected):
 
 
 def test_a_weekend_justifies_a_longer_drive_than_a_weeknight():
-    assert scoring.reach_fit_home(FAIRVIEW, 1.0, SATURDAY) > scoring.reach_fit_home(
-        FAIRVIEW, 1.0, TUESDAY
+    assert scoring.reach_fit_home(MID_STATE, 1.0, SATURDAY) > scoring.reach_fit_home(
+        MID_STATE, 1.0, TUESDAY
     )
 
 
 def test_liking_an_artist_more_extends_how_far_you_will_go():
-    far = [scoring.reach_fit_home(FAIRVIEW, a, SATURDAY) for a in (0.3, 0.6, 1.0)]
+    far = [scoring.reach_fit_home(MID_STATE, a, SATURDAY) for a in (0.3, 0.6, 1.0)]
     assert far == sorted(far)
 
 

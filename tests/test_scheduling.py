@@ -36,7 +36,7 @@ def _an_artist(name: str = "Palehound") -> None:
 
 
 def test_replanning_leaves_a_scheduled_task_where_it_is():
-    queue.plan_local(35.0, -78.0, 30)
+    queue.plan_local(38.0, -95.0, 30)
     key = db.query_one("SELECT task_key FROM fetch_tasks")["task_key"]
 
     later = (datetime.now(timezone.utc) + timedelta(days=14)).replace(microsecond=0)
@@ -45,7 +45,7 @@ def test_replanning_leaves_a_scheduled_task_where_it_is():
         (later.isoformat(timespec="seconds"), now_iso(), key),
     )
 
-    queue.plan_local(35.0, -78.0, 30)
+    queue.plan_local(38.0, -95.0, 30)
 
     assert _due(key) == later
 

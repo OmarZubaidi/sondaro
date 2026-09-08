@@ -8,7 +8,7 @@ Feature: Recommending shows worth going to
   rather than gate it. A quiet artist ranks low; it doesn't disappear.
 
   Background:
-    Given my home is Home
+    Given my home is set
     And Ticketmaster is configured
 
   Scenario: A favourite playing Fairview on a Tuesday is worth the drive

@@ -32,7 +32,7 @@ def test_ascii_titles_pass_through_unchanged():
     ["Sigur Rós", "Beyoncé", "Mötley Crüe", "Björk", "Sinéad O'Connor", "Röyksopp"],
 )
 def test_accented_names_are_encoded_rather_than_raising(name):
-    encoded = notify._header_safe(f"{name} · Home")
+    encoded = notify._header_safe(f"{name} · Fairview")
 
     encoded.encode("ascii")  # would raise before the fix
     assert encoded.startswith("=?utf-8?")
@@ -41,7 +41,7 @@ def test_accented_names_are_encoded_rather_than_raising(name):
 async def test_sending_an_accented_title_does_not_blow_up(routes):
     routes.add("ntfy.test", "ok")
 
-    sent = await notify.send("sondaro", title="Sigur Rós · Home", body="tonight")
+    sent = await notify.send("sondaro", title="Sigur Rós · Fairview", body="tonight")
 
     assert sent is True
     assert routes.calls[0].headers["Title"].startswith("=?utf-8?")

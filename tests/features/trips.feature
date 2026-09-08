@@ -4,7 +4,7 @@ Feature: Planning around a trip
   and a show just over a border is barely a detour rather than a disqualification.
 
   Background:
-    Given my home is Home
+    Given my home is set
     And Ticketmaster is configured
     And the border index is loaded
 

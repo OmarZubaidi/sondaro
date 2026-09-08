@@ -83,8 +83,8 @@ def _threshold(value):
     settings.set_value("notify_min_score", value)
 
 
-@given("my home is Home")
-def _home_home():
+@given("my home is set")
+def _home_is_set():
     settings.set_value("home_lat", HOME[0])
     settings.set_value("home_lon", HOME[1])
     settings.set_value("home_label", "Home")

@@ -30,7 +30,7 @@ Feature: Running without surprises
     And it survives a restart
 
   Scenario: Moving house re-indexes rather than serving stale scores
-    Given my home is Home
+    Given my home is set
     And the home horizon has been covered
     When I move home to Springfield
     Then home coverage is invalidated

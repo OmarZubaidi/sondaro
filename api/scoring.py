@@ -8,9 +8,9 @@ of tuning weights, and every component stays independently explainable in the UI
 
 The two reach models are deliberately different curves:
 
-  home — measured in **driving hours**, not miles. Home→DC is 227 mi and
-         Home→Millbrook is 356 mi, which look far apart on a map and much
-         closer from behind a wheel. Distance would rank them wrongly.
+  home — measured in **driving hours**, not miles. Two venues a hundred miles
+         apart on a map can be an hour apart from behind a wheel, or three.
+         Distance would rank them wrongly.
   trip — measured in miles from the nearest border of a country you're
          visiting, on a far gentler curve, because distance is cheap once
          you're already travelling and cities get picked after countries.

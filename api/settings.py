@@ -31,11 +31,11 @@ class Spec:
 
 # The full editable surface. Order is the order the Settings page renders in.
 SPECS: tuple[Spec, ...] = (
-    Spec("home_lat", "Home latitude", "float", 38.0, -90, 90),
-    Spec("home_lon", "Home longitude", "float", -95.0, -180, 180),
-    Spec("home_label", "Home", "str", "Home",
+    Spec("home_lat", "Home latitude", "float", 0.0, -90, 90),
+    Spec("home_lon", "Home longitude", "float", 0.0, -180, 180),
+    Spec("home_label", "Home", "str", "",
          help="Shown on the status page. Set by the location search."),
-    Spec("home_country", "Home country", "str", "US",
+    Spec("home_country", "Home country", "str", "",
          help="ISO-2. A trip to this country searches only the cities you name, "
               "since you don't need the whole place swept to visit one city."),
     Spec("home_tz", "Home timezone", "str", "UTC",

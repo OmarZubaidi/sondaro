@@ -1,7 +1,7 @@
 """Driving times and geocoding via OpenRouteService.
 
 Driving time, not distance, is what decides whether a show is gettable from
-home: Home→DC and Home→Millbrook differ by 129 miles and far less in hours.
+home: two venues can differ by a hundred miles and far less in hours.
 
 The cost is kept trivial by never routing per event. Routes are resolved home →
 each *distinct venue city* and cached permanently, keyed on the origin — so a

@@ -89,7 +89,7 @@ def world():
 # --------------------------------------------------------------------------
 
 
-@given("my home is Home")
+@given("my home is set")
 def _home(monkeypatch):
     settings.set_value("home_lat", HOME[0])
     settings.set_value("home_lon", HOME[1])
