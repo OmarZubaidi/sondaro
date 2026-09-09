@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Any, Callable
 
-from . import db, scoring
+from . import clusters, db, scoring
 from .config import SEEDS
 from .util import now_iso, parse_date, today
 
@@ -43,6 +43,18 @@ SPECS: tuple[Spec, ...] = (
               "kept in step by hand."),
     Spec("home_horizon_days", "How far ahead to look", "int", 180, 30, 365,
          help="Longer horizons cost more API calls on the first fill only."),
+    # Capped at the size of the JamBase fall-through slice: past that, small
+    # venues stop being covered and the list would quietly go patchy.
+    Spec("favorite_artists", "Favorites to follow worldwide", "int", 10, 1, 60,
+         help="How many of your top artists the Favorites page follows. "
+              "Costs no extra API calls — the worldwide lookups behind it "
+              "already run for the whole library."),
+    # Live controls on the Favorites page, where you can see what they do to
+    # the trips while you move them.
+    Spec("cluster_days", "Trip length (days)", "int", clusters.CLUSTER_DAYS, 1, 60,
+         help="How far apart two dates can be and still be one trip."),
+    Spec("cluster_km", "Trip radius (km)", "float", clusters.CLUSTER_KM, 25, 3000,
+         help="How far you'd range from a base once you're already there."),
     Spec("base_hours_weeknight", "Weeknight drive budget (hours)", "float",
          scoring.BASE_HOURS_WEEKNIGHT, 0.5, 12,
          help="How far you'd drive on a Mon-Thu for an artist you love."),

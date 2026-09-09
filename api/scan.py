@@ -12,7 +12,7 @@ import logging
 from dataclasses import dataclass
 from datetime import date, timedelta
 
-from . import borders, db, geo, queue, routing, scoring, settings
+from . import borders, db, geo, library, queue, routing, scoring, settings
 from .library import Artist
 from .match import event_key, normalize, split_billing
 from .providers.base import Event
@@ -492,6 +492,74 @@ def trip_candidates(trip) -> list[Candidate]:
 
     candidates.sort(key=lambda c: -c.total)
     return candidates
+
+
+# --------------------------------------------------------------------------
+# favorites
+# --------------------------------------------------------------------------
+
+
+@dataclass
+class Favorite:
+    """One favourite artist and every date we hold for them, anywhere on earth."""
+
+    artist: Artist
+    dates: list[Candidate]
+    # no clean worldwide lookup yet, so an empty list is not yet an answer
+    searching: bool
+    # in the feed on the grace window rather than on current rank
+    slipped: bool
+
+
+def favorite_candidates(limit: int) -> list[Favorite]:
+    """The artists you listen to most, and everywhere they're playing.
+
+    Deliberately unfiltered by geography and by score. The other two feeds ask
+    whether a show is gettable and decay it away as it gets further off; this
+    one asks where a favourite will be so a trip can be built around the
+    answer, which makes distance the result rather than the filter.
+
+    Reads the event cache and nothing else. The worldwide per-artist lookups
+    that fill it already run for the whole library on a daily cadence, so this
+    spends no API call of its own — and an artist who slips down the ranking
+    keeps every listing already fetched for them, because the cache is global
+    and knows nothing about rank.
+
+    An artist with nothing announced still gets a row. That absence is the
+    answer to "is anyone I like touring", and dropping it would make it
+    indistinguishable from not being a favourite at all.
+    """
+    artists = library.followed_artists(limit)
+    if not artists:
+        return []
+
+    scope = queue.local_scope(*settings.home())
+    ranked = {artist.key for artist in library.top_artists(limit)}
+
+    favorites: list[Favorite] = []
+    for artist in artists:
+        rows = db.query(
+            "SELECT e.*, a.affinity, a.listens "
+            "FROM events e JOIN artists a ON a.key = e.artist_key "
+            "WHERE e.artist_key = ? AND e.date >= ? "
+            # No upper bound. The lookups only reach the home horizon, but a
+            # trip sweep can leave a later date in the cache, and hiding one we
+            # already hold is worse than a list whose far edge isn't level.
+            "ORDER BY e.date, e.time",
+            (artist.key, today().isoformat()),
+        )
+        favorites.append(
+            Favorite(
+                artist=artist,
+                dates=[
+                    _candidate(row, scoring.score_favorite(artist_affinity=row["affinity"]))
+                    for row in rows
+                ],
+                searching=queue.awaiting(queue.artist_task_key(scope, artist.key)),
+                slipped=artist.key not in ranked,
+            )
+        )
+    return favorites
 
 
 def _candidate(row, score: scoring.Score) -> Candidate:

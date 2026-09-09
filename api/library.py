@@ -11,8 +11,9 @@ three-hour drive.
 
 import logging
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 
-from . import db, http, scoring
+from . import db, http, scoring, settings
 from .config import config
 from .match import artist_key, normalize
 from .providers import lidarr
@@ -22,6 +23,19 @@ log = logging.getLogger("sondaro.library")
 
 LISTENBRAINZ = "https://api.listenbrainz.org/1"
 LASTFM = "https://ws.audioscrobbler.com/2.0/"
+
+# Order for "the top of the library", used wherever a slice of favourites is
+# taken. Affinity clamps to 1.0 at the p90 play count, so the whole top decile
+# ties on it — breaking that tie by name alone made "my top ten" an
+# alphabetical accident rather than a ranking. Play counts break it the way
+# you would.
+RANK_ORDER = "affinity DESC, listens DESC, name"
+
+# How long an artist keeps their place on the Favorites page after slipping
+# out of the top slice. Their listings are cached either way, so carrying them
+# for a month costs nothing and stops a tab you're planning a trip on
+# flickering.
+FOLLOW_GRACE_DAYS = 30
 
 
 @dataclass
@@ -191,6 +205,8 @@ async def sync() -> dict:
         if existing["key"] not in keys:
             db.execute("DELETE FROM artists WHERE key = ?", (existing["key"],))
 
+    follow_top(settings.get("favorite_artists"))
+
     db.set_meta("library_synced_at", stamp)
     db.set_meta("affinity_source", source)
 
@@ -213,7 +229,7 @@ def _row_to_artist(row) -> Artist:
 def all_artists() -> list[Artist]:
     return [
         _row_to_artist(row)
-        for row in db.query("SELECT * FROM artists ORDER BY affinity DESC, name")
+        for row in db.query(f"SELECT * FROM artists ORDER BY {RANK_ORDER}")
     ]
 
 
@@ -221,7 +237,52 @@ def top_artists(limit: int) -> list[Artist]:
     return [
         _row_to_artist(row)
         for row in db.query(
-            "SELECT * FROM artists ORDER BY affinity DESC, name LIMIT ?", (limit,)
+            f"SELECT * FROM artists ORDER BY {RANK_ORDER} LIMIT ?", (limit,)
+        )
+    ]
+
+
+def follow_top(limit: int, *, forget_others: bool = False) -> None:
+    """Record who is in the top `limit` right now.
+
+    Existing stamps are left alone by default, and that grace is the point: a
+    ranking that shifts under you must not take a tour off the page halfway
+    through planning around it. Narrowing the setting on purpose passes
+    `forget_others`, because then a shorter list is what was asked for.
+    """
+    keys = [artist.key for artist in top_artists(limit)]
+    if not keys:
+        if forget_others:
+            db.execute("UPDATE artists SET top_seen_at = NULL")
+        return
+
+    placeholders = ",".join("?" for _ in keys)
+    db.execute(
+        f"UPDATE artists SET top_seen_at = ? WHERE key IN ({placeholders})",
+        (now_iso(), *keys),
+    )
+    if forget_others:
+        db.execute(
+            f"UPDATE artists SET top_seen_at = NULL WHERE key NOT IN ({placeholders})",
+            tuple(keys),
+        )
+
+
+def followed_artists(limit: int) -> list[Artist]:
+    """The favourites the Favorites page follows: the current top `limit`, plus
+    anyone stamped into it within `FOLLOW_GRACE_DAYS`."""
+    cutoff = (
+        datetime.now(timezone.utc) - timedelta(days=FOLLOW_GRACE_DAYS)
+    ).isoformat(timespec="seconds")
+
+    return [
+        _row_to_artist(row)
+        for row in db.query(
+            f"SELECT * FROM artists "
+            f"WHERE key IN (SELECT key FROM artists ORDER BY {RANK_ORDER} LIMIT ?) "
+            f"   OR top_seen_at >= ? "
+            f"ORDER BY {RANK_ORDER}",
+            (limit, cutoff),
         )
     ]
 

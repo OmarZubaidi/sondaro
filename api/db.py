@@ -29,7 +29,12 @@ CREATE TABLE IF NOT EXISTS artists (
     listens     INTEGER DEFAULT 0,   -- scrobbles, from ListenBrainz or Last.fm
     tracks      INTEGER DEFAULT 0,   -- files on disk, from Lidarr
     affinity    REAL    DEFAULT 0.25,
-    updated_at  TEXT
+    updated_at  TEXT,
+    -- last time this artist was in the slice the Favorites page follows. Affinity is
+    -- recomputed from scratch on every sync, so rank 10 and rank 11 can trade
+    -- places during the week you spent planning around one of them; this is
+    -- what keeps the one that slipped on the page instead of dropping it.
+    top_seen_at TEXT
 );
 CREATE INDEX IF NOT EXISTS artists_affinity ON artists(affinity DESC);
 
@@ -249,8 +254,15 @@ def _migrate(conn: sqlite3.Connection) -> None:
             conn.execute(f"ALTER TABLE events ADD COLUMN {column} TEXT")
 
     # Track counts arrived later too, and the next library sync fills them in.
-    if "tracks" not in {row["name"] for row in conn.execute("PRAGMA table_info(artists)")}:
+    artist_columns = {row["name"] for row in conn.execute("PRAGMA table_info(artists)")}
+    if "tracks" not in artist_columns:
         conn.execute("ALTER TABLE artists ADD COLUMN tracks INTEGER DEFAULT 0")
+
+    # The Favorites page's follow window. Left NULL rather than backfilled from the
+    # current ranking: an unstamped artist still shows while they're in the top
+    # slice, and the next sync stamps whoever is actually in it.
+    if "top_seen_at" not in artist_columns:
+        conn.execute("ALTER TABLE artists ADD COLUMN top_seen_at TEXT")
 
     # Distances moved to km. The cached drive times cost real API calls, so
     # they are converted in place rather than thrown away and re-fetched.
@@ -262,12 +274,22 @@ def _migrate(conn: sqlite3.Connection) -> None:
     if "miles" in route_columns:
         conn.execute("ALTER TABLE routes DROP COLUMN miles")
 
+    # Same for the two distance settings that were stated in miles.
+    for old, new in (("cluster_miles", "cluster_km"),
+                     ("trip_border_base_miles", "trip_border_base_km")):
+        conn.execute(
+            "UPDATE OR IGNORE settings SET key = ?, "
+            "  value = CAST(ROUND(CAST(value AS REAL) * 1.609344) AS TEXT) "
+            "WHERE key = ?",
+            (new, old),
+        )
+        conn.execute("DELETE FROM settings WHERE key = ?", (old,))
+    # The page was called Tours first. Carry the value over rather than leaving
+    # it orphaned and silently reverting to the default.
     conn.execute(
-        "UPDATE OR IGNORE settings SET key = 'trip_border_base_km', "
-        "  value = CAST(ROUND(CAST(value AS REAL) * 1.609344) AS TEXT) "
-        "WHERE key = 'trip_border_base_miles'"
+        "UPDATE OR IGNORE settings SET key = 'favorite_artists' WHERE key = 'tour_artists'"
     )
-    conn.execute("DELETE FROM settings WHERE key = 'trip_border_base_miles'")
+    conn.execute("DELETE FROM settings WHERE key = 'tour_artists'")
 
     # Trips used to hold comma-separated countries and cities in two columns,
     # which couldn't say *when* you'd be in a city or which country a city

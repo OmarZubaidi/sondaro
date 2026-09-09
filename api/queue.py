@@ -263,6 +263,27 @@ def unfetched(scope_prefix: str) -> int:
     )
 
 
+def awaiting(task_key: str) -> bool:
+    """Whether one exact task has yet to run cleanly.
+
+    `unfetched` answers the same question for a whole scope, by prefix, which
+    an artist lookup can't use: its key is either an mbid or `name:<normalised>`,
+    and a normalised name carries the underscores LIKE reads as wildcards.
+
+    A task that isn't queued yet counts as awaiting — the per-artist lookups are
+    planned by the library sync, so "we haven't looked" and "we haven't even
+    queued it" are the same answer to a page asking whether a blank is final.
+    One that has exhausted its retries does not; it isn't being searched any
+    more, and the status page owns saying so.
+    """
+    row = db.query_one(
+        "SELECT last_ok_at, failures FROM fetch_tasks WHERE task_key = ?", (task_key,)
+    )
+    if row is None:
+        return True
+    return row["last_ok_at"] is None and (row["failures"] or 0) < MAX_FAILURES
+
+
 def coverage_fraction(scope_prefix: str, expected: int) -> float:
     if expected <= 0:
         return 1.0
@@ -389,7 +410,7 @@ def plan_artist_lookup(
     """
     enqueue(
         ARTIST_LOOKUP,
-        f"{scope}:artist:{artist_key_value}",
+        artist_task_key(scope, artist_key_value),
         {
             "artist_key": artist_key_value,
             "name": name,
@@ -416,6 +437,10 @@ def plan_route(origin: tuple[float, float], dest: tuple[float, float], city: str
 
 def local_scope(lat: float, lon: float) -> str:
     return f"local:{lat:.3f},{lon:.3f}"
+
+
+def artist_task_key(scope: str, artist_key_value: str) -> str:
+    return f"{scope}:artist:{artist_key_value}"
 
 
 def trip_scope(trip_id: int, country: str) -> str:

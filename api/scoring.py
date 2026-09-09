@@ -6,7 +6,7 @@ against a table of numbers.
 Multiplicative on purpose: one bad axis kills a candidate without needing a pile
 of tuning weights, and every component stays independently explainable in the UI.
 
-The two reach models are deliberately different curves:
+The reach models are deliberately different curves:
 
   home — measured in **driving hours**, not distance. Two venues 150km apart
          on a map can be an hour apart from behind a wheel, or three. Distance
@@ -14,6 +14,9 @@ The two reach models are deliberately different curves:
   trip — measured in km from the nearest border of a country you're
          visiting, on a far gentler curve, because distance is cheap once
          you're already travelling and cities get picked after countries.
+  favorites — none at all. That feed asks where a favourite is playing so a
+         trip can be built around the answer, so geography is what it
+         returns rather than what it filters on.
 """
 
 import math
@@ -294,6 +297,26 @@ def score_trip(
         flags=flags,
         km=km_to_border if not in_visited_country else km_to_named_city,
         reasons=_reasons(listens),
+    )
+
+
+def score_favorite(*, artist_affinity: float) -> Score:
+    """One of a favourite's dates, scored on the artist and nothing else.
+
+    Both fits are 1.0 because there is nothing to decay against. Every other
+    feed asks "can I get to this" and ranks a show down as it gets further from
+    home; this one asks where a favourite will be so a trip can be built around
+    the answer, which leaves affinity as the only honest claim.
+
+    `reasons` stays empty: a reason belongs to the artist, and this feed already
+    groups by artist, so repeating it on all fourteen of their dates says
+    nothing the heading hasn't.
+    """
+    return Score(
+        total=artist_affinity,
+        affinity=artist_affinity,
+        date_fit=1.0,
+        reach_fit=1.0,
     )
 
 

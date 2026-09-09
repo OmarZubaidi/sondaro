@@ -17,6 +17,7 @@ from fastapi.staticfiles import StaticFiles
 
 from . import (
     borders,
+    clusters,
     db,
     health,
     http,
@@ -131,6 +132,129 @@ async def api_sync():
         result = await library.sync()
     worker.worker.nudge()
     return result
+
+
+# --------------------------------------------------------------------------
+# favorites
+# --------------------------------------------------------------------------
+
+
+@app.get("/api/favorites")
+async def api_favorites(
+    cluster_days: int | None = Query(None, ge=1, le=60),
+    cluster_km: float | None = Query(None, ge=25, le=3000),
+):
+    """Your favourite artists and every date they're playing, worldwide.
+
+    Two shapes over one set of dates, because there are two questions. Grouped
+    by artist, a block reads as one act's itinerary. Grouped by `cluster`, it
+    reads as the trips available to you — the harder question, so
+    `clusters.build` answers it here rather than leaving the UI to guess. Every
+    date carries its cluster id so the page can pivot without another call.
+
+    The two cluster parameters are driven live by the page and, like the local
+    feed's filters, re-read cached events rather than fetching anything.
+    """
+    favorites = scan.favorite_candidates(settings.get("favorite_artists"))
+    bought = scan.purchased_ids()
+
+    days = cluster_days if cluster_days is not None else settings.get("cluster_days")
+    km = cluster_km if cluster_km is not None else settings.get("cluster_km")
+
+    # cluster across everyone at once: the whole point is spotting the week
+    # several of them overlap, which no single artist's dates can show
+    dated = [
+        clusters.Dated(
+            day=parse_date(candidate.event.date),
+            lat=candidate.event.lat,
+            lon=candidate.event.lon,
+            country=candidate.event.country,
+            region=candidate.event.region,
+            ref=candidate.event.id,
+        )
+        for favorite in favorites
+        for candidate in favorite.dates
+        if parse_date(candidate.event.date)
+    ]
+    found = clusters.build(dated, days=days, km=km)
+    cluster_of = {
+        item.ref: index for index, group in enumerate(found) for item in group.items
+    }
+
+    artists = []
+    for favorite in favorites:
+        by_country: dict[str, list] = {}
+        for candidate in favorite.dates:
+            code = (candidate.event.country or "").upper()
+            shown = scan.serialise(candidate, bought)
+            shown["cluster"] = cluster_of.get(candidate.event.id)
+            by_country.setdefault(code, []).append(shown)
+
+        artists.append(
+            {
+                "key": favorite.artist.key,
+                "name": favorite.artist.name,
+                "listens": favorite.artist.listens,
+                "affinity": favorite.artist.affinity,
+                "searching": favorite.searching,
+                "slipped": favorite.slipped,
+                "total": len(favorite.dates),
+                # earliest first, so a block reads as the itinerary it is
+                # rather than as an alphabetical gazetteer
+                "countries": [
+                    {
+                        "code": code,
+                        "name": borders.country_name(code) or "country unknown",
+                        "shows": shows,
+                    }
+                    for code, shows in sorted(
+                        by_country.items(), key=lambda item: item[1][0]["date"]
+                    )
+                ],
+            }
+        )
+
+    return {
+        "artists": artists,
+        "clusters": [
+            {
+                "id": index,
+                "start_date": group.start.isoformat(),
+                "end_date": group.end.isoformat(),
+                "places": [_place_name(place) for place in group.places()],
+            }
+            for index, group in enumerate(found)
+        ],
+        "total": sum(artist["total"] for artist in artists),
+        # the setting, not len(artists) — the list runs longer than it whenever
+        # someone is still inside their follow window
+        "follows": settings.get("favorite_artists"),
+        # echoed back so the sidebar controls can start where they left off
+        "cluster_days": days,
+        "cluster_km": km,
+        # How far the worldwide lookups reach. A blank past this is "we haven't
+        # looked", not "nothing on", and the page has to be able to say which.
+        "searched_to": settings.horizon_end().isoformat(),
+        "countries": _favorite_countries(artists),
+    }
+
+
+def _place_name(place: clusters.Place) -> str:
+    """A region names itself; a country needs the border index to name it."""
+    return place.region or borders.country_name(place.country) or place.country
+
+
+def _favorite_countries(artists: list[dict]) -> list[dict]:
+    """Every country your favourites play, named, for the sidebar filter."""
+    names = {
+        country["code"]: country["name"]
+        for artist in artists
+        for country in artist["countries"]
+    }
+    return [
+        {"code": code, "name": name}
+        for code, name in sorted(names.items(), key=lambda item: item[1])
+    ]
 
 
 # --------------------------------------------------------------------------
@@ -491,6 +615,10 @@ async def api_patch_settings(payload: dict = Body(...)):
 
     if "home_horizon_days" in updated:
         queue.plan_local(*settings.home(), settings.get("home_horizon_days"))
+    if "favorite_artists" in updated:
+        # asking for a shorter list should shorten it now, not once the grace
+        # window on everyone you just dropped runs out
+        library.follow_top(settings.get("favorite_artists"), forget_others=True)
     worker.worker.nudge()
     return {"updated": updated}
 
