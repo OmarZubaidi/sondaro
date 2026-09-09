@@ -15,7 +15,7 @@ function show(id: string, artist: string, score: number): Show {
     flags: [],
     reasons: [],
     drive_hours: 1,
-    miles: 40,
+    km: 65,
     date: '2026-09-12',
     time: '20:00',
     end_time: '23:00',

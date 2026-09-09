@@ -63,7 +63,7 @@ export function ShowCard({
         {drive && (
           <div className="drive">
             {drive} drive
-            {show.miles !== null && <span className="muted"> · {Math.round(show.miles)} mi</span>}
+            {show.km !== null && <span className="muted"> · {Math.round(show.km)} km</span>}
           </div>
         )}
         <div className="chips">

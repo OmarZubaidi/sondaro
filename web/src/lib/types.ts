@@ -9,7 +9,7 @@ export interface Show {
   flags: string[]
   reasons: string[]
   drive_hours: number | null
-  miles: number | null
+  km: number | null
   date: string
   time: string | null
   /** when it's over. Absent only when the doors themselves are still TBA. */

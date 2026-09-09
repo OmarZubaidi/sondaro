@@ -8,10 +8,10 @@ of tuning weights, and every component stays independently explainable in the UI
 
 The two reach models are deliberately different curves:
 
-  home — measured in **driving hours**, not miles. Two venues a hundred miles
-         apart on a map can be an hour apart from behind a wheel, or three.
-         Distance would rank them wrongly.
-  trip — measured in miles from the nearest border of a country you're
+  home — measured in **driving hours**, not distance. Two venues 150km apart
+         on a map can be an hour apart from behind a wheel, or three. Distance
+         would rank them wrongly.
+  trip — measured in km from the nearest border of a country you're
          visiting, on a far gentler curve, because distance is cheap once
          you're already travelling and cities get picked after countries.
 """
@@ -37,9 +37,9 @@ BASE_HOURS_WEEKEND = 4.5  # Fri-Sat
 
 # --- trip reach -------------------------------------------------------------
 
-TRIP_BORDER_BASE_MILES = 100.0
+TRIP_BORDER_BASE_KM = 160.0
 IN_COUNTRY_FLOOR = 0.6  # elsewhere-in-country stays viable when cities are named
-NAMED_CITY_BASE_MILES = 150.0
+NAMED_CITY_BASE_KM = 240.0
 
 # Trips don't use the `min_score` filter — that one keeps the everyday local
 # feed short, and raising it shouldn't quietly narrow a trip you're planning
@@ -69,7 +69,7 @@ class Score:
     reach_fit: float
     flags: list[str] = field(default_factory=list)
     drive_hours: float | None = None
-    miles: float | None = None
+    km: float | None = None
     reasons: list[str] = field(default_factory=list)
 
 
@@ -162,9 +162,9 @@ def reach_fit_trip(
     *,
     artist_affinity: float,
     in_visited_country: bool,
-    miles_to_border: float | None = None,
-    miles_to_named_city: float | None = None,
-    border_base_miles: float = TRIP_BORDER_BASE_MILES,
+    km_to_border: float | None = None,
+    km_to_named_city: float | None = None,
+    border_base_km: float = TRIP_BORDER_BASE_KM,
     country_floor: bool = True,
 ) -> float:
     """Geography fit for a trip.
@@ -179,18 +179,18 @@ def reach_fit_trip(
     the US and visiting New York should not surface California.
     """
     if in_visited_country:
-        if miles_to_named_city is None:
+        if km_to_named_city is None:
             return 1.0 if country_floor else 0.0
-        reach = NAMED_CITY_BASE_MILES * shape_trip(artist_affinity)
-        raw = _decay(miles_to_named_city, reach)
+        reach = NAMED_CITY_BASE_KM * shape_trip(artist_affinity)
+        raw = _decay(km_to_named_city, reach)
         if not country_floor:
             return raw
         return round(IN_COUNTRY_FLOOR + (1.0 - IN_COUNTRY_FLOOR) * raw, 4)
 
-    if miles_to_border is None:
+    if km_to_border is None:
         return 0.0
-    reach = border_base_miles * shape_trip(artist_affinity)
-    return _decay(miles_to_border, reach)
+    reach = border_base_km * shape_trip(artist_affinity)
+    return _decay(km_to_border, reach)
 
 
 def date_fit(
@@ -227,7 +227,7 @@ def score_home(
     artist_affinity: float,
     day: date,
     drive_hours: float,
-    miles: float | None = None,
+    km: float | None = None,
     estimated: bool = False,
     listens: int = 0,
     base_hours: float | None = None,
@@ -245,7 +245,7 @@ def score_home(
         reach_fit=fit,
         flags=flags,
         drive_hours=drive_hours,
-        miles=miles,
+        km=km,
         reasons=_reasons(listens),
     )
 
@@ -261,10 +261,10 @@ def score_trip(
     strict: bool = False,
     in_visited_country: bool,
     country_name: str | None = None,
-    miles_to_border: float | None = None,
-    miles_to_named_city: float | None = None,
+    km_to_border: float | None = None,
+    km_to_named_city: float | None = None,
     listens: int = 0,
-    border_base_miles: float = TRIP_BORDER_BASE_MILES,
+    border_base_km: float = TRIP_BORDER_BASE_KM,
     country_floor: bool = True,
 ) -> Score:
     fit_date = date_fit(
@@ -273,9 +273,9 @@ def score_trip(
     fit_reach = reach_fit_trip(
         artist_affinity=artist_affinity,
         in_visited_country=in_visited_country,
-        miles_to_border=miles_to_border,
-        miles_to_named_city=miles_to_named_city,
-        border_base_miles=border_base_miles,
+        km_to_border=km_to_border,
+        km_to_named_city=km_to_named_city,
+        border_base_km=border_base_km,
         country_floor=country_floor,
     )
 
@@ -292,7 +292,7 @@ def score_trip(
         date_fit=fit_date,
         reach_fit=fit_reach,
         flags=flags,
-        miles=miles_to_border if not in_visited_country else miles_to_named_city,
+        km=km_to_border if not in_visited_country else km_to_named_city,
         reasons=_reasons(listens),
     )
 

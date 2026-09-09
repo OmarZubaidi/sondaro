@@ -131,20 +131,20 @@ def test_anywhere_in_a_visited_country_is_equally_in_play():
 
 def test_naming_cities_never_drops_the_rest_of_the_country_below_the_floor():
     fit = scoring.reach_fit_trip(
-        artist_affinity=0.3, in_visited_country=True, miles_to_named_city=9999
+        artist_affinity=0.3, in_visited_country=True, km_to_named_city=16000
     )
     assert fit == pytest.approx(scoring.IN_COUNTRY_FLOOR, abs=0.01)
 
 
 def test_just_over_a_border_is_barely_a_detour():
     assert scoring.reach_fit_trip(
-        artist_affinity=0.6, in_visited_country=False, miles_to_border=7
+        artist_affinity=0.6, in_visited_country=False, km_to_border=11
     ) > 0.95
 
 
 def test_far_outside_the_trip_is_not_a_detour():
     assert scoring.reach_fit_trip(
-        artist_affinity=1.0, in_visited_country=False, miles_to_border=330
+        artist_affinity=1.0, in_visited_country=False, km_to_border=530
     ) < 0.05
 
 

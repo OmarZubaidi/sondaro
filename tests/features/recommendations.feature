@@ -1,7 +1,7 @@
 Feature: Recommending shows worth going to
   Sondaro ranks a show by how much I actually listen to the artist and how far
   I'd realistically travel on that particular day. Driving hours decide
-  reachability, not miles: DC and Millbrook are 129 miles apart on a map and much
+  reachability, not distance: DC and Millbrook are 208km apart on a map and much
   closer from behind a wheel.
 
   Everyone in the library was added on purpose, so play counts order the list

@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS routes (
     origin_key  TEXT NOT NULL,      -- rounded "lat,lon"
     dest_key    TEXT NOT NULL,      -- rounded "lat,lon"
     drive_hours REAL,
-    miles       REAL,
+    km          REAL,
     estimated   INTEGER DEFAULT 0,  -- 1 = derived from great-circle, not routed
     resolved_at TEXT,
     PRIMARY KEY (origin_key, dest_key)
@@ -251,6 +251,23 @@ def _migrate(conn: sqlite3.Connection) -> None:
     # Track counts arrived later too, and the next library sync fills them in.
     if "tracks" not in {row["name"] for row in conn.execute("PRAGMA table_info(artists)")}:
         conn.execute("ALTER TABLE artists ADD COLUMN tracks INTEGER DEFAULT 0")
+
+    # Distances moved to km. The cached drive times cost real API calls, so
+    # they are converted in place rather than thrown away and re-fetched.
+    route_columns = {row["name"] for row in conn.execute("PRAGMA table_info(routes)")}
+    if "km" not in route_columns:
+        conn.execute("ALTER TABLE routes ADD COLUMN km REAL")
+        if "miles" in route_columns:
+            conn.execute("UPDATE routes SET km = miles * 1.609344 WHERE miles IS NOT NULL")
+    if "miles" in route_columns:
+        conn.execute("ALTER TABLE routes DROP COLUMN miles")
+
+    conn.execute(
+        "UPDATE OR IGNORE settings SET key = 'trip_border_base_km', "
+        "  value = CAST(ROUND(CAST(value AS REAL) * 1.609344) AS TEXT) "
+        "WHERE key = 'trip_border_base_miles'"
+    )
+    conn.execute("DELETE FROM settings WHERE key = 'trip_border_base_miles'")
 
     # Trips used to hold comma-separated countries and cities in two columns,
     # which couldn't say *when* you'd be in a city or which country a city

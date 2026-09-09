@@ -152,7 +152,7 @@ async def sweep(
     city: str | None = None,
     lat: float | None = None,
     lon: float | None = None,
-    radius_miles: float | None = None,
+    radius_km: float | None = None,
     chunk_days: int = 7,
     _depth: int = 0,
 ) -> tuple[list[Event], list[str]]:
@@ -178,8 +178,8 @@ async def sweep(
             params["city"] = city
         if lat is not None and lon is not None:
             params["geoPoint"] = geohash(lat, lon)
-            params["radius"] = str(int(radius_miles or 150))
-            params["unit"] = "miles"
+            params["radius"] = str(int(radius_km or 240))
+            params["unit"] = "km"
 
         chunk_events, truncated = await _page_through(params)
         events.extend(chunk_events)
@@ -201,7 +201,7 @@ async def sweep(
                     city=city,
                     lat=lat,
                     lon=lon,
-                    radius_miles=radius_miles,
+                    radius_km=radius_km,
                     chunk_days=finer,
                     _depth=_depth + 1,
                 )
@@ -264,7 +264,7 @@ async def by_artist(
     country: str | None = None,
     lat: float | None = None,
     lon: float | None = None,
-    radius_miles: float | None = None,
+    radius_km: float | None = None,
 ) -> list[Event]:
     """One artist's shows. Omit every geography argument for worldwide, which is
     how cross-border detours get found for artists worth detouring for."""
@@ -285,8 +285,8 @@ async def by_artist(
         params["countryCode"] = country.upper()
     if lat is not None and lon is not None:
         params["geoPoint"] = geohash(lat, lon)
-        params["radius"] = str(int(radius_miles or 300))
-        params["unit"] = "miles"
+        params["radius"] = str(int(radius_km or 480))
+        params["unit"] = "km"
 
     events, _ = await _page_through(params)
     return events

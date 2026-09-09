@@ -32,7 +32,7 @@ async def test_prefers_the_new_heigit_host(routes, monkeypatch):
 
     assert route.estimated is False
     assert route.drive_hours == pytest.approx(2.6, abs=0.05)
-    assert route.miles == pytest.approx(164.7, abs=1.0)
+    assert route.km == pytest.approx(265.0, abs=1.0)
     assert routes.count("api.heigit.org") == 1
 
 
@@ -103,9 +103,9 @@ async def test_without_a_key_it_estimates_and_says_so(routes, monkeypatch):
     route = await routing.drive_time(HOME, MILLBROOK)
 
     assert route.estimated is True
-    assert route.miles == pytest.approx(350, abs=2)
-    # great-circle * 1.25 / 55mph
-    assert route.drive_hours == pytest.approx(7.95, abs=0.1)
+    assert route.km == pytest.approx(563, abs=2)
+    # great-circle * 1.25 / 88.5km/h
+    assert route.drive_hours == pytest.approx(7.96, abs=0.1)
     assert routes.calls == []
 
 

@@ -63,6 +63,7 @@ npm --prefix web install && npm --prefix web test
 ## Things that will confuse you later
 
 - open route service takes coordinates as `lon,lat`, backwards from everywhere else in the codebase
+- every distance in the codebase is km. it was miles until the units were converted in one pass, and `_migrate` converts the cached drive times and the border budget rather than re-fetching them
 - `borders.db` is built during `docker build`, not at runtime. rebuild to regenerate
 - ticketmaster caps paging at 1,000 results, so sweeps split their date window and retry when they hit it
 - `api/queue.py` is a database table, not python's `queue` module

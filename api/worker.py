@@ -17,8 +17,8 @@ log = logging.getLogger("sondaro.worker")
 
 IDLE_SLEEP = 300.0  # nothing scheduled: check back in five minutes
 MAX_SLEEP = 900.0
-LOCAL_RADIUS_MILES = 150.0
-CITY_RADIUS_MILES = 75.0  # a metro area, for home-country trip cities
+LOCAL_RADIUS_KM = 240.0
+CITY_RADIUS_KM = 120.0  # a metro area, for home-country trip cities
 # Every artist gets a Ticketmaster lookup — it's free. Only the top of the
 # library earns the JamBase fall-through, which isn't: at ~16 billable calls a
 # day, spending them on the long tail would leave nothing for the artists you'd
@@ -114,7 +114,7 @@ class Worker:
             end,
             lat=task.params["lat"],
             lon=task.params["lon"],
-            radius_miles=task.params.get("radius_miles", LOCAL_RADIUS_MILES),
+            radius_km=task.params.get("radius_km", LOCAL_RADIUS_KM),
             chunk_days=7,
         )
         artists = library.all_artists()
@@ -168,7 +168,7 @@ class Worker:
             return
 
         events, notes = await ticketmaster.sweep(
-            start, end, lat=point[0], lon=point[1], radius_miles=CITY_RADIUS_MILES,
+            start, end, lat=point[0], lon=point[1], radius_km=CITY_RADIUS_KM,
             chunk_days=7,
         )
         matched, seen = scan.ingest(events, library.all_artists())
@@ -347,7 +347,7 @@ def bootstrap() -> None:
         priority=5.0,
         due_at=datetime.now(timezone.utc),
     )
-    slices = queue.plan_local(lat, lon, settings.get("home_horizon_days"), LOCAL_RADIUS_MILES)
+    slices = queue.plan_local(lat, lon, settings.get("home_horizon_days"), LOCAL_RADIUS_KM)
 
     for row in db.query("SELECT * FROM trips WHERE end_date >= ?", (today().isoformat(),)):
         _, _, window_start, window_end = scan.trip_window(row)
@@ -367,6 +367,6 @@ def relocate(lat: float, lon: float) -> None:
     coverage must be invalidated or we'd serve results scored for the old place.
     """
     queue.clear_coverage("local:")
-    queue.plan_local(lat, lon, settings.get("home_horizon_days"), LOCAL_RADIUS_MILES)
+    queue.plan_local(lat, lon, settings.get("home_horizon_days"), LOCAL_RADIUS_KM)
     db.set_meta("relocated_at", now_iso())
     worker.nudge()

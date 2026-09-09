@@ -47,7 +47,7 @@ def a_distant_show(name: str = "Barely Played") -> str:
     routing.store(
         routing.point_key(*HOME),
         routing.point_key(*MILLBROOK),
-        routing.Route(drive_hours=6.0, miles=360, estimated=False),
+        routing.Route(drive_hours=6.0, km=580, estimated=False),
     )
     scan.ingest(
         [
@@ -118,7 +118,7 @@ def a_nearby_show(name: str = "Favourite") -> str:
     routing.store(
         routing.point_key(*HOME),
         routing.point_key(*springfield),
-        routing.Route(drive_hours=0.5, miles=25, estimated=False),
+        routing.Route(drive_hours=0.5, km=40, estimated=False),
     )
     scan.ingest(
         [

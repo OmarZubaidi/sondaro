@@ -279,7 +279,7 @@ def coverage_fraction(scope_prefix: str, expected: int) -> float:
 # --------------------------------------------------------------------------
 
 
-def plan_local(lat: float, lon: float, horizon_days: int, radius_miles: float = 150.0) -> int:
+def plan_local(lat: float, lon: float, horizon_days: int, radius_km: float = 240.0) -> int:
     """Slice the home horizon into sweep tasks. Cheap to call repeatedly."""
     start = today()
     end = start + timedelta(days=horizon_days)
@@ -293,7 +293,7 @@ def plan_local(lat: float, lon: float, horizon_days: int, radius_miles: float = 
             {
                 "lat": lat,
                 "lon": lon,
-                "radius_miles": radius_miles,
+                "radius_km": radius_km,
                 "start": window_start.isoformat(),
                 "end": window_end.isoformat(),
                 "scope": scope,

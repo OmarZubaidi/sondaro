@@ -1,7 +1,7 @@
 """Driving times and geocoding via OpenRouteService.
 
 Driving time, not distance, is what decides whether a show is gettable from
-home: two venues can differ by a hundred miles and far less in hours.
+home: two venues can differ by 150km and far less in hours.
 
 The cost is kept trivial by never routing per event. Routes are resolved home →
 each *distinct venue city* and cached permanently, keyed on the origin — so a
@@ -20,7 +20,7 @@ from dataclasses import dataclass
 
 from . import db, http
 from .config import config
-from .geo import estimate_drive_hours, haversine_miles
+from .geo import estimate_drive_hours, haversine_km
 from .util import now_iso
 
 log = logging.getLogger("sondaro.routing")
@@ -30,13 +30,13 @@ FALLBACK_BASE = "https://api.openrouteservice.org"
 PROVIDER = "openrouteservice"
 _WORKING_BASE_KEY = "ors_working_base"
 
-METERS_PER_MILE = 1609.344
+METERS_PER_KM = 1000.0
 
 
 @dataclass
 class Route:
     drive_hours: float
-    miles: float
+    km: float
     estimated: bool
 
 
@@ -87,27 +87,27 @@ def point_key(lat: float, lon: float) -> str:
 
 def cached(origin_key: str, dest_key: str) -> Route | None:
     row = db.query_one(
-        "SELECT drive_hours, miles, estimated FROM routes "
+        "SELECT drive_hours, km, estimated FROM routes "
         "WHERE origin_key = ? AND dest_key = ?",
         (origin_key, dest_key),
     )
     if row is None or row["drive_hours"] is None:
         return None
-    return Route(row["drive_hours"], row["miles"], bool(row["estimated"]))
+    return Route(row["drive_hours"], row["km"], bool(row["estimated"]))
 
 
 def store(origin_key: str, dest_key: str, route: Route) -> None:
     db.execute(
-        "INSERT INTO routes(origin_key, dest_key, drive_hours, miles, estimated, "
+        "INSERT INTO routes(origin_key, dest_key, drive_hours, km, estimated, "
         "resolved_at) VALUES(?,?,?,?,?,?) "
         "ON CONFLICT(origin_key, dest_key) DO UPDATE SET "
-        "drive_hours = excluded.drive_hours, miles = excluded.miles, "
+        "drive_hours = excluded.drive_hours, km = excluded.km, "
         "estimated = excluded.estimated, resolved_at = excluded.resolved_at",
         (
             origin_key,
             dest_key,
             route.drive_hours,
-            route.miles,
+            route.km,
             1 if route.estimated else 0,
             now_iso(),
         ),
@@ -117,8 +117,8 @@ def store(origin_key: str, dest_key: str, route: Route) -> None:
 def estimate(origin: tuple[float, float], dest: tuple[float, float]) -> Route:
     """Great-circle fallback. Always marked estimated — the UI says so rather
     than presenting a guess as a measurement."""
-    miles = haversine_miles(origin[0], origin[1], dest[0], dest[1])
-    return Route(round(estimate_drive_hours(miles), 3), round(miles, 1), True)
+    km = haversine_km(origin[0], origin[1], dest[0], dest[1])
+    return Route(round(estimate_drive_hours(km), 3), round(km, 1), True)
 
 
 async def drive_time(
@@ -145,7 +145,7 @@ async def drive_time(
         summary = _summary(payload)
         if summary:
             meters, seconds = summary
-            route = Route(round(seconds / 3600.0, 3), round(meters / METERS_PER_MILE, 1), False)
+            route = Route(round(seconds / 3600.0, 3), round(meters / METERS_PER_KM, 1), False)
             store(origin_key, dest_key, route)
             return route
         log.info("routing unavailable for %s -> %s, estimating", origin_key, dest_key)

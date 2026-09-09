@@ -16,7 +16,7 @@ function makeShow(overrides: Partial<Show> = {}): Show {
     flags: [],
     reasons: ['4,210 scrobbles'],
     drive_hours: 2.6,
-    miles: 165,
+    km: 265,
     date: '2026-09-08',
     time: '20:00',
     end_time: '23:00',
@@ -136,7 +136,7 @@ describe('ShowCard', () => {
   })
 
   it('omits the drive line when there is no drive time', () => {
-    render(<ShowCard show={makeShow({ drive_hours: null, miles: null })} />)
+    render(<ShowCard show={makeShow({ drive_hours: null, km: null })} />)
     expect(screen.queryByText(/drive/)).not.toBeInTheDocument()
   })
 })

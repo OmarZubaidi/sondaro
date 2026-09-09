@@ -101,7 +101,7 @@ def _home(monkeypatch):
         routing.store(
             origin,
             routing.point_key(lat, lon),
-            routing.Route(drive_hours=hours, miles=hours * 60, estimated=False),
+            routing.Route(drive_hours=hours, km=hours * 97, estimated=False),
         )
 
 
@@ -264,7 +264,7 @@ def _partial_trip(world):
 def _spain_booked_france_open(world):
     """The case the old pooled anchoring got wrong: once *any* city was named
     it became the anchor for everything, so Geneva was measured against
-    Barcelona — 350 miles — rather than the French border it sits on."""
+    Barcelona — 560km — rather than the French border it sits on."""
     _remember_places("Barcelona", "Lyon")
     world["trip"] = _make_trip("Europe", [("ES", "Barcelona"), ("FR", None)])
 

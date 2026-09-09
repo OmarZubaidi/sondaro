@@ -16,14 +16,14 @@ import threading
 from functools import lru_cache
 
 from .config import config
-from .geo import EARTH_RADIUS_MILES
+from .geo import EARTH_RADIUS_KM, KM_PER_DEGREE
 
 _lock = threading.Lock()
 _conn: sqlite3.Connection | None = None
 
-# search radii to try, in miles. Most answers land in the first ring; the last
-# is a backstop for a point in the middle of an ocean.
-_SEARCH_RINGS = (30.0, 120.0, 400.0, 1200.0, 4000.0)
+# search radii to try, in km. Most answers land in the first ring; the last is
+# a backstop for a point in the middle of an ocean.
+_SEARCH_RINGS = (50.0, 200.0, 650.0, 2000.0, 6500.0)
 
 
 class BordersUnavailable(RuntimeError):
@@ -58,7 +58,7 @@ def reset() -> None:
     alpha2_for.cache_clear()
 
 
-def _point_to_segment_miles(
+def _point_to_segment_km(
     lat: float, lon: float, lat1: float, lon1: float, lat2: float, lon2: float
 ) -> float:
     """Equirectangular projection around the query point.
@@ -68,7 +68,7 @@ def _point_to_segment_miles(
     does.
     """
     cos_lat = math.cos(math.radians(lat))
-    scale = math.pi * EARTH_RADIUS_MILES / 180.0
+    scale = math.pi * EARTH_RADIUS_KM / 180.0
 
     px, py = 0.0, 0.0
     ax = (lon1 - lon) * cos_lat * scale
@@ -104,15 +104,15 @@ def _query_box(
     ).fetchall()
 
 
-def _box_around(lat: float, lon: float, miles: float) -> tuple[float, float, float, float]:
-    lat_delta = miles / 69.0
+def _box_around(lat: float, lon: float, km: float) -> tuple[float, float, float, float]:
+    lat_delta = km / KM_PER_DEGREE
     cos_lat = max(math.cos(math.radians(lat)), 0.01)
-    lon_delta = miles / (69.0 * cos_lat)
+    lon_delta = km / (KM_PER_DEGREE * cos_lat)
     return (lon - lon_delta, lon + lon_delta, lat - lat_delta, lat + lat_delta)
 
 
 def distance_to_border(lat: float, lon: float, countries: list[str]) -> float | None:
-    """Miles from (lat, lon) to the nearest border of any listed country.
+    """Kilometres from (lat, lon) to the nearest border of any listed country.
 
     None if the index is unavailable or the countries are unknown, so callers
     can degrade rather than fabricate a number.
@@ -132,7 +132,7 @@ def distance_to_border(lat: float, lon: float, countries: list[str]) -> float | 
             continue
 
         best = min(
-            _point_to_segment_miles(lat, lon, r["lat1"], r["lon1"], r["lat2"], r["lon2"])
+            _point_to_segment_km(lat, lon, r["lat1"], r["lon1"], r["lat2"], r["lon2"])
             for r in rows
         )
 
@@ -143,7 +143,7 @@ def distance_to_border(lat: float, lon: float, countries: list[str]) -> float | 
             confirm = _query_box(conn, codes, _box_around(lat, lon, best * 1.2 + 5.0))
             if confirm:
                 best = min(
-                    _point_to_segment_miles(
+                    _point_to_segment_km(
                         lat, lon, r["lat1"], r["lon1"], r["lat2"], r["lon2"]
                     )
                     for r in confirm

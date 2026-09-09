@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from api import borders  # noqa: E402
 from api.config import config  # noqa: E402
-from api.geo import EARTH_RADIUS_MILES  # noqa: E402
+from api.geo import EARTH_RADIUS_KM  # noqa: E402
 from scripts import build_borders  # noqa: E402
 
 GENEVA = (46.2044, 6.1432)
@@ -76,7 +76,7 @@ def index(tmp_path, monkeypatch):
     borders.reset()
 
 
-def _brute_force_miles(lat, lon, countries):
+def _brute_force_km(lat, lon, countries):
     """Independent implementation to check the R*Tree against."""
     import sqlite3
 
@@ -89,7 +89,7 @@ def _brute_force_miles(lat, lon, countries):
     ).fetchall()
     conn.close()
     return min(
-        borders._point_to_segment_miles(lat, lon, *row[:1] + row[1:2] + row[2:3] + row[3:4])
+        borders._point_to_segment_km(lat, lon, *row[:1] + row[1:2] + row[2:3] + row[3:4])
         for row in rows
     )
 
@@ -100,19 +100,19 @@ def test_build_skips_unrecognised_codes(index):
 
 
 def test_geneva_is_a_short_hop_from_france(index):
-    miles = borders.distance_to_border(*GENEVA, ["FR"])
+    km = borders.distance_to_border(*GENEVA, ["FR"])
 
     # arithmetic we can check by hand: the eastern edge is a meridian at 6.10
     expected = (GENEVA[1] - FRANCE_EAST_LON) * math.cos(math.radians(GENEVA[0])) * (
-        math.pi * EARTH_RADIUS_MILES / 180.0
+        math.pi * EARTH_RADIUS_KM / 180.0
     )
-    assert miles == pytest.approx(expected, abs=0.1)
-    assert miles < 3  # "barely a detour", as specified
+    assert km == pytest.approx(expected, abs=0.1)
+    assert km < 5  # "barely a detour", as specified
 
 
 def test_berlin_is_not_a_detour(index):
-    miles = borders.distance_to_border(*BERLIN, ["FR"])
-    assert miles > 300
+    km = borders.distance_to_border(*BERLIN, ["FR"])
+    assert km > 480
 
 
 def test_multi_country_takes_the_nearest(index):
@@ -131,8 +131,8 @@ def test_rtree_agrees_with_brute_force(index):
         lat = rng.uniform(35.0, 55.0)
         lon = rng.uniform(-10.0, 20.0)
         indexed = borders.distance_to_border(lat, lon, ["FR"])
-        brute = _brute_force_miles(lat, lon, ["FR"])
-        assert indexed == pytest.approx(brute, abs=0.5), f"disagreed at {lat},{lon}"
+        brute = _brute_force_km(lat, lon, ["FR"])
+        assert indexed == pytest.approx(brute, abs=0.8), f"disagreed at {lat},{lon}"
 
 
 def test_unknown_country_returns_none_rather_than_guessing(index):

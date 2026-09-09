@@ -22,7 +22,7 @@ log = logging.getLogger("sondaro.scan")
 
 # how far out to pull events before scoring decides what's reachable. Generous:
 # the decay curve does the filtering, this is just the SQL prefilter.
-LOCAL_QUERY_MILES = 450.0
+LOCAL_QUERY_KM = 725.0
 
 
 @dataclass
@@ -202,7 +202,7 @@ def local_candidates(overrides: dict | None = None) -> list[Candidate]:
     overrides = overrides or {}
     lat, lon = settings.home()
     horizon = settings.horizon_end()
-    min_lat, max_lat, min_lon, max_lon = geo.bounding_box(lat, lon, LOCAL_QUERY_MILES)
+    min_lat, max_lat, min_lon, max_lon = geo.bounding_box(lat, lon, LOCAL_QUERY_KM)
 
     rows = db.query(
         "SELECT e.*, a.affinity, a.listens "
@@ -246,7 +246,7 @@ def local_candidates(overrides: dict | None = None) -> list[Candidate]:
             artist_affinity=row["affinity"],
             day=day,
             drive_hours=route.drive_hours,
-            miles=route.miles,
+            km=route.km,
             estimated=route.estimated,
             listens=row["listens"] or 0,
             base_hours=_base_hours(day, overrides),
@@ -339,10 +339,10 @@ def _named_city_points(cities: list[str]) -> list[tuple[float, float, str | None
 
 
 def _nearest(lat: float, lon: float, points) -> float | None:
-    """Miles to the closest of a set of (lat, lon, country) points."""
+    """Kilometres to the closest of a set of (lat, lon, country) points."""
     if not points:
         return None
-    return min(geo.haversine_miles(lat, lon, plat, plon) for plat, plon, _c in points)
+    return min(geo.haversine_km(lat, lon, plat, plon) for plat, plon, _c in points)
 
 
 def _points_in(points, country: str):
@@ -394,7 +394,7 @@ def trip_candidates(trip) -> list[Candidate]:
         return []
 
     strict = bool(trip["strict_dates"])
-    border_base = settings.get("trip_border_base_miles")
+    border_base = settings.get("trip_border_base_km")
     home = settings.home_country()
     anchored = anchored_countries(legs)
     bought = purchased_ids()
@@ -428,8 +428,8 @@ def trip_candidates(trip) -> list[Candidate]:
         country = (row["country"] or "").upper()
         inside = country in countries
         at_home_country = bool(home) and country == home
-        miles_to_border = None
-        miles_to_named = None
+        km_to_border = None
+        km_to_named = None
 
         # Dates come from the leg you'd be there for, so a Barcelona show on
         # the day you're in Toronto scores as being outside your dates.
@@ -439,8 +439,8 @@ def trip_candidates(trip) -> list[Candidate]:
             if country in anchored:
                 if row["lat"] is None:
                     continue
-                miles_to_named = _nearest(row["lat"], row["lon"], city_points[country])
-                if miles_to_named is None:
+                km_to_named = _nearest(row["lat"], row["lon"], city_points[country])
+                if km_to_named is None:
                     continue  # cities named but not yet geocoded; the worker will
             elif at_home_country:
                 # home country with no city named in it contributes nothing;
@@ -468,7 +468,7 @@ def trip_candidates(trip) -> list[Candidate]:
             ]
             if not options:
                 continue  # can't place it, so don't guess
-            miles_to_border = min(options)
+            km_to_border = min(options)
 
         score = scoring.score_trip(
             artist_affinity=row["affinity"],
@@ -480,10 +480,10 @@ def trip_candidates(trip) -> list[Candidate]:
             strict=strict,
             in_visited_country=inside,
             country_name=borders.country_name(country) if country else None,
-            miles_to_border=miles_to_border,
-            miles_to_named_city=miles_to_named,
+            km_to_border=km_to_border,
+            km_to_named_city=km_to_named,
             listens=row["listens"] or 0,
-            border_base_miles=border_base,
+            border_base_km=border_base,
             country_floor=not at_home_country,
         )
         if score.total < scoring.TRIP_FLOOR and row["id"] not in bought:
@@ -593,7 +593,7 @@ def serialise(candidate: Candidate, purchased: set[str] | None = None) -> dict:
         "flags": score.flags,
         "reasons": score.reasons,
         "drive_hours": score.drive_hours,
-        "miles": score.miles,
+        "km": score.km,
         "date": event.date,
         "time": event.time,
         "end_time": end_time,

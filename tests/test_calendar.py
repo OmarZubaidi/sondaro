@@ -196,7 +196,7 @@ def test_the_description_is_the_drive_and_the_library(client):
     routing.store(
         routing.point_key(*_home()),
         routing.point_key(*TORONTO),
-        routing.Route(drive_hours=9.5, miles=620.0, estimated=False),
+        routing.Route(drive_hours=9.5, km=1000.0, estimated=False),
     )
     client.put(f"/api/shows/{a_show(tracks=212)}/purchased", json={"purchased": True})
 
