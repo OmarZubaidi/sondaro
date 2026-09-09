@@ -1,5 +1,5 @@
 import type { Show } from '../lib/types'
-import { driveTime, isWeekend, place, timeRange } from '../lib/format'
+import { driveTime, isWeekend, place } from '../lib/format'
 import { FlagChip } from './FlagChip'
 import { ScoreBar } from './ScoreBar'
 import { TicketToggle, useTicket } from './TicketToggle'
@@ -39,7 +39,6 @@ export function ShowCard({
 }: Props) {
   const where = place(show, { country: showCountry }) || 'venue to be announced'
   const drive = driveTime(show)
-  const hours = timeRange(show)
   const weekend = isWeekend(show.date)
   const interactive = Boolean(onToggle)
   const { bought, pending, toggle } = useTicket(show, onChanged)
@@ -54,10 +53,10 @@ export function ShowCard({
       {showDate && (
         <div className="when">
           <span className={weekend ? 'weekend' : undefined}>{show.date}</span>
-          {hours && (
+          {show.time && (
             <>
               <br />
-              <span className="muted hours">{hours}</span>
+              <span className="muted">{show.time}</span>
             </>
           )}
         </div>

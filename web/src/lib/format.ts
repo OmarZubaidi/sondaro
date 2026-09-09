@@ -11,22 +11,6 @@ export function isWeekend(iso: string): boolean {
   return day === 5 || day === 6
 }
 
-/** The hours a show occupies: `20:00 – 23:00`, or `20:00 – ~23:00` when the
- *  end is the assumed set length rather than a published one. A start on its
- *  own answers "when do I leave"; only the pair answers "am I driving home at
- *  one in the morning", which is the question that decides a weeknight.
- *
- *  Null when the doors are still TBA — there is nothing to bracket. The end
- *  date is shown only when it isn't the start date, which the API decides. */
-export function timeRange(
-  show: Pick<Show, 'time' | 'end_time' | 'end_date' | 'end_estimated'>,
-): string | null {
-  if (!show.time) return null
-  if (!show.end_time) return show.time
-  const day = show.end_date ? `${show.end_date} ` : ''
-  return `${show.time} – ${day}${show.end_estimated ? '~' : ''}${show.end_time}`
-}
-
 /** Drive time is the metric that decides reachability, so it's rendered as
  *  hours and minutes rather than a decimal nobody reads. */
 export function driveTime(show: Pick<Show, 'drive_hours' | 'flags'>): string | null {

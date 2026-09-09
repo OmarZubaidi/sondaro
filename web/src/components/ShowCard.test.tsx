@@ -19,9 +19,6 @@ function makeShow(overrides: Partial<Show> = {}): Show {
     km: 265,
     date: '2026-09-08',
     time: '20:00',
-    end_time: '23:00',
-    end_date: null,
-    end_estimated: false,
     venue: 'The Fillmore',
     city: 'Fairview',
     region: 'KS',
@@ -44,28 +41,16 @@ describe('ShowCard', () => {
     expect(screen.getByTestId('score-value')).toHaveTextContent('0.64')
   })
 
-  it('says when the show ends, not just when it starts', () => {
+  it('says the date and the time the doors open', () => {
     render(<ShowCard show={makeShow()} />)
-    expect(screen.getByText('20:00 – 23:00')).toBeInTheDocument()
+    expect(screen.getByText('2026-09-08')).toBeInTheDocument()
+    expect(screen.getByText('20:00')).toBeInTheDocument()
   })
 
-  it('marks an assumed end with a tilde', () => {
-    // the provider published no curfew, so the end is the assumed set length —
-    // useful to plan a drive home around, not a fact to state flatly
-    render(<ShowCard show={makeShow({ end_estimated: true })} />)
-    expect(screen.getByText('20:00 – ~23:00')).toBeInTheDocument()
-  })
-
-  it('names the day a show ends on when it is not the day it starts', () => {
-    render(
-      <ShowCard show={makeShow({ end_date: '2026-09-11', end_time: '22:00' })} />,
-    )
-    expect(screen.getByText('20:00 – 2026-09-11 22:00')).toBeInTheDocument()
-  })
-
-  it('shows no hours at all when the doors are still TBA', () => {
-    render(<ShowCard show={makeShow({ time: null, end_time: null })} />)
-    expect(screen.queryByText(/–/)).not.toBeInTheDocument()
+  it('shows the date alone when the doors are still TBA', () => {
+    render(<ShowCard show={makeShow({ time: null })} />)
+    expect(screen.getByText('2026-09-08')).toBeInTheDocument()
+    expect(screen.queryByText(/\d\d:\d\d/)).not.toBeInTheDocument()
   })
 
   it('renders drive time as hours and minutes, not a decimal', () => {

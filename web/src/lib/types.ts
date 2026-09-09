@@ -12,13 +12,6 @@ export interface Show {
   km: number | null
   date: string
   time: string | null
-  /** when it's over. Absent only when the doors themselves are still TBA. */
-  end_time: string | null
-  /** the day it ends, and only when that isn't the day it starts */
-  end_date: string | null
-  /** the provider never published an end, so this one is the assumed set
-   *  length — rendered with a tilde rather than passed off as fact */
-  end_estimated: boolean
   venue: string | null
   city: string | null
   region: string | null
