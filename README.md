@@ -2,6 +2,8 @@
 
 artists from Lidarr, listening from MusicBrainz. combine the 2 to find concerts near home and when traveling
 
+this app is entirely ai generated. i use and test it then instruct the bot on what i want changed.
+
 ## Requirements
 
 1. Lidarr setup with music in it
