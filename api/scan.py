@@ -60,7 +60,7 @@ def match_one(event: Event, by_name: dict, by_mbid: dict) -> Artist | None:
 
 def _text(value) -> str | None:
     """Last stop before sqlite. Providers are supposed to hand over strings and
-    normalise their own quirks, but one that doesn't must not be able to fail
+    normalize their own quirks, but one that doesn't must not be able to fail
     this task: sqlite refuses to bind anything but a scalar, and a failed task
     is retried, which re-spends the API call that fetched the listing."""
     return value.strip() or None if isinstance(value, str) else None
@@ -339,7 +339,7 @@ def _named_city_points(cities: list[str]) -> list[tuple[float, float, str | None
 
 
 def _nearest(lat: float, lon: float, points) -> float | None:
-    """Kilometres to the closest of a set of (lat, lon, country) points."""
+    """Kilometers to the closest of a set of (lat, lon, country) points."""
     if not points:
         return None
     return min(geo.haversine_km(lat, lon, plat, plon) for plat, plon, _c in points)
@@ -413,7 +413,7 @@ def trip_candidates(trip) -> list[Candidate]:
 
     # Countries still open, whose borders can pull in a show from outside. Your
     # home country never qualifies: flying to one city in the country you live
-    # in doesn't put the rest of it, or its neighbours, in play.
+    # in doesn't put the rest of it, or its neighbors, in play.
     loose_countries = [
         c for c in countries if c not in anchored and (not home or c != home)
     ]
@@ -501,7 +501,7 @@ def trip_candidates(trip) -> list[Candidate]:
 
 @dataclass
 class Favorite:
-    """One favourite artist and every date we hold for them, anywhere on earth."""
+    """One favorite artist and every date we hold for them, anywhere on earth."""
 
     artist: Artist
     dates: list[Candidate]
@@ -516,7 +516,7 @@ def favorite_candidates(limit: int) -> list[Favorite]:
 
     Deliberately unfiltered by geography and by score. The other two feeds ask
     whether a show is gettable and decay it away as it gets further off; this
-    one asks where a favourite will be so a trip can be built around the
+    one asks where a favorite will be so a trip can be built around the
     answer, which makes distance the result rather than the filter.
 
     Reads the event cache and nothing else. The worldwide per-artist lookups
@@ -527,7 +527,7 @@ def favorite_candidates(limit: int) -> list[Favorite]:
 
     An artist with nothing announced still gets a row. That absence is the
     answer to "is anyone I like touring", and dropping it would make it
-    indistinguishable from not being a favourite at all.
+    indistinguishable from not being a favorite at all.
     """
     artists = library.followed_artists(limit)
     if not artists:
@@ -618,7 +618,7 @@ def set_purchased(event_id: str, purchased: bool) -> bool:
     return purchased
 
 
-def serialise(candidate: Candidate, purchased: set[str] | None = None) -> dict:
+def serialize(candidate: Candidate, purchased: set[str] | None = None) -> dict:
     event = candidate.event
     score = candidate.score
     return {

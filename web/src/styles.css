@@ -48,7 +48,7 @@ body,
 }
 
 /* Reserve the scrollbar's width whether or not there's anything to scroll, so
-   a short page and a long one centre their content in the same place. */
+   a short page and a long one center their content in the same place. */
 html {
   scrollbar-gutter: stable;
 }

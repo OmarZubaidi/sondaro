@@ -205,7 +205,7 @@ def test_the_description_is_the_drive_and_the_library(client):
     assert line == "DESCRIPTION:9h 30m drive · 212 songs in Lidarr"
 
 
-def test_a_single_track_is_not_pluralised(client):
+def test_a_single_track_is_not_pluralized(client):
     client.put(f"/api/shows/{a_show(tracks=1)}/purchased", json={"purchased": True})
 
     assert "1 song in Lidarr" in feed(client)

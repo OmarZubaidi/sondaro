@@ -257,7 +257,7 @@ class Worker:
         if home.get("country"):
             settings.set_value("home_country", home["country"])
         # a zone we can't load would silently turn every local date into UTC,
-        # so an unrecognised one is dropped rather than stored
+        # so an unrecognized one is dropped rather than stored
         if home.get("tz") and known_timezone(home["tz"]):
             settings.set_value("home_tz", home["tz"])
 

@@ -43,12 +43,12 @@ export function Local() {
 
   useEffect(() => {
     if (!filters) return
-    let cancelled = false
+    let canceled = false
 
     api
       .home({ ...filters })
-      .then((data) => !cancelled && setFeed(data))
-      .catch((err) => !cancelled && setError(String(err.message ?? err)))
+      .then((data) => !canceled && setFeed(data))
+      .catch((err) => !canceled && setError(String(err.message ?? err)))
 
     // remember where the controls were left, without a save button
     if (saveTimer.current) clearTimeout(saveTimer.current)
@@ -64,7 +64,7 @@ export function Local() {
     }, 1200)
 
     return () => {
-      cancelled = true
+      canceled = true
     }
   }, [filters])
 

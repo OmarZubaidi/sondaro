@@ -8,7 +8,7 @@ each *distinct venue city* and cached permanently, keyed on the origin — so a
 few hundred lookups cover the whole horizon, and moving house misses cleanly and
 re-resolves while the old rows stay put in case you move back.
 
-Host migration: HeiGIT is deprecating `api.openrouteservice.org` in favour of
+Host migration: HeiGIT is deprecating `api.openrouteservice.org` in favor of
 `api.heigit.org`. The new host is tried first as a drop-in, and the old one is
 the fallback. Whichever answers is remembered, so the probe happens once rather
 than on every call.
@@ -80,7 +80,7 @@ async def _ors_get(path: str, params: dict) -> dict | None:
 
 
 def point_key(lat: float, lon: float) -> str:
-    """~100m precision. Nudging a pin by a few metres must not invalidate the
+    """~100m precision. Nudging a pin by a few meters must not invalidate the
     entire cache."""
     return f"{lat:.3f},{lon:.3f}"
 

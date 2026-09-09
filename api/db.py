@@ -21,7 +21,7 @@ SCHEMA = """
 -- artists from Lidarr. This is the whole universe of what can be recommended:
 -- sondaro never suggests anyone you haven't added yourself.
 CREATE TABLE IF NOT EXISTS artists (
-    key         TEXT PRIMARY KEY,   -- mbid when known, else name:<normalised>
+    key         TEXT PRIMARY KEY,   -- mbid when known, else name:<normalized>
     mbid        TEXT,
     name        TEXT NOT NULL,
     lidarr_id   INTEGER,
@@ -160,7 +160,7 @@ CREATE TABLE IF NOT EXISTS notified (
     sent_at  TEXT
 );
 
--- behavioural configuration, seeded from env once then owned by the UI
+-- behavioral configuration, seeded from env once then owned by the UI
 CREATE TABLE IF NOT EXISTS settings (
     key        TEXT PRIMARY KEY,
     value      TEXT,

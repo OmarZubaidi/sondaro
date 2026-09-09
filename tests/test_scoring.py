@@ -1,5 +1,5 @@
 """Scoring. Pure functions, so these are the cheapest tests in the suite and
-the ones that pin the actual behaviour of the app.
+the ones that pin the actual behavior of the app.
 """
 
 import sys
@@ -24,25 +24,25 @@ IN_TOWN, NEARBY, MID_STATE, LONG_DRIVE, TOO_FAR = 0.5, 1.3, 2.6, 4.4, 6.0
 # --------------------------------------------------------------------------
 
 
-# Shape of a real library: one runaway favourite, a handful of well-played
-# artists, and a long tail. Normalising to the max squashes everything under
+# Shape of a real library: one runaway favorite, a handful of well-played
+# artists, and a long tail. Normalizing to the max squashes everything under
 # the outlier, which is what the percentile exists to avoid.
 REAL_LIBRARY = [114, 50, 46, 41, 36, 33, 19, 18, 17, 16] + [
     n for n in range(1, 37)
 ]
 
 
-def test_the_ceiling_ignores_a_runaway_favourite():
+def test_the_ceiling_ignores_a_runaway_favorite():
     ceiling = scoring.affinity_ceiling(REAL_LIBRARY)
 
     assert ceiling < 114, "one outlier must not define the top of the scale"
-    # the artists you genuinely love all count as favourites
+    # the artists you genuinely love all count as favorites
     for plays in (114, 50, 46, 41):
         assert scoring.affinity(plays, ceiling) == 1.0
 
 
-def test_normalising_to_the_max_would_have_compressed_the_scale():
-    """Guards the actual regression: against the max, a 50-play favourite never
+def test_normalizing_to_the_max_would_have_compressed_the_scale():
+    """Guards the actual regression: against the max, a 50-play favorite never
     reached the top of the scale and nothing cleared the alert threshold.
 
     Stated as a comparison rather than a number — the absolute value moves with
@@ -53,7 +53,7 @@ def test_normalising_to_the_max_would_have_compressed_the_scale():
     assert scoring.affinity(50, percentile) == 1.0
 
 
-def test_the_long_tail_still_ranks_below_the_favourites():
+def test_the_long_tail_still_ranks_below_the_favorites():
     """Raising the floor lifts the tail; it must not flatten it. Play counts
     still have to order the library or they mean nothing."""
     ceiling = scoring.affinity_ceiling(REAL_LIBRARY)
@@ -105,7 +105,7 @@ def test_affinity_is_monotonic():
         (TOO_FAR, SATURDAY, 0.24),
     ],
 )
-def test_a_favourite_matches_the_calibration_table(hours, day, expected):
+def test_a_favorite_matches_the_calibration_table(hours, day, expected):
     assert scoring.reach_fit_home(hours, 1.0, day) == pytest.approx(expected, abs=0.01)
 
 

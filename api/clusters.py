@@ -2,12 +2,12 @@
 
 Pure functions, no I/O — testable against a table of dates and coordinates.
 
-The question this answers is "when are several of my favourites in the same
+The question this answers is "when are several of my favorites in the same
 part of the world at once", which is a question about *distance*, not about
 borders. Grouping by country gets it wrong in both directions: Boston and Los
 Angeles are one country and nowhere near each other, while Cologne and
 Amsterdam are two countries and a two-hour train apart. So dates cluster on
-proximity to the group's centre, and administrative names are used only to
+proximity to the group's center, and administrative names are used only to
 label the result.
 
 Single-link chaining is the trap here. With a 650km link and nothing else, a
@@ -27,7 +27,7 @@ from .geo import haversine_km
 # could stretch to cover, so the window has to be at least that.
 CLUSTER_DAYS = 12
 
-# ...and within this far of the cluster's centre. Berlin to Munich is 500km,
+# ...and within this far of the cluster's center. Berlin to Munich is 500km,
 # Amsterdam to Cologne 240, Boston to New York 300 — all one trip. Boston to
 # Chicago is 1,370, which is not.
 CLUSTER_KM = 650.0
@@ -36,7 +36,7 @@ CLUSTER_KM = 650.0
 # the region is the label — "MA + NY" places a cluster, "United States" does
 # not. Everywhere else the country is both smaller and better known than its
 # subdivisions, so "Germany" beats "Bayern".
-REGION_LABELLED = frozenset({"US"})
+REGION_LABELED = frozenset({"US"})
 
 
 @dataclass(frozen=True)
@@ -80,11 +80,11 @@ class Cluster:
         return max(item.day for item in self.items)
 
     @property
-    def centre(self) -> tuple[float, float]:
+    def center(self) -> tuple[float, float]:
         return self._lat, self._lon
 
     def add(self, item: Dated) -> None:
-        """Append and re-centre. Placeable items move the centroid; the rest
+        """Append and re-center. Placeable items move the centroid; the rest
         ride along on the date window alone."""
         self.items.append(item)
         if item.lat is None or item.lon is None:
@@ -118,7 +118,7 @@ def _place_of(item: Dated) -> Place | None:
     country = (item.country or "").upper()
     if not country:
         return None
-    if country in REGION_LABELLED and item.region:
+    if country in REGION_LABELED and item.region:
         return Place(country, item.region)
     return Place(country)
 
@@ -150,7 +150,7 @@ def build(
                 break
             # deliberately not named `km`: that is the radius, and shadowing it
             # here silently replaced the threshold with the last distance measured
-            distance = haversine_km(item.lat, item.lon, *cluster.centre)
+            distance = haversine_km(item.lat, item.lon, *cluster.center)
             if distance < nearest:
                 best, nearest = cluster, distance
 

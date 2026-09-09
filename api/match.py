@@ -1,4 +1,4 @@
-"""Artist-name normalisation and cross-provider de-duplication.
+"""Artist-name normalization and cross-provider de-duplication.
 
 This module decides whether the whole thing works. Listings spell artists every
 possible way — "National, The", "THE NATIONAL — 2026 TOUR", "Artist A + Artist B"

@@ -72,7 +72,7 @@ def _rings(geometry: dict[str, Any]) -> Iterable[list[list[float]]]:
 
 def _country_code(props: dict[str, Any]) -> str | None:
     """Natural Earth spells the ISO code differently across releases, and uses
-    -99 for disputed or unrecognised territories."""
+    -99 for disputed or unrecognized territories."""
     for field in ("ISO_A2_EH", "ISO_A2", "iso_a2", "WB_A2"):
         value = props.get(field)
         if value and value not in ("-99", "-999"):

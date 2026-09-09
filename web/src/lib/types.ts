@@ -103,14 +103,14 @@ export interface TripsFeed {
   countries: TripCountry[]
 }
 
-/** One country a favourite plays, and the dates they play there. */
+/** One country a favorite plays, and the dates they play there. */
 export interface FavoriteCountry {
   code: string
   name: string
   shows: Show[]
 }
 
-/** A favourite and everywhere they're playing, anywhere on earth. */
+/** A favorite and everywhere they're playing, anywhere on earth. */
 export interface FavoriteArtist {
   key: string
   name: string
@@ -125,14 +125,14 @@ export interface FavoriteArtist {
 }
 
 /** A run of dates close enough in time and space to be one trip. Computed
- *  server-side across every favourite at once, since the whole point is the
+ *  server-side across every favorite at once, since the whole point is the
  *  week several of them overlap. */
 export interface Cluster {
   id: number
   start_date: string
   end_date: string
   /** country names, or state codes inside countries too big to name usefully.
-   *  Nothing renders these now that a trip is labelled by its dates alone. */
+   *  Nothing renders these now that a trip is labeled by its dates alone. */
   places: string[]
 }
 

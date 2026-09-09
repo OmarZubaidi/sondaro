@@ -11,7 +11,7 @@ Feature: Recommending shows worth going to
     Given my home is set
     And Ticketmaster is configured
 
-  Scenario: A favourite playing Fairview on a Tuesday is worth the drive
+  Scenario: A favorite playing Fairview on a Tuesday is worth the drive
     Given "The National" is an artist I play constantly
     And "The National" plays Fairview on a Tuesday
     When I look at what's on near home

@@ -96,7 +96,7 @@ async def test_lidarr_lists_artists(routes, monkeypatch):
 
 
 async def test_lidarr_reports_how_much_of_an_artist_is_on_disk(routes, monkeypatch):
-    """Files, not the catalogue: trackCount is everything Lidarr knows exists,
+    """Files, not the catalog: trackCount is everything Lidarr knows exists,
     which says nothing about whether you own any of it."""
     monkeypatch.setattr(config, "lidarr_api_key", "key")
     monkeypatch.setattr(config, "lidarr_url", "http://lidarr.test:8686")
@@ -191,7 +191,7 @@ def test_ticketmaster_keeps_the_last_day_of_a_festival():
 
 def test_a_listing_with_no_stated_end_has_none():
     """Most of them. The assumption about how long a show runs is made once,
-    downstream, where it can be labelled as one."""
+    downstream, where it can be labeled as one."""
     parsed = ticketmaster.parse_event(tm_event())
     assert (parsed.end_date, parsed.end_time, parsed.ends_at) == (None, None, None)
 

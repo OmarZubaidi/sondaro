@@ -42,7 +42,7 @@ class Event:
 
     def candidate_names(self) -> list[str]:
         """Every act this listing could be matched against. Filtered to real
-        strings: matching normalises these, and a provider that hands over a
+        strings: matching normalizes these, and a provider that hands over a
         JSON-LD object instead would fail the whole listing there."""
         names = [self.artist_name, *self.lineup]
         if self.title and self.title != self.artist_name:

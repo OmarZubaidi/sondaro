@@ -107,7 +107,7 @@ def test_a_ticket_you_hold_outranks_the_filter(client):
     assert event_id in [s["id"] for m in shown["months"] for s in m["shows"]]
 
 
-def a_nearby_show(name: str = "Favourite") -> str:
+def a_nearby_show(name: str = "Favorite") -> str:
     """Half an hour away, played constantly — clears any floor on its own."""
     db.execute(
         "INSERT INTO artists(key, name, affinity, listens, updated_at) VALUES(?,?,?,?,?) "
@@ -144,12 +144,12 @@ def test_marking_a_ticket_is_what_puts_it_in_the_calendar(client):
     """Buying the ticket is the moment a show stops being a suggestion, so it's
     the moment it earns a place in your week."""
     event_id = a_nearby_show()
-    assert "Favourite" not in client.get("/sondaro.ics").text
+    assert "Favorite" not in client.get("/sondaro.ics").text
 
     client.put(f"/api/shows/{event_id}/purchased", json={"purchased": True})
 
     held = client.get("/sondaro.ics").text
-    assert "Favourite" in held
+    assert "Favorite" in held
     assert "STATUS:CONFIRMED" in held
     assert "TRANSP:OPAQUE" in held
 

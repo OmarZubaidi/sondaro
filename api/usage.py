@@ -43,7 +43,7 @@ DEFAULT_CAPS: dict[str, tuple[int, int]] = {
 }
 
 # Nothing may raise these, whatever a setting says — a typo in the UI must not
-# be able to authorise spending.
+# be able to authorize spending.
 HARD_CEILINGS: dict[str, int] = {
     "jambase": 900,
 }
@@ -88,7 +88,7 @@ def remaining(provider: str) -> int:
 def reserve(provider: str, count: int = 1) -> bool:
     """Claim `count` calls up front. False means the cap is reached.
 
-    The check and the increment happen inside one cursor, and SQLite serialises
+    The check and the increment happen inside one cursor, and SQLite serializes
     writes, so two workers racing for the final slot cannot both win.
     """
     window, cap = cap_for(provider)

@@ -2,13 +2,13 @@
 
 The alternative — one big nightly scan — burns the API budget refetching a
 6-month horizon that mostly hasn't changed, and makes a cold start useless until
-it finishes. So work is sliced, prioritised, and re-polled at a rate that
+it finishes. So work is sliced, prioritized, and re-polled at a rate that
 matches how fast each slice actually changes.
 
     priority = urgency x importance
     urgency  = 1 / (1 + days_out/30)
 
-Near-term slices and favourite artists drain first, which is why the UI is
+Near-term slices and favorite artists drain first, which is why the UI is
 useful within minutes of a cold start rather than hours.
 
 Refresh cadence by horizon — this is what keeps steady-state cost flat:
@@ -267,8 +267,8 @@ def awaiting(task_key: str) -> bool:
     """Whether one exact task has yet to run cleanly.
 
     `unfetched` answers the same question for a whole scope, by prefix, which
-    an artist lookup can't use: its key is either an mbid or `name:<normalised>`,
-    and a normalised name carries the underscores LIKE reads as wildcards.
+    an artist lookup can't use: its key is either an mbid or `name:<normalized>`,
+    and a normalized name carries the underscores LIKE reads as wildcards.
 
     A task that isn't queued yet counts as awaiting — the per-artist lookups are
     planned by the library sync, so "we haven't looked" and "we haven't even
@@ -400,8 +400,8 @@ def plan_artist_lookup(
     worldwide: bool = False,
     gap_fill: bool = False,
 ) -> None:
-    """Per-artist lookups, prioritised by affinity — this is the mechanism that
-    finds a favourite playing somewhere a sweep would never look.
+    """Per-artist lookups, prioritized by affinity — this is the mechanism that
+    finds a favorite playing somewhere a sweep would never look.
 
     `gap_fill` permits the billable JamBase fall-through when Ticketmaster
     comes back empty. Off unless asked for: a library of hundreds would

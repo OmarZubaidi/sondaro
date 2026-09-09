@@ -94,7 +94,7 @@ def _brute_force_km(lat, lon, countries):
     )
 
 
-def test_build_skips_unrecognised_codes(index):
+def test_build_skips_unrecognized_codes(index):
     assert index["countries"] == 2
     assert index["segments"] > 0
 

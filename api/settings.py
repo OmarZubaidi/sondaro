@@ -1,4 +1,4 @@
-"""Live settings — the behavioural half of the configuration split.
+"""Live settings — the behavioral half of the configuration split.
 
 Everything here is editable from the UI and takes effect on the next scan with
 no restart. Env vars in `config.SEEDS` populate the table once on first run and
@@ -170,7 +170,7 @@ def home_country() -> str:
 
 def origin_key() -> str:
     """Routing cache key for the current home. Rounded to ~100m, so nudging the
-    pin by a few metres doesn't invalidate every cached drive time."""
+    pin by a few meters doesn't invalidate every cached drive time."""
     lat, lon = home()
     return f"{lat:.3f},{lon:.3f}"
 

@@ -24,7 +24,7 @@ log = logging.getLogger("sondaro.library")
 LISTENBRAINZ = "https://api.listenbrainz.org/1"
 LASTFM = "https://ws.audioscrobbler.com/2.0/"
 
-# Order for "the top of the library", used wherever a slice of favourites is
+# Order for "the top of the library", used wherever a slice of favorites is
 # taken. Affinity clamps to 1.0 at the p90 play count, so the whole top decile
 # ties on it — breaking that tie by name alone made "my top ten" an
 # alphabetical accident rather than a ranking. Play counts break it the way
@@ -49,7 +49,7 @@ class Artist:
 
 
 async def fetch_listenbrainz_counts() -> dict[str, int]:
-    """Normalised artist name -> lifetime listen count. The stats endpoint is
+    """Normalized artist name -> lifetime listen count. The stats endpoint is
     public, so this needs a username but no token."""
     if not config.listenbrainz_user:
         return {}
@@ -164,7 +164,7 @@ async def sync() -> dict:
 
     counts, source = await pick_counts(artists)
 
-    # normalise against your library's own distribution, not the whole scrobble
+    # normalize against your library's own distribution, not the whole scrobble
     # history — an artist you play constantly but never added to Lidarr should
     # not set the bar for the ones you did
     ceiling = scoring.affinity_ceiling(
@@ -269,7 +269,7 @@ def follow_top(limit: int, *, forget_others: bool = False) -> None:
 
 
 def followed_artists(limit: int) -> list[Artist]:
-    """The favourites the Favorites page follows: the current top `limit`, plus
+    """The favorites the Favorites page follows: the current top `limit`, plus
     anyone stamped into it within `FOLLOW_GRACE_DAYS`."""
     cutoff = (
         datetime.now(timezone.utc) - timedelta(days=FOLLOW_GRACE_DAYS)
@@ -293,8 +293,8 @@ def get(key: str) -> Artist | None:
 
 
 def index_by_name(artists: list[Artist]) -> dict[str, Artist]:
-    """Normalised name -> artist, preferring the higher-affinity entry when two
-    library artists normalise to the same key."""
+    """Normalized name -> artist, preferring the higher-affinity entry when two
+    library artists normalize to the same key."""
     index: dict[str, Artist] = {}
     for artist in artists:
         key = normalize(artist.name)

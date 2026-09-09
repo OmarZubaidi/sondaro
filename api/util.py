@@ -1,4 +1,4 @@
-"""Small shared helpers. Time is centralised here so nothing reaches for a
+"""Small shared helpers. Time is centralized here so nothing reaches for a
 naive `datetime.utcnow()` — every stored timestamp is timezone-aware UTC, and
 every user-facing date is rendered in the configured local zone.
 """

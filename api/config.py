@@ -2,7 +2,7 @@
 
 The split is deliberate and enforced here: this module holds **secrets and
 wiring only**, plus first-run seeds for the settings the UI owns afterwards.
-Anything behavioural — horizon, driving-hour bases, alert threshold — is read
+Anything behavioral — horizon, driving-hour bases, alert threshold — is read
 through `settings.py`, not from here, so changing it never requires a redeploy.
 Home location and timezone aren't here either: those come from Home Assistant,
 which already holds them.

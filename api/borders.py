@@ -112,7 +112,7 @@ def _box_around(lat: float, lon: float, km: float) -> tuple[float, float, float,
 
 
 def distance_to_border(lat: float, lon: float, countries: list[str]) -> float | None:
-    """Kilometres from (lat, lon) to the nearest border of any listed country.
+    """Kilometers from (lat, lon) to the nearest border of any listed country.
 
     None if the index is unavailable or the countries are unknown, so callers
     can degrade rather than fabricate a number.

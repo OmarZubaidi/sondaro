@@ -1,4 +1,4 @@
-"""Behaviour tests for degradation, quotas, live settings and relocation."""
+"""Behavior tests for degradation, quotas, live settings and relocation."""
 
 import asyncio
 import json

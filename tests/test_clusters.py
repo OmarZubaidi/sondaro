@@ -111,7 +111,7 @@ def test_a_date_joins_the_nearest_open_cluster_not_the_first():
     assert {"Lisbon"} in found
 
 
-def test_the_us_is_labelled_by_state():
+def test_the_us_is_labeled_by_state():
     found = clusters.build([at("Boston"), at("New York", 2)])
 
     assert found[0].places() == [
@@ -120,7 +120,7 @@ def test_the_us_is_labelled_by_state():
     ]
 
 
-def test_everywhere_else_is_labelled_by_country():
+def test_everywhere_else_is_labeled_by_country():
     """"Bayern" locates a cluster worse than "Germany" does."""
     found = clusters.build([at("Cologne"), at("Amsterdam", 2)])
 

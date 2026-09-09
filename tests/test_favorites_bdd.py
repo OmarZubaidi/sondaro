@@ -1,8 +1,8 @@
-"""Behaviour tests for the worldwide favorites feed.
+"""Behavior tests for the worldwide favorites feed.
 
 The interesting half of this file is what happens when the ranking moves. The
 event cache is global and keyed on the listing, not on who was in your top ten
-when it was fetched, so a favourite who slips a place keeps every date already
+when it was fetched, so a favorite who slips a place keeps every date already
 paid for — and the follow window keeps them on the page long enough to notice.
 """
 
@@ -123,8 +123,8 @@ def _follow_count(count):
     settings.set_value("favorite_artists", count)
 
 
-@given(parsers.parse('"{name}" is a favourite with {listens:d} scrobbles'))
-def _favourite(name, listens):
+@given(parsers.parse('"{name}" is a favorite with {listens:d} scrobbles'))
+def _favorite(name, listens):
     """Affinity is set flat at 1.0 on purpose. Everyone in the top decile
     clamps there, which is exactly the case where the ranking has to fall back
     on play counts instead of the alphabet."""
@@ -328,7 +328,7 @@ def _different_trips(world, first, second):
     assert left != right, f"{first} and {second} both landed in trip {left}"
 
 
-@then(parsers.parse("that trip covers {count:d} favourites"))
+@then(parsers.parse("that trip covers {count:d} favorites"))
 def _trip_covers(world, count):
     names = {
         show["artist"] for show in _dates(world) if show["cluster"] == world["trip"]

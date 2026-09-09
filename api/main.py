@@ -116,7 +116,7 @@ async def api_local(
     for candidate in candidates:
         day = parse_date(candidate.event.date)
         bucket = day.strftime("%B %Y") if day else "unknown"
-        by_month.setdefault(bucket, []).append(scan.serialise(candidate, bought))
+        by_month.setdefault(bucket, []).append(scan.serialize(candidate, bought))
 
     return {
         "total": len(candidates),
@@ -144,7 +144,7 @@ async def api_favorites(
     cluster_days: int | None = Query(None, ge=1, le=60),
     cluster_km: float | None = Query(None, ge=25, le=3000),
 ):
-    """Your favourite artists and every date they're playing, worldwide.
+    """Your favorite artists and every date they're playing, worldwide.
 
     Two shapes over one set of dates, because there are two questions. Grouped
     by artist, a block reads as one act's itinerary. Grouped by `cluster`, it
@@ -186,7 +186,7 @@ async def api_favorites(
         by_country: dict[str, list] = {}
         for candidate in favorite.dates:
             code = (candidate.event.country or "").upper()
-            shown = scan.serialise(candidate, bought)
+            shown = scan.serialize(candidate, bought)
             shown["cluster"] = cluster_of.get(candidate.event.id)
             by_country.setdefault(code, []).append(shown)
 
@@ -245,7 +245,7 @@ def _place_name(place: clusters.Place) -> str:
 
 
 def _favorite_countries(artists: list[dict]) -> list[dict]:
-    """Every country your favourites play, named, for the sidebar filter."""
+    """Every country your favorites play, named, for the sidebar filter."""
     names = {
         country["code"]: country["name"]
         for artist in artists
@@ -312,7 +312,7 @@ async def api_trips():
     merged: dict[str, dict] = {}
     for row, summary in zip(rows, trips):
         for candidate in scan.trip_candidates(row):
-            shown = scan.serialise(candidate, bought)
+            shown = scan.serialize(candidate, bought)
             existing = merged.get(shown["id"])
             if existing is None:
                 shown["trips"] = [{"id": summary["id"], "name": summary["name"]}]

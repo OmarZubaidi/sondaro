@@ -60,17 +60,17 @@ export function ChipSelect({
       setFound([])
       return
     }
-    let cancelled = false
+    let canceled = false
     setBusy(true)
     // debounced: every keystroke is a geocoder call, and that's a daily quota
     const timer = setTimeout(() => {
       search(query.trim())
-        .then((results) => !cancelled && setFound(results))
-        .catch(() => !cancelled && setFound([]))
-        .finally(() => !cancelled && setBusy(false))
+        .then((results) => !canceled && setFound(results))
+        .catch(() => !canceled && setFound([]))
+        .finally(() => !canceled && setBusy(false))
     }, DEBOUNCE_MS)
     return () => {
-      cancelled = true
+      canceled = true
       clearTimeout(timer)
     }
   }, [query, search])

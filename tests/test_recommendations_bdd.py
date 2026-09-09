@@ -1,4 +1,4 @@
-"""Behaviour tests for the home watch and the trip planner.
+"""Behavior tests for the home watch and the trip planner.
 
 These drive the real pipeline — ingest, match, route, score — with providers
 stubbed at the transport layer. Nothing here reaches the network; `conftest`
@@ -148,7 +148,7 @@ def _add_artist(name: str, listens: int, ceiling: int) -> None:
 
 
 @given(parsers.parse('"{name}" is an artist I play constantly'))
-def _favourite(name):
+def _favorite(name):
     _add_artist(name, listens=5000, ceiling=5000)
 
 

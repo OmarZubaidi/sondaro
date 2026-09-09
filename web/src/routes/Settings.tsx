@@ -133,7 +133,7 @@ export function Settings() {
       <h2>Calendar</h2>
       <CalendarSubscription tailnetUrl={payload.tailnet_url} />
 
-      <h2>Behaviour</h2>
+      <h2>Behavior</h2>
       {editable.map((spec) => (
         <SettingRow
           key={spec.key}

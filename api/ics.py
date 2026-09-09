@@ -180,7 +180,7 @@ def build(entries: list[Entry], calendar_name: str = "Sondaro") -> str:
         "METHOD:PUBLISH",
         _fold(f"X-WR-CALNAME:{_escape(calendar_name)}"),
         # marking a ticket as bought should show up in your calendar today, not
-        # tomorrow, so ask for the tightest poll the clients honour
+        # tomorrow, so ask for the tightest poll the clients honor
         "REFRESH-INTERVAL;VALUE=DURATION:PT1H",
         "X-PUBLISHED-TTL:PT1H",
     ]

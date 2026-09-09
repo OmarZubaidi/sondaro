@@ -13,8 +13,8 @@ The reach models are deliberately different curves:
          would rank them wrongly.
   trip — measured in km from the nearest border of a country you're
          visiting, on a far gentler curve, because distance is cheap once
-         you're already travelling and cities get picked after countries.
-  favorites — none at all. That feed asks where a favourite is playing so a
+         you're already traveling and cities get picked after countries.
+  favorites — none at all. That feed asks where a favorite is playing so a
          trip can be built around the answer, so geography is what it
          returns rather than what it filters on.
 """
@@ -76,12 +76,12 @@ class Score:
     reasons: list[str] = field(default_factory=list)
 
 
-# Affinity is normalised against this percentile of your library's play counts
-# rather than the single highest. Normalising to the max means one outlier
+# Affinity is normalized against this percentile of your library's play counts
+# rather than the single highest. Normalizing to the max means one outlier
 # defines the top of the scale and everybody else is squashed underneath it:
-# with a 114-play favourite and nothing else above 50, a genuine favourite
+# with a 114-play favorite and nothing else above 50, a genuine favorite
 # scores 0.87 and the whole ranking compresses. At p90 the top handful of
-# artists all reach 1.0, which is what "favourite" is supposed to mean.
+# artists all reach 1.0, which is what "favorite" is supposed to mean.
 AFFINITY_PERCENTILE = 0.90
 
 
@@ -113,7 +113,7 @@ def shape_home(a: float) -> float:
     for it twice and buries anyone off the top of the library — at 0.12 a
     one-track artist earned half an hour of a three-hour budget, which is not
     a ranking, it's an exclusion. Starting at 0.35 gives them about half the
-    budget while the quadratic still separates them from a favourite.
+    budget while the quadratic still separates them from a favorite.
     """
     a = max(0.0, min(a, 1.0))
     return 0.35 + 0.65 * a * a
@@ -173,7 +173,7 @@ def reach_fit_trip(
     """Geography fit for a trip.
 
     Inside a visited country with no cities named, this is flat 1.0 — you pick
-    cities after countries, so nothing in-country is ever penalised. Naming
+    cities after countries, so nothing in-country is ever penalized. Naming
     cities biases toward them without ever dropping the rest of the country
     below `IN_COUNTRY_FLOOR`.
 
@@ -301,11 +301,11 @@ def score_trip(
 
 
 def score_favorite(*, artist_affinity: float) -> Score:
-    """One of a favourite's dates, scored on the artist and nothing else.
+    """One of a favorite's dates, scored on the artist and nothing else.
 
     Both fits are 1.0 because there is nothing to decay against. Every other
     feed asks "can I get to this" and ranks a show down as it gets further from
-    home; this one asks where a favourite will be so a trip can be built around
+    home; this one asks where a favorite will be so a trip can be built around
     the answer, which leaves affinity as the only honest claim.
 
     `reasons` stays empty: a reason belongs to the artist, and this feed already
