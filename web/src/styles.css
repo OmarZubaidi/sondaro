@@ -215,7 +215,8 @@ h2:first-child {
   min-width: 0;
 }
 
-.show .artist {
+/* The act, or the venue on a feed already grouped by act */
+.show .lead {
   font-weight: 600;
   font-size: 17px;
   overflow-wrap: anywhere;
@@ -578,6 +579,17 @@ main:has(.local-layout) {
   gap: 10px;
 }
 
+/* A sticky column taller than the viewport puts its own bottom permanently out
+   of reach — the page scroll moves the feed, not the pinned sidebar. Three
+   filter lists get there easily, so this one scrolls itself. */
+.local-layout .side.tall {
+  max-height: calc(100vh - var(--topbar) - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* keeps the checkboxes off the scrollbar */
+  padding-right: 6px;
+}
+
 .side-meta {
   display: grid;
   gap: 3px;
@@ -596,6 +608,12 @@ main:has(.local-layout) {
   }
   .local-layout .side {
     position: static;
+  }
+  /* stacked above the feed and scrolling with the page, so it needs no frame */
+  .local-layout .side.tall {
+    max-height: none;
+    overflow-y: visible;
+    padding-right: 0;
   }
   .local-layout .side .grid3 {
     grid-template-columns: repeat(3, 1fr);
@@ -912,6 +930,272 @@ main:has(.local-layout) {
    differently from a booked stop */
 .trip-legs .loose {
   color: var(--accent);
+}
+
+/* --- favorites: an itinerary, or the trips hiding in one ----------------- */
+
+.favorite {
+  margin-bottom: 30px;
+}
+
+.favorite-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+/* An artist is the identity of the block, not a label for it. Every other h2
+   on the site is a date or a month, which reads fine shouted; a band name
+   doesn't. */
+.favorite-head h2 {
+  margin: 0;
+  font-size: 16px;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text);
+}
+
+.favorite-head .muted {
+  margin-left: auto;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Ten acts with up to forty dates each is an index, not a page, so each one
+   collapses. The chevron is drawn rather than typed: the default marker is
+   sized by the font and ends up the smallest thing in the row. */
+.favorite > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 3px 0;
+}
+
+.favorite > summary::-webkit-details-marker {
+  display: none;
+}
+
+.favorite > summary::before {
+  content: '';
+  flex: none;
+  align-self: center;
+  width: 8px;
+  height: 8px;
+  border-right: 1.8px solid var(--muted);
+  border-bottom: 1.8px solid var(--muted);
+  transform: rotate(-45deg);
+  transition: transform 0.15s ease;
+}
+
+.favorite[open] > summary::before {
+  transform: rotate(45deg);
+}
+
+.favorite > summary:hover h2 {
+  color: var(--accent);
+}
+
+.favorite-place {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 14px 0 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.favorite-place span {
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+}
+
+.favorite-quiet {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* --- favorites: two views, two tabs ------------------------------------- */
+
+/* The two views answer different questions, take different filters and are
+   laid out differently, so they read as separate places rather than as one
+   list sorted two ways. */
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.tabs button {
+  padding: 8px 14px;
+  min-height: 0;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.tabs button:hover {
+  color: var(--text);
+}
+
+.tabs button[aria-selected='true'] {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+/* --- a trip: rows, not cards --------------------------------------------- */
+
+/* A trip is read as a schedule — ten dates you're scanning for shape — and a
+   schedule wants rows. The card list the rest of the site uses spends about
+   80px a date, which buries the pattern this view exists to show. */
+
+.trip {
+  margin-bottom: 30px;
+}
+
+.trip-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--line);
+  margin-bottom: 10px;
+}
+
+.trip-head h2 {
+  margin: 0;
+  font-size: 15px;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.trip-head .muted {
+  margin-left: auto;
+  font-size: 13px;
+}
+
+/* Several dates by one act, which is what makes a trip worth taking — framed
+   so it reads as a block. A lone date gets no frame and no heading: there is
+   no group to point at. */
+.run {
+  border-left: 2px solid var(--accent);
+  padding-left: 10px;
+  margin: 0 0 10px;
+}
+
+.run-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.run-head strong {
+  font-size: 15px;
+}
+
+.run-head span {
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.trip-date {
+  display: grid;
+  grid-template-columns: 10ch 5ch minmax(0, 1fr) auto auto;
+  align-items: baseline;
+  gap: 10px;
+  padding: 5px 0;
+  font-size: 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+}
+
+.trip-date:last-child {
+  border-bottom: none;
+}
+
+.trip-date.held {
+  color: var(--good);
+}
+
+.trip-date .on,
+.trip-date .at {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.trip-date .what {
+  min-width: 0;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.trip-date .what span {
+  overflow-wrap: anywhere;
+}
+
+.trip-date a {
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+/* What counts as one trip: "Within [12] days" / "and [650] km". Laid out as
+   one grid so the two rows share columns — as separate flex rows the fields
+   started at different x positions and the box read as loose. */
+.trip-shape.filters {
+  display: grid;
+  /* max-content, not auto: an auto track absorbs the spare width and drifts
+     the whole thing into the middle of the card */
+  grid-template-columns: max-content 4.5rem max-content;
+  justify-content: start;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+}
+
+.trip-shape label {
+  margin: 0;
+  justify-self: end;
+}
+
+.trip-shape input[type='number'] {
+  width: 100%;
+  max-width: none;
+  padding: 4px 8px;
+  min-height: 30px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.trip-shape .muted {
+  font-size: 13px;
+}
+
+/* a schedule is unreadable in five columns on a phone */
+@media (max-width: 620px) {
+  .trip-date {
+    grid-template-columns: 10ch minmax(0, 1fr) auto;
+  }
+  .trip-date .at {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .favorite-head .muted {
+    margin-left: 0;
+  }
 }
 
 /* --- a bought ticket ------------------------------------------------------ */

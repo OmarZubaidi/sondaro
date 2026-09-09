@@ -1,5 +1,6 @@
 import type {
   CitySuggestion,
+  FavoritesFeed,
   LocalFeed,
   SettingsPayload,
   Status,
@@ -39,6 +40,11 @@ export const api = {
   status: () => request<Status>('/api/status'),
 
   sync: () => request<{ artists: number }>('/api/sync', { method: 'POST' }),
+
+  favorites: (shape?: { days: number; km: number }) => {
+    const query = shape ? `?cluster_days=${shape.days}&cluster_km=${shape.km}` : ''
+    return request<FavoritesFeed>(`/api/favorites${query}`)
+  },
 
   trips: () => request<TripsFeed>('/api/trips'),
 

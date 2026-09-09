@@ -10,13 +10,15 @@ const THRESHOLD_STOPS = [
   { value: 0.75, label: 'only the good ones' },
 ]
 
-// these live on the Local page as live filters instead, where you can see
-// what they do while you move them
+// these live as live controls on the page they affect, where you can see what
+// they do while you move them
 const ON_LOCAL_PAGE = new Set([
   'base_hours_weeknight',
   'base_hours_sunday',
   'base_hours_weekend',
   'min_score',
+  'cluster_days',
+  'cluster_km',
 ])
 
 const clamp = (value: number) => Math.min(1, Math.max(0, value || 0))

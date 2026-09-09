@@ -135,6 +135,31 @@ describe('ShowCard', () => {
     expect(screen.getByText('Summer in Europe')).toBeInTheDocument()
   })
 
+  it('leads with the venue when the list is already grouped by act', () => {
+    render(<ShowCard show={makeShow()} showArtist={false} />)
+
+    expect(screen.queryByText('The National')).not.toBeInTheDocument()
+    expect(screen.getByText('The Fillmore, Fairview, KS')).toBeInTheDocument()
+  })
+
+  it('drops the country when the list is already grouped by country', () => {
+    render(
+      <ShowCard
+        show={makeShow({ venue: 'Budokan', city: 'Tokyo', region: null, country: 'JP' })}
+        showCountry={false}
+      />,
+    )
+
+    expect(screen.getByText('Budokan, Tokyo')).toBeInTheDocument()
+  })
+
+  it('keeps the region when the country is grouped away', () => {
+    // "Fairview" on its own is ambiguous in the US; "Fairview, KS" is not
+    render(<ShowCard show={makeShow()} showCountry={false} />)
+
+    expect(screen.getByText('The Fillmore, Fairview, KS')).toBeInTheDocument()
+  })
+
   it('omits the drive line when there is no drive time', () => {
     render(<ShowCard show={makeShow({ drive_hours: null, km: null })} />)
     expect(screen.queryByText(/drive/)).not.toBeInTheDocument()

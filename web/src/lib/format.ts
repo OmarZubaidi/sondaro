@@ -37,8 +37,15 @@ export function driveTime(show: Pick<Show, 'drive_hours' | 'flags'>): string | n
   return show.flags.includes('estimated drive time') ? `~${base}` : base
 }
 
-export function place(show: Pick<Show, 'venue' | 'city' | 'region' | 'country'>): string {
-  return [show.venue, show.city, show.region ?? show.country].filter(Boolean).join(', ')
+/** `country: false` for a list already grouped by country, where the code
+ *  would only repeat the heading. The region survives it — under "United
+ *  States", "Fairview, KS" is the useful line and "Fairview" is ambiguous. */
+export function place(
+  show: Pick<Show, 'venue' | 'city' | 'region' | 'country'>,
+  { country = true }: { country?: boolean } = {},
+): string {
+  const tail = country ? show.region ?? show.country : show.region
+  return [show.venue, show.city, tail].filter(Boolean).join(', ')
 }
 
 export function percent(fraction: number): string {

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, NavLink, Route, Routes } from 'react-router-dom'
 import { Local } from './routes/Local'
+import { Favorites } from './routes/Favorites'
 import { Trips } from './routes/Trips'
 import { StatusPage } from './routes/StatusPage'
 import { SettingsDrawer } from './components/SettingsDrawer'
@@ -18,6 +19,9 @@ export function App() {
         <nav>
           <NavLink to="/" end className={({ isActive }) => (isActive ? 'active' : '')}>
             Local
+          </NavLink>
+          <NavLink to="/favorites" className={({ isActive }) => (isActive ? 'active' : '')}>
+            Favorites
           </NavLink>
           <NavLink to="/trips" className={({ isActive }) => (isActive ? 'active' : '')}>
             Trips
@@ -40,6 +44,7 @@ export function App() {
       <main>
         <Routes>
           <Route path="/" element={<Local />} />
+          <Route path="/favorites" element={<Favorites />} />
           <Route path="/trips" element={<Trips />} />
           <Route path="/status" element={<StatusPage />} />
           <Route path="*" element={<div className="empty">Not found.</div>} />

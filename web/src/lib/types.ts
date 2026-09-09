@@ -30,6 +30,8 @@ export interface Show {
   purchased: boolean
   /** which trips this show turned up for; absent on the local feed */
   trips?: { id: number; name: string }[]
+  /** which detected cluster this date falls in; only on the favorites feed */
+  cluster?: number | null
 }
 
 export interface Quota {
@@ -106,6 +108,55 @@ export interface TripsFeed {
   total: number
   dates: { date: string; shows: Show[] }[]
   countries: TripCountry[]
+}
+
+/** One country a favourite plays, and the dates they play there. */
+export interface FavoriteCountry {
+  code: string
+  name: string
+  shows: Show[]
+}
+
+/** A favourite and everywhere they're playing, anywhere on earth. */
+export interface FavoriteArtist {
+  key: string
+  name: string
+  listens: number
+  affinity: number
+  /** no clean worldwide lookup yet, so no dates isn't the answer */
+  searching: boolean
+  /** still here on the follow window rather than on current rank */
+  slipped: boolean
+  total: number
+  countries: FavoriteCountry[]
+}
+
+/** A run of dates close enough in time and space to be one trip. Computed
+ *  server-side across every favourite at once, since the whole point is the
+ *  week several of them overlap. */
+export interface Cluster {
+  id: number
+  start_date: string
+  end_date: string
+  /** country names, or state codes inside countries too big to name usefully.
+   *  Nothing renders these now that a trip is labelled by its dates alone. */
+  places: string[]
+}
+
+export interface FavoritesFeed {
+  artists: FavoriteArtist[]
+  clusters: Cluster[]
+  total: number
+  /** the `favorite_artists` setting. `artists` runs longer whenever someone is
+   *  still inside their follow window. */
+  follows: number
+  /** what counted as one trip for this response */
+  cluster_days: number
+  cluster_km: number
+  /** how far ahead the worldwide lookups reach; a blank past it means we
+   *  haven't looked, not that nothing is on */
+  searched_to: string
+  countries: { code: string; name: string }[]
 }
 
 export interface CitySuggestion {
