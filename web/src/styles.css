@@ -146,7 +146,9 @@ a:hover {
 main {
   max-width: 780px;
   margin: 0 auto;
-  padding: 16px 16px 64px;
+  /* enough to scroll the last row clear of a home indicator, and no more —
+     64px read as dead space at the foot of a dense list */
+  padding: 16px 16px calc(24px + env(safe-area-inset-bottom, 0));
 }
 
 h2 {
@@ -1047,6 +1049,18 @@ main:has(.local-layout) {
   color: var(--text);
   border-bottom-color: var(--accent);
   font-weight: 600;
+}
+
+/* Nothing follows the last block, so its bottom margin is dead space — and so
+   is the one its own last child collapses out through. */
+.favorite:last-child,
+.trip:last-child {
+  margin-bottom: 0;
+}
+
+.trip:last-child .run:last-child,
+.favorite:last-child .card:last-child {
+  margin-bottom: 0;
 }
 
 /* --- a trip: rows, not cards --------------------------------------------- */
