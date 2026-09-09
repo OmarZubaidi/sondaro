@@ -29,22 +29,6 @@ optionally:
 
 secrets and urls live in `.env`, everything else lives in the database and is edited at `/settings`. env values only seed the database on first run, so after that, editing `.env` needs a redeploy
 
-## Favorites
-
-`/favorites` is the other direction: pick the artists first and let them tell you where to go. it lists your top artists — 10 by default, `favorite_artists` in settings — and every date they play anywhere on earth.
-
-two tabs, because there are two questions. **Artists** is one act's dates in order, each with its country under the venue, filterable by artist and country. **Trips** are *detected*: dates close enough in time and space to catch on one journey. inside a trip, dates are grouped into **runs** — an act's consecutive nights together, so you can see at a glance that you'd have four chances at one of them and one at another. an act playing either side of somebody else is two runs, not one, because the gap between them is a gap you'd have to fill.
-
-a trip with only one act in it isn't offered at all — you wouldn't fly out to see the same band four times. the country filter isn't offered on the Trips tab either: a trip is found by where the dates actually fall, not by where you went looking.
-
-the two inputs in the sidebar are what counts as one trip: how many days apart, and how many km from the middle. they re-read cached events, so moving them costs nothing and takes effect immediately.
-
-clustering is on **distance, not borders** — see `api/clusters.py`. a country is not a place (Boston and Los Angeles are 4,200km apart) and a border is not a distance (Cologne to Amsterdam is 240km), so grouping by country gets it wrong in both directions.
-
-nothing is scored down for being far away, because distance is the answer on this page rather than the filter. it also costs no extra api calls: the worldwide per-artist lookups behind it already run for the whole library.
-
-affinity is recomputed on every sync and the scrobble source can change outright, so the top 10 shifts on its own. an artist who slips out keeps their place for 30 days, marked as slipped — their dates are cached either way, so dropping them would only lose you the trip you were planning around.
-
 ## Trips
 
 if you book a trip to multiple countries and only select cities in one country, sondaro assumes you haven't booked that leg of the trip yet and will suggest all events in the country instead of just the ones in the named cities
