@@ -6,7 +6,7 @@ x-tailnet-host: &tailnet-host sondaro
 
 services:
   ts-sondaro:
-    image: tailscale/tailscale:latest
+    image: tailscale/tailscale:stable
     container_name: ts-sondaro
     restart: unless-stopped
     hostname: *tailnet-host
