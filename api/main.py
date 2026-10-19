@@ -26,6 +26,7 @@ from . import (
     queue,
     routing,
     scan,
+    scoring,
     settings,
     usage,
     worker,
@@ -270,6 +271,22 @@ def _trip_or_404(trip_id: int):
     return row
 
 
+def _leg_places(legs: list[scan.Leg]) -> list[dict]:
+    """Where the named cities are, for the map. A city not geocoded yet, or one
+    that resolves into another country than its leg, is left off rather than
+    pinned somewhere wrong, the same rule scoring applies."""
+    places: list[dict] = []
+    for leg in legs:
+        if not leg.city or any(p["city"] == leg.city and p["country"] == leg.country for p in places):
+            continue
+        point = routing.cached_place(leg.city)
+        if point and (point[2] or "").upper() == leg.country:
+            places.append(
+                {"city": leg.city, "country": leg.country, "lat": point[0], "lon": point[1]}
+            )
+    return places
+
+
 def _trip_summary(row) -> dict:
     legs = scan.trip_legs(row["id"])
     return {
@@ -286,6 +303,10 @@ def _trip_summary(row) -> dict:
         ],
         "countries": scan.trip_countries(row),
         "cities": scan.trip_cities(row),
+        # Beside the legs rather than on them: an edit compares legs against
+        # this summary to decide whether to re-plan, and coordinates riding
+        # along would make every edit look like a change of scope.
+        "places": _leg_places(legs),
         "start_date": row["start_date"],
         "end_date": row["end_date"],
         "flex_before": row["flex_before"],
@@ -333,6 +354,9 @@ async def api_trips():
 
     return {
         "trips": trips,
+        # the ring the map draws around a named city: the base distance scoring
+        # measures its fall-off over, before an artist's affinity stretches it
+        "city_reach_km": scoring.NAMED_CITY_BASE_KM,
         "total": len(shows),
         "dates": [{"date": day, "shows": rows_} for day, rows_ in sorted(by_date.items())],
         "countries": _country_status(rows, shows),

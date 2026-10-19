@@ -15,7 +15,7 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from api import db, queue, settings  # noqa: E402
+from api import db, queue, routing, scoring, settings  # noqa: E402
 from api.config import config  # noqa: E402
 from api.util import today  # noqa: E402
 
@@ -174,6 +174,42 @@ def test_dropping_a_country_also_drops_its_coverage(client):
 
     remaining = db.query("SELECT scope_key FROM coverage WHERE scope_key LIKE 'trip:%'")
     assert not any("ES" in row["scope_key"] for row in remaining)
+
+
+def test_a_trip_says_where_its_named_cities_are(client):
+    routing.remember("Lyon", 45.76, 4.84, "FR")
+    make_trip(client, legs=legs(("FR", "Lyon"), ("ES", "Madrid"), ("IT", None)))
+
+    trip = client.get("/api/trips").json()["trips"][0]
+
+    # Madrid isn't geocoded yet, so it is left off rather than guessed at
+    assert trip["places"] == [{"city": "Lyon", "country": "FR", "lat": 45.76, "lon": 4.84}]
+
+
+def test_a_city_that_resolved_into_another_country_is_not_pinned(client):
+    routing.remember("Paris", 33.66, -95.56, "US")  # Paris, Texas
+    make_trip(client, legs=legs(("FR", "Paris")))
+
+    assert client.get("/api/trips").json()["trips"][0]["places"] == []
+
+
+def test_sending_a_trip_back_as_shown_does_not_replan(client):
+    """The coordinates sit beside the legs, not on them. On them, a page
+    resending the legs it was shown would read as a change of scope and spend
+    API calls re-planning a trip nobody touched."""
+    routing.remember("Lyon", 45.76, 4.84, "FR")
+    trip = make_trip(client, legs=legs(("FR", "Lyon"), ("ES", None)))
+    shown = client.get("/api/trips").json()["trips"][0]
+
+    response = client.patch(f"/api/trips/{trip['id']}", json={"legs": shown["legs"]})
+
+    assert response.json()["rescanned"] is False
+
+
+def test_the_feed_carries_the_reach_the_map_rings_a_city_with(client):
+    make_trip(client)
+
+    assert client.get("/api/trips").json()["city_reach_km"] == scoring.NAMED_CITY_BASE_KM
 
 
 def _window():
