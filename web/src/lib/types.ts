@@ -76,12 +76,21 @@ export interface TripLeg {
   end_date: string | null
 }
 
+/** Where a named city is. Absent until it's been geocoded. */
+export interface TripPlace {
+  city: string
+  country: string
+  lat: number
+  lon: number
+}
+
 export interface Trip {
   id: number
   name: string
   legs: TripLeg[]
   countries: string[]
   cities: string[]
+  places: TripPlace[]
   start_date: string
   end_date: string
   flex_before: number
@@ -105,6 +114,8 @@ export interface TripCountry {
 /** Every trip and everything they turned up, in one feed. */
 export interface TripsFeed {
   trips: Trip[]
+  /** the ring a map draws around each named city */
+  city_reach_km: number
   total: number
   dates: { date: string; shows: Show[] }[]
   countries: TripCountry[]

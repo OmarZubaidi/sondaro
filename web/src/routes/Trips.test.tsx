@@ -3,7 +3,9 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { Trips } from './Trips'
 import { api } from '../lib/api'
-import type { Show, Trip, TripLeg, TripsFeed } from '../lib/types'
+import type { Show, Trip, TripLeg, TripPlace, TripsFeed } from '../lib/types'
+
+vi.mock('../lib/world', () => ({ loadWorld: () => Promise.resolve({}) }))
 
 function show(
   id: string,
@@ -43,13 +45,20 @@ function show(
 
 const NAMES: Record<number, string> = { 1: 'Spring tour', 2: 'New York', 3: 'Iceland' }
 
-function trip(id: number, start: string, end: string, legs: TripLeg[]): Trip {
+function trip(
+  id: number,
+  start: string,
+  end: string,
+  legs: TripLeg[],
+  places: TripPlace[] = [],
+): Trip {
   return {
     id,
     name: NAMES[id],
     legs,
     countries: [...new Set(legs.map((leg) => leg.country))],
     cities: legs.flatMap((leg) => (leg.city ? [leg.city] : [])),
+    places,
     start_date: start,
     end_date: end,
     flex_before: 0,
@@ -60,10 +69,16 @@ function trip(id: number, start: string, end: string, legs: TripLeg[]): Trip {
 }
 
 const TRIPS: Trip[] = [
-  trip(1, '2027-04-02', '2027-04-14', [
-    { country: 'JP', city: 'Tokyo', start_date: '2027-04-02', end_date: '2027-04-07' },
-    { country: 'KR', city: null, start_date: null, end_date: null },
-  ]),
+  trip(
+    1,
+    '2027-04-02',
+    '2027-04-14',
+    [
+      { country: 'JP', city: 'Tokyo', start_date: '2027-04-02', end_date: '2027-04-07' },
+      { country: 'KR', city: null, start_date: null, end_date: null },
+    ],
+    [{ city: 'Tokyo', country: 'JP', lat: 35.68, lon: 139.69 }],
+  ),
   trip(2, '2027-05-14', '2027-05-20', [
     { country: 'US', city: 'New York', start_date: '2027-05-14', end_date: '2027-05-20' },
   ]),
@@ -89,6 +104,7 @@ function makeFeed(overrides: Partial<TripsFeed> = {}): TripsFeed {
   for (const s of SHOWS) byDate.set(s.date, [...(byDate.get(s.date) ?? []), s])
   return {
     trips: TRIPS,
+    city_reach_km: 240,
     total: SHOWS.length,
     dates: [...byDate].map(([date, shows]) => ({ date, shows })),
     countries: [
@@ -128,6 +144,16 @@ describe('Trips', () => {
       within(section('Spring tour')).getByRole('heading', { name: 'Spring tour' }),
     ).toBeInTheDocument()
     expect(within(section('Spring tour')).getByText('02 — 14 Apr 2027')).toBeInTheDocument()
+  })
+
+  it('maps each trip from its legs', async () => {
+    await renderTrips()
+
+    expect(
+      await within(section('Spring tour')).findByRole('img', {
+        name: /^Route: Tokyo, then anywhere in South Korea/,
+      }),
+    ).toBeInTheDocument()
   })
 
   it('lists the legs, and a country with no city as anywhere, any day', async () => {

@@ -2,8 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api'
 import type { Trip, TripsFeed } from '../lib/types'
 import { dateSpan } from '../lib/format'
+import { tripMap } from '../lib/routes'
 import { DateGroup } from '../components/DateGroup'
 import { CheckList } from '../components/CheckList'
+import { LazyRouteMap } from '../components/LazyRouteMap'
 import { TripModal } from '../components/TripModal'
 import { EditIcon, IconButton, TrashIcon } from '../components/IconButton'
 
@@ -197,49 +199,55 @@ export function Trips() {
           ) : (
             sections.map(({ trip, groups }) => (
               <section className="trip-block" key={trip.id} aria-label={trip.name}>
-                <div className="trip-hero">
-                  <div className="trip-hero-top">
-                    <div className="trip-hero-title">
-                      <span className="trip-span">
-                        {dateSpan(trip.start_date, trip.end_date)}
-                      </span>
-                      <h2>{trip.name}</h2>
-                    </div>
-                    <IconButton
-                      label={`Edit ${trip.name}`}
-                      icon={<EditIcon />}
-                      onClick={() => setEditing(trip)}
-                    />
-                    <IconButton
-                      label={`Delete ${trip.name}`}
-                      icon={<TrashIcon />}
-                      tone="danger"
-                      onClick={() => remove(trip)}
-                    />
-                  </div>
-                  <ol className="trip-legs">
-                    {trip.legs.map((leg) => (
-                      <li key={`${leg.country}:${leg.city ?? ''}`}>
-                        <span className="leg-place">
-                          {leg.city ?? countryNames.get(leg.country) ?? leg.country}
+                <div className="trip-header">
+                  <div className="trip-hero">
+                    <div className="trip-hero-top">
+                      <div className="trip-hero-title">
+                        <span className="trip-span">
+                          {dateSpan(trip.start_date, trip.end_date)}
                         </span>
-                        {leg.start_date ? (
-                          <span className="leg-dates">
-                            {dateSpan(leg.start_date, leg.end_date ?? leg.start_date, {
-                              year: false,
-                            })}
+                        <h2>{trip.name}</h2>
+                      </div>
+                      <IconButton
+                        label={`Edit ${trip.name}`}
+                        icon={<EditIcon />}
+                        onClick={() => setEditing(trip)}
+                      />
+                      <IconButton
+                        label={`Delete ${trip.name}`}
+                        icon={<TrashIcon />}
+                        tone="danger"
+                        onClick={() => remove(trip)}
+                      />
+                    </div>
+                    <ol className="trip-legs">
+                      {trip.legs.map((leg) => (
+                        <li key={`${leg.country}:${leg.city ?? ''}`}>
+                          <span className="leg-place">
+                            {leg.city ?? countryNames.get(leg.country) ?? leg.country}
                           </span>
-                        ) : (
-                          <span
-                            className="chip info"
-                            title="no city named, so the whole country stays in play"
-                          >
-                            anywhere, any day
-                          </span>
-                        )}
-                      </li>
-                    ))}
-                  </ol>
+                          {leg.start_date ? (
+                            <span className="leg-dates">
+                              {dateSpan(leg.start_date, leg.end_date ?? leg.start_date, {
+                                year: false,
+                              })}
+                            </span>
+                          ) : (
+                            <span
+                              className="chip info"
+                              title="no city named, so the whole country stays in play"
+                            >
+                              anywhere, any day
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                  <LazyRouteMap
+                    {...tripMap(trip, groups.flatMap((group) => group.shows), countryNames)}
+                    reachKm={feed.city_reach_km}
+                  />
                 </div>
 
                 {groups.length === 0 && (perTrip.get(String(trip.id)) ?? 0) > 0 && (

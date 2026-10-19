@@ -6,6 +6,8 @@ import { Favorites } from './Favorites'
 import { api } from '../lib/api'
 import type { ArtistImage, Cluster, FavoriteArtist, FavoritesFeed, Show } from '../lib/types'
 
+vi.mock('../lib/world', () => ({ loadWorld: () => Promise.resolve({}) }))
+
 const COUNTRY_NAMES: Record<string, string> = {
   US: 'United States of America',
   DE: 'Germany',
@@ -435,6 +437,18 @@ describe('Favorites', () => {
       fireEvent.change(screen.getByLabelText('Within'), { target: { value: '900' } })
 
       await waitFor(() => expect(fetched).toHaveBeenCalledWith({ days: 60, km: 650 }))
+    })
+
+    it('maps each could-be trip city by city, in date order', async () => {
+      await renderFeed()
+
+      await trips()
+
+      expect(
+        await screen.findByRole('img', {
+          name: 'Route: Dallas, then Austin, then The Woodlands, then Dallas, then Austin, then Fort Worth',
+        }),
+      ).toBeInTheDocument()
     })
 
     describe('making a could-be trip a real one', () => {

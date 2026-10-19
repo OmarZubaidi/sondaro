@@ -21,6 +21,8 @@ export interface RouteMapProps {
   label: string
   /** in route order; each one is joined to the one before it */
   stops: MapStop[]
+  /** pinned and tagged, but not on the route */
+  nearby?: MapStop[]
   /** ISO-2 countries in play with no city named */
   loose?: string[]
   /** the ring around each named city */
@@ -56,6 +58,41 @@ function country(world: World, code: string): Feature | null {
 
 const clamp = (value: number, low: number, high: number) => Math.min(Math.max(value, low), high)
 
+interface Box {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+const overlaps = (a: Box, b: Box) =>
+  a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y
+
+/** Beside the pin, on whichever corner is inside the map and clear of every
+ *  pin and tag already placed: right then left, below then above. When none
+ *  is, the first clear one pulled inside, and failing that the first. */
+function placeTag(x: number, y: number, w: number, taken: Box[]): [number, number] {
+  const corners = [
+    [x + 14, y + 8],
+    [x + 14, y - 8 - TAG_HEIGHT],
+    [x - 14 - w, y + 8],
+    [x - 14 - w, y - 8 - TAG_HEIGHT],
+  ]
+  const inside = ([cx, cy]: number[]) =>
+    cx >= 2 && cy >= 2 && cx + w <= WIDTH - 2 && cy + TAG_HEIGHT <= HEIGHT - 2
+  const pulled = corners.map(([cx, cy]) => [
+    clamp(cx, 2, WIDTH - 2 - w),
+    clamp(cy, 2, HEIGHT - 2 - TAG_HEIGHT),
+  ])
+  const clear = ([cx, cy]: number[]) => !taken.some((box) => overlaps(box, { x: cx, y: cy, w, h: TAG_HEIGHT }))
+
+  const best =
+    corners.find((corner) => inside(corner) && clear(corner)) ??
+    pulled.find(clear) ??
+    pulled[0]
+  return [best[0], best[1]]
+}
+
 /** A gentle curve rather than a ruler line, bowed to one side. */
 function bend(x1: number, y1: number, x2: number, y2: number): string {
   const mx = (x1 + x2) / 2
@@ -63,15 +100,22 @@ function bend(x1: number, y1: number, x2: number, y2: number): string {
   return `M${x1},${y1} Q${mx - (y2 - y1) * 0.18},${my + (x2 - x1) * 0.18} ${x2},${y2}`
 }
 
-function draw(world: World, stops: MapStop[], loose: string[], reachKm?: number) {
+function draw(
+  world: World,
+  stops: MapStop[],
+  nearby: MapStop[],
+  loose: string[],
+  reachKm?: number,
+) {
   const looseShapes = loose.flatMap((code) => {
     const shape = country(world, code)
     return shape ? [{ code, shape }] : []
   })
+  const everywhere = [...stops, ...nearby]
   const frame: FeatureCollection = {
     type: 'FeatureCollection',
     features: [
-      ...stops.map((s) => circle(s.lon, s.lat, s.named && reachKm ? reachKm : FRAME_KM)),
+      ...everywhere.map((s) => circle(s.lon, s.lat, s.named && reachKm ? reachKm : FRAME_KM)),
       ...looseShapes.map((l) => l.shape),
     ],
   }
@@ -103,22 +147,22 @@ function draw(world: World, stops: MapStop[], loose: string[], reachKm?: number)
     return [{ key: `${i}:${stops[i].key}>${stop.key}`, d: bend(x1, y1, x2, y2), unplanned: stop.unplanned }]
   })
 
-  const pins = stops
-    .filter((stop, i) => stops.findIndex((s) => s.key === stop.key) === i)
+  const unique = everywhere
+    .filter((stop, i) => everywhere.findIndex((s) => s.key === stop.key) === i)
     .map((stop) => {
       const [x, y] = at(stop)
-      const width = tagWidth(stop.tag)
-      const box = width + TAG_PAD * 2
-      const right = x + 14
-      return {
-        ...stop,
-        x,
-        y,
-        width,
-        tagX: clamp(right + box > WIDTH - 2 ? x - 14 - box : right, 2, WIDTH - 2 - box),
-        tagY: clamp(y + 8, 2, HEIGHT - 2 - TAG_HEIGHT),
-      }
+      return { ...stop, x, y }
     })
+
+  // Every pin is an obstacle from the start, so no tag covers one; each tag
+  // placed becomes one for the next.
+  const taken: Box[] = unique.map((pin) => ({ x: pin.x - 11, y: pin.y - 11, w: 22, h: 22 }))
+  const pins = unique.map((pin) => {
+    const width = tagWidth(pin.tag)
+    const [tagX, tagY] = placeTag(pin.x, pin.y, width + TAG_PAD * 2, taken)
+    taken.push({ x: tagX, y: tagY, w: width + TAG_PAD * 2, h: TAG_HEIGHT })
+    return { ...pin, width, tagX, tagY }
+  })
 
   return {
     land,
@@ -136,7 +180,7 @@ function draw(world: World, stops: MapStop[], loose: string[], reachKm?: number)
 
 /** A trip's route over flat pink land, in the poster style of the rest of the
  *  site: no key, no tiles, nothing fetched but the one shapes file. */
-export function RouteMap({ label, stops, loose = [], reachKm }: RouteMapProps) {
+export function RouteMap({ label, stops, nearby = [], loose = [], reachKm }: RouteMapProps) {
   const [world, setWorld] = useState<World | null>(null)
 
   useEffect(() => {
@@ -147,8 +191,8 @@ export function RouteMap({ label, stops, loose = [], reachKm }: RouteMapProps) {
     }
   }, [])
 
-  if (stops.length === 0 && loose.length === 0) return null
-  const drawing = world && draw(world, stops, loose, reachKm)
+  if (stops.length === 0 && nearby.length === 0 && loose.length === 0) return null
+  const drawing = world && draw(world, stops, nearby, loose, reachKm)
   if (world && !drawing) return null
 
   return (

@@ -33,6 +33,7 @@ const TRIP: Trip = {
   ],
   countries: ['JP', 'KR'],
   cities: ['Tokyo'],
+  places: [],
   start_date: '2027-04-02',
   end_date: '2027-04-14',
   flex_before: 2,

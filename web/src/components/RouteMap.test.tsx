@@ -70,6 +70,33 @@ describe('RouteMap', () => {
     expect(all('.map-route')).toHaveLength(2)
   })
 
+  it('pins nearby shows without joining them to the route', async () => {
+    render(<RouteMap label={LABEL} stops={[TOKYO, OSAKA]} nearby={[SEOUL]} />)
+
+    await screen.findByRole('img')
+    expect(all('.map-pin')).toHaveLength(3)
+    expect(all('.map-route')).toHaveLength(1)
+  })
+
+  it('keeps tags off each other when cities sit close together', async () => {
+    const near = { ...OSAKA, key: 'kyoto', lat: 35.01, lon: 135.77, tag: 'Kyoto 1' }
+    render(<RouteMap label={LABEL} stops={[TOKYO, OSAKA, near]} reachKm={240} />)
+
+    await screen.findByRole('img')
+    const boxes = [...all('.map-tag rect')].map((rect) => ({
+      x: Number(rect.getAttribute('x')),
+      y: Number(rect.getAttribute('y')),
+      w: Number(rect.getAttribute('width')),
+      h: Number(rect.getAttribute('height')),
+    }))
+    for (const [i, a] of boxes.entries()) {
+      for (const b of boxes.slice(i + 1)) {
+        const apart = a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y
+        expect(apart).toBe(true)
+      }
+    }
+  })
+
   it('fits each tag’s text to its box, whatever font it ends up in', async () => {
     render(<RouteMap label={LABEL} stops={[TOKYO]} />)
 

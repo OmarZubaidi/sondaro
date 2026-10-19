@@ -6,7 +6,7 @@ const RouteMap = lazy(() => import('./RouteMap').then((module) => ({ default: mo
 /** The map, loaded on first use, so d3-geo and the drawing code stay out of
  *  the bundle every page pays for. */
 export function LazyRouteMap(props: RouteMapProps) {
-  if (props.stops.length === 0 && !props.loose?.length) return null
+  if (props.stops.length === 0 && !props.nearby?.length && !props.loose?.length) return null
   return (
     <Suspense fallback={<div className="route-map" />}>
       <RouteMap {...props} />

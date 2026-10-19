@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import type { Cluster, FavoritesFeed, Show } from '../lib/types'
 import { dateSpan } from '../lib/format'
+import { clusterMap } from '../lib/routes'
 import { ArtistPhoto } from '../components/ArtistPhoto'
 import { CheckList } from '../components/CheckList'
+import { LazyRouteMap } from '../components/LazyRouteMap'
 import { ShowCard } from '../components/ShowCard'
 import { TripModal, type TripPrefill } from '../components/TripModal'
 import { TripRun } from '../components/TripRun'
@@ -368,15 +370,18 @@ export function Favorites() {
                   Make it a trip →
                 </button>
               </div>
-              <div className="trip-body">
-                {trip.runs.map((run) => (
-                  <TripRun
-                    key={run.key}
-                    artist={run.artist}
-                    shows={run.shows}
-                    onChanged={() => load(shape)}
-                  />
-                ))}
+              <div className="trip-main">
+                <div className="trip-body">
+                  {trip.runs.map((run) => (
+                    <TripRun
+                      key={run.key}
+                      artist={run.artist}
+                      shows={run.shows}
+                      onChanged={() => load(shape)}
+                    />
+                  ))}
+                </div>
+                <LazyRouteMap {...clusterMap(trip.runs.flatMap((run) => run.shows))} />
               </div>
             </section>
           ))
