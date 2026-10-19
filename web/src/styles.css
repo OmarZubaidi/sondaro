@@ -1680,6 +1680,82 @@ button.primary.new-trip:hover:not(:disabled) {
   box-shadow: 0.75rem 0.75rem 0 var(--ink);
 }
 
+/* --- route maps ----------------------------------------------------------------- */
+
+.route-map {
+  position: relative;
+  min-height: 16.875rem;
+  background-color: var(--paper);
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--ink) 15%, var(--paper)) 0.0875rem,
+    transparent 0.1063rem
+  );
+  background-size: 0.5625rem 0.5625rem;
+}
+
+.route-map svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Inside the svg, px are viewBox units and scale with the map, so these stay
+   px while the rest of the sheet is rem. */
+.map-land {
+  fill: var(--pink);
+  stroke: var(--ink);
+  stroke-width: 2.5px;
+  stroke-linejoin: round;
+}
+
+.map-loose {
+  fill: var(--lavender);
+  stroke: var(--ink);
+  stroke-width: 2.5px;
+  stroke-dasharray: 7px 5px;
+}
+
+.map-ring {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2.5px;
+  stroke-dasharray: 7px 6px;
+}
+
+.map-route {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 4px;
+  stroke-linecap: round;
+}
+
+.map-route.unplanned {
+  stroke-width: 3.5px;
+  stroke-dasharray: 2px 9px;
+}
+
+.map-pin {
+  fill: var(--paper);
+  stroke: var(--ink);
+  stroke-width: 3px;
+}
+
+.map-pin.named {
+  fill: var(--fuchsia);
+}
+
+.map-tag rect {
+  fill: var(--ink);
+}
+
+.map-tag text {
+  fill: var(--paper);
+  font: 400 17px var(--display);
+  text-transform: uppercase;
+}
+
 /* --- settings drawer -------------------------------------------------------- */
 
 /* Both the scrim and the panel stay mounted so they can transition. They are
