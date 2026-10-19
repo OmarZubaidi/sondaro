@@ -21,33 +21,35 @@ export function LocalFilters({ value, onChange }: Props) {
     onChange({ ...value, [key]: next })
 
   return (
-    <div className="card filters">
-      <div className="grid3">
-        <HourField
-          id="f-weeknight"
-          label="Mon–Thu"
-          value={value.weeknight_hours}
-          onChange={(v) => set('weeknight_hours', v)}
-        />
-        <HourField
-          id="f-sunday"
-          label="Sunday"
-          value={value.sunday_hours}
-          onChange={(v) => set('sunday_hours', v)}
-        />
-        <HourField
-          id="f-weekend"
-          label="Fri–Sat"
-          value={value.weekend_hours}
-          onChange={(v) => set('weekend_hours', v)}
-        />
-      </div>
-      <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>
-        Hours you'd drive each way for an artist you love.
+    <>
+      <div className="filters">
+        <div className="grid3">
+          <HourField
+            id="f-weeknight"
+            label="Mon–Thu"
+            value={value.weeknight_hours}
+            onChange={(v) => set('weeknight_hours', v)}
+          />
+          <HourField
+            id="f-sunday"
+            label="Sunday"
+            value={value.sunday_hours}
+            onChange={(v) => set('sunday_hours', v)}
+          />
+          <HourField
+            id="f-weekend"
+            label="Fri–Sat"
+            value={value.weekend_hours}
+            onChange={(v) => set('weekend_hours', v)}
+          />
+        </div>
+        <div className="filter-help">Hours you'd drive each way for an artist you love.</div>
       </div>
 
-      <div className="inline-field" style={{ marginTop: 14 }}>
-        <label htmlFor="f-min">Hide anything below</label>
+      <div className="tag-field">
+        <label htmlFor="f-min" className="tag">
+          Hide anything below
+        </label>
         <input
           id="f-min"
           type="number"
@@ -60,7 +62,7 @@ export function LocalFilters({ value, onChange }: Props) {
           }
         />
       </div>
-    </div>
+    </>
   )
 }
 

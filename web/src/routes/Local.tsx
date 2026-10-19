@@ -68,8 +68,18 @@ export function Local() {
     }
   }, [filters])
 
-  if (error) return <div className="note">Couldn't load shows: {error}</div>
-  if (!feed || !filters) return <div className="empty">Loading…</div>
+  if (error)
+    return (
+      <div className="wrap">
+        <div className="note">Couldn't load shows: {error}</div>
+      </div>
+    )
+  if (!feed || !filters)
+    return (
+      <div className="wrap">
+        <div className="empty">Loading…</div>
+      </div>
+    )
 
   const { status } = feed
 
@@ -77,14 +87,12 @@ export function Local() {
     <>
       <IndexProgress status={status} />
 
-      <div className="local-layout">
+      <div className="wrap local-layout">
         {/* the filters stay put while the list scrolls: they're the reason the
             list looks the way it does, so scrolling away from them is what
             makes a result confusing */}
         <aside className="side">
-          <div className="title-row">
-            <h2>Local</h2>
-          </div>
+          <h1 className="page-title">Near home</h1>
 
           <LocalFilters value={filters} onChange={setFilters} />
 
@@ -107,8 +115,10 @@ export function Local() {
           )}
 
           {feed.months.map((month) => (
-            <section key={month.label}>
-              <h2>{month.label}</h2>
+            <section className="month" key={month.label}>
+              <h2 className="month-label">
+                <span>{month.label}</span>
+              </h2>
               {month.shows.map((show) => (
                 <ShowCard key={show.id} show={show} />
               ))}
