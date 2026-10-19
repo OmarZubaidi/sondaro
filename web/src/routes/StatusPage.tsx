@@ -101,7 +101,7 @@ export function StatusPage() {
           </table>
         )}
         {status.stalled.length > 0 && (
-          <div className="note" style={{ marginTop: 12 }}>
+          <div className="note">
             {status.stalled.length} task(s) exhausted their retries:{' '}
             {status.stalled.map((s) => s.task).join(', ')}
           </div>
@@ -129,7 +129,7 @@ export function StatusPage() {
                   {quota.window_days === 1 ? 'day' : `${quota.window_days} days`}
                 </td>
                 <td>
-                  <div className="meter" style={{ minWidth: 60 }}>
+                  <div className="meter">
                     <i
                       style={{
                         width: percent(quota.fraction),
@@ -162,7 +162,7 @@ export function StatusPage() {
             </tr>
           </tbody>
         </table>
-        <div className="row" style={{ marginTop: 12 }}>
+        <div className="row">
           <button type="button" onClick={sync} disabled={syncing}>
             {syncing ? 'Syncing…' : 'Sync library now'}
           </button>

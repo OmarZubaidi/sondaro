@@ -252,7 +252,7 @@ export function TripModal({ trip, countries, onClose, onSaved }: Props) {
               </div>
             )}
 
-            <label className="row" style={{ gap: 8 }}>
+            <label>
               <input
                 type="checkbox"
                 checked={draft.strict_dates}

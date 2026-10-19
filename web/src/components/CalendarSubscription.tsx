@@ -49,7 +49,7 @@ export function CalendarSubscription({ tailnetUrl }: Props) {
         value={url}
         onFocus={(e) => e.currentTarget.select()}
       />
-      <div className="row" style={{ marginTop: 10 }}>
+      <div className="row">
         <a className="button-ish" href={webcal}>
           Open in calendar
         </a>
@@ -57,12 +57,12 @@ export function CalendarSubscription({ tailnetUrl }: Props) {
           {copied ? 'Copied' : 'Copy'}
         </button>
       </div>
-      <div className="muted" style={{ fontSize: 13, marginTop: 10 }}>
+      <div className="help">
         Add this once. Shows you mark as bought appear in it, and unmarking takes them
         back out. Suggestions never do.
       </div>
       {!tailnetUrl && (
-        <div className="note" style={{ marginTop: 10, marginBottom: 0 }}>
+        <div className="note">
           This is the address you're browsing from, which won't resolve off your
           network. The tailnet address is built from the sidecar's hostname and the
           domain in <code>NTFY_URL</code> — set that in <code>.env</code> to fix it.

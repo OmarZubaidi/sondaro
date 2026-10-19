@@ -9,14 +9,16 @@
   --coral: #ff7a5c;
   --lavender: #a78bfa;
   --muted: #3d3842;
-  --rule: 3px solid var(--ink);
-  --shadow-sm: 4px 4px 0 var(--ink);
-  --shadow-lg: 10px 10px 0 var(--ink);
+  --rule: 0.1875rem solid var(--ink);
+  --shadow-sm: 0.25rem 0.25rem 0 var(--ink);
+  --shadow-lg: 0.625rem 0.625rem 0 var(--ink);
 
   --display: 'Anton', Impact, 'Arial Narrow', sans-serif;
   --sans: 'Archivo', 'Helvetica Neue', Arial, sans-serif;
   --mono: 'DM Mono', ui-monospace, Menlo, monospace;
-  --tap: 44px;
+  --tap: 2.75rem;
+  /* the header, the progress band and the page column share one width */
+  --page: 90rem;
 }
 
 * {
@@ -30,32 +32,36 @@ body,
   min-height: 100%;
 }
 
-/* Reserve the scrollbar's width whether or not there's anything to scroll, so
-   a short page and a long one center their content in the same place. */
+/* Everything is sized in rem, so the font size here scales the whole page. It
+   stays at the browser's default until 2560px wide, then grows with the
+   window: ×1.5 at 3840, which is what a 4K monitor's own scaling would be.
+   The scrollbar's width is reserved whether or not there's anything to
+   scroll, so a short page and a long one center in the same place. */
 html {
+  font-size: clamp(100%, 0.625vw, 200%);
   scrollbar-gutter: stable;
 }
 
 body {
   background: var(--paper);
   color: var(--ink);
-  font: 400 16px/1.5 var(--sans);
+  font: 400 1rem/1.5 var(--sans);
   -webkit-text-size-adjust: 100%;
 }
 
 a {
   color: var(--ink);
-  text-decoration-thickness: 1px;
-  text-underline-offset: 2px;
+  text-decoration-thickness: 0.0625rem;
+  text-underline-offset: 0.125rem;
 }
 
 a:hover {
-  text-decoration-thickness: 3px;
+  text-decoration-thickness: 0.1875rem;
 }
 
 :focus-visible {
-  outline: 3px solid var(--ink);
-  outline-offset: 3px;
+  outline: 0.1875rem solid var(--ink);
+  outline-offset: 0.1875rem;
 }
 
 code {
@@ -64,9 +70,9 @@ code {
 }
 
 :where(h2) {
-  margin: 32px 0 12px;
-  font: 400 28px/1.1 var(--display);
-  letter-spacing: 0.5px;
+  margin: 2rem 0 0.75rem;
+  font: 400 1.75rem/1.1 var(--display);
+  letter-spacing: 0.0313rem;
   text-transform: uppercase;
 }
 
@@ -86,33 +92,33 @@ code {
 }
 
 .topbar-inner {
-  max-width: 1280px;
+  max-width: var(--page);
   margin: 0 auto;
-  padding: 16px 32px;
+  padding: 1rem 2rem;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 16px 28px;
+  gap: 1rem 1.75rem;
 }
 
 .wordmark {
-  font: 400 44px/1 var(--display);
-  letter-spacing: 1px;
+  font: 400 2.75rem/1 var(--display);
+  letter-spacing: 0.0625rem;
   text-transform: uppercase;
   color: var(--paper);
   text-decoration: none;
-  text-shadow: 4px 4px 0 var(--fuchsia);
+  text-shadow: 0.25rem 0.25rem 0 var(--fuchsia);
 }
 
 .mainnav {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 0.5rem;
 }
 
 .mainnav a {
   display: block;
-  padding: 10px 18px;
+  padding: 0.625rem 1.125rem;
   transform: skewX(-10deg);
   color: var(--paper);
   text-decoration: none;
@@ -121,8 +127,8 @@ code {
 .mainnav a > span {
   display: block;
   transform: skewX(10deg);
-  font: 400 20px/1.2 var(--display);
-  letter-spacing: 1px;
+  font: 400 1.25rem/1.2 var(--display);
+  letter-spacing: 0.0625rem;
   text-transform: uppercase;
 }
 
@@ -133,23 +139,23 @@ code {
 .mainnav a.active {
   background: var(--fuchsia);
   color: var(--ink);
-  box-shadow: 4px 4px 0 var(--paper);
+  box-shadow: 0.25rem 0.25rem 0 var(--paper);
 }
 
 .topbar-tools {
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 0.5rem;
 }
 
 .status-link {
   display: flex;
   align-items: center;
   min-height: var(--tap);
-  padding: 0 10px;
+  padding: 0 0.625rem;
   color: var(--paper);
-  font: 500 13px var(--mono);
+  font: 500 0.8125rem var(--mono);
   text-transform: uppercase;
   text-decoration: none;
 }
@@ -157,14 +163,14 @@ code {
 .status-link:hover,
 .status-link.active {
   color: var(--paper);
-  text-decoration: underline 3px var(--fuchsia);
-  text-underline-offset: 5px;
+  text-decoration: underline 0.1875rem var(--fuchsia);
+  text-underline-offset: 0.3125rem;
 }
 
 .halftone {
-  height: 22px;
-  background-image: radial-gradient(circle, var(--fuchsia) 2.6px, transparent 3px);
-  background-size: 11px 11px;
+  height: 1.375rem;
+  background-image: radial-gradient(circle, var(--fuchsia) 0.1625rem, transparent 0.1875rem);
+  background-size: 0.6875rem 0.6875rem;
   -webkit-mask-image: linear-gradient(90deg, #000 0%, rgb(0 0 0 / 15%) 70%, transparent 100%);
   mask-image: linear-gradient(90deg, #000 0%, rgb(0 0 0 / 15%) 70%, transparent 100%);
 }
@@ -173,13 +179,13 @@ code {
 
 .wrap {
   width: 100%;
-  max-width: 1280px;
+  max-width: var(--page);
   margin: 0 auto;
-  padding: 36px 32px calc(48px + env(safe-area-inset-bottom, 0px));
+  padding: 2.25rem 2rem calc(3rem + env(safe-area-inset-bottom, 0rem));
 }
 
 .wrap.narrow {
-  max-width: 880px;
+  max-width: 55rem;
 }
 
 .wrap.notes {
@@ -190,29 +196,29 @@ code {
 .local-layout {
   display: flex;
   flex-wrap: wrap;
-  gap: 44px;
+  gap: 2.75rem;
   align-items: flex-start;
 }
 
 .local-layout > .side {
-  flex: 1 1 260px;
+  flex: 1 1 16.25rem;
   min-width: 0;
   max-width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 30px;
+  gap: 1.875rem;
 }
 
 .local-layout > .feed {
-  flex: 999 1 600px;
+  flex: 999 1 37.5rem;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 44px;
+  gap: 2.75rem;
 }
 
 .local-layout > .feed.tight {
-  gap: 14px;
+  gap: 0.875rem;
 }
 
 /* Only while the two sit side by side. A sticky column taller than the
@@ -220,23 +226,23 @@ code {
 @media (min-width: 1000px) {
   .local-layout > .side {
     position: sticky;
-    top: 16px;
+    top: 1rem;
   }
 
   .local-layout > .side.tall {
-    max-height: calc(100vh - 32px);
+    max-height: calc(100vh - 2rem);
     overflow: hidden auto;
     overscroll-behavior: contain;
-    padding: 0 12px 12px 0;
+    padding: 0 0.75rem 0.75rem 0;
   }
 }
 
 .page-title {
   width: min-content;
   margin: 0;
-  font: 400 64px/0.95 var(--display);
+  font: 400 4rem/0.95 var(--display);
   text-transform: uppercase;
-  text-shadow: 4px 4px 0 var(--fuchsia);
+  text-shadow: 0.25rem 0.25rem 0 var(--fuchsia);
 }
 
 /* a sidebar label; skewed from its bottom-left corner so nothing pokes out of
@@ -244,21 +250,21 @@ code {
 .tag {
   display: inline-block;
   margin: 0;
-  padding: 4px 12px;
+  padding: 0.25rem 0.75rem;
   transform: skewX(-10deg);
   transform-origin: 0 100%;
   background: var(--ink);
   color: var(--paper);
-  font: 400 20px/1.2 var(--display);
-  letter-spacing: 1px;
+  font: 400 1.25rem/1.2 var(--display);
+  letter-spacing: 0.0625rem;
   text-transform: uppercase;
 }
 
 .side-meta {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  font: 400 12px/1.5 var(--mono);
+  gap: 0.125rem;
+  font: 400 0.75rem/1.5 var(--mono);
   color: var(--muted);
   text-transform: uppercase;
 }
@@ -267,8 +273,8 @@ code {
 
 :where(label) {
   display: block;
-  margin-bottom: 6px;
-  font: 500 12px/1.3 var(--mono);
+  margin-bottom: 0.375rem;
+  font: 500 0.75rem/1.3 var(--mono);
   text-transform: uppercase;
   color: var(--ink);
 }
@@ -276,16 +282,17 @@ code {
 :where(label:has(> input[type='checkbox'])) {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font: 500 15px/1.3 var(--sans);
+  gap: 0.625rem;
+  margin: 0;
+  font: 500 0.9375rem/1.3 var(--sans);
   text-transform: none;
   cursor: pointer;
 }
 
 :where(input[type='checkbox']) {
   flex: none;
-  width: 20px;
-  height: 20px;
+  width: 1.25rem;
+  height: 1.25rem;
   margin: 0;
   accent-color: var(--ink);
 }
@@ -299,23 +306,23 @@ code {
   ) {
   width: 100%;
   height: var(--tap);
-  padding: 0 8px;
+  padding: 0 0.5rem;
   border: var(--rule);
   border-radius: 0;
   background: var(--paper);
   color: var(--ink);
   box-shadow: var(--shadow-sm);
-  font: 400 18px var(--mono);
+  font: 400 1.125rem var(--mono);
 }
 
 :where(button) {
   min-height: var(--tap);
-  padding: 0 16px;
+  padding: 0 1rem;
   border: var(--rule);
   border-radius: 0;
   background: var(--paper);
   color: var(--ink);
-  font: 500 13px/1.2 var(--mono);
+  font: 500 0.8125rem/1.2 var(--mono);
   letter-spacing: 0.02em;
   text-transform: uppercase;
   cursor: pointer;
@@ -326,8 +333,8 @@ code {
 }
 
 :where(button:active:not(:disabled)) {
-  transform: translate(2px, 2px);
-  box-shadow: 2px 2px 0 var(--ink);
+  transform: translate(0.125rem, 0.125rem);
+  box-shadow: 0.125rem 0.125rem 0 var(--ink);
 }
 
 button:disabled {
@@ -336,16 +343,16 @@ button:disabled {
 }
 
 button.primary {
-  padding: 0 18px;
+  padding: 0 1.125rem;
   background: var(--fuchsia);
   box-shadow: var(--shadow-sm);
-  font: 400 20px/1.1 var(--display);
-  letter-spacing: 1px;
+  font: 400 1.25rem/1.1 var(--display);
+  letter-spacing: 0.0625rem;
 }
 
 button.primary:hover:not(:disabled) {
-  transform: translate(-2px, -2px);
-  box-shadow: 6px 6px 0 var(--ink);
+  transform: translate(-0.125rem, -0.125rem);
+  box-shadow: 0.375rem 0.375rem 0 var(--ink);
 }
 
 button.primary:disabled {
@@ -366,7 +373,7 @@ button.danger:hover:not(:disabled) {
   padding: 0;
   border: 0;
   background: none;
-  font: 500 12px var(--mono);
+  font: 500 0.75rem var(--mono);
   text-decoration: underline;
   box-shadow: none;
 }
@@ -383,6 +390,13 @@ button.danger:hover:not(:disabled) {
   border: var(--rule);
   background: var(--paper);
   color: var(--ink);
+}
+
+/* sized here rather than by the svg's attributes, so icons scale with the
+   buttons around them */
+.icon-button svg {
+  width: 1.125rem;
+  height: 1.125rem;
 }
 
 a.icon-button:hover {
@@ -414,12 +428,12 @@ a.icon-button:hover {
   display: inline-flex;
   align-items: center;
   min-height: var(--tap);
-  padding: 0 16px;
+  padding: 0 1rem;
   border: var(--rule);
   background: var(--fuchsia);
   color: var(--ink);
   box-shadow: var(--shadow-sm);
-  font: 500 13px var(--mono);
+  font: 500 0.8125rem var(--mono);
   text-transform: uppercase;
   text-decoration: none;
 }
@@ -432,13 +446,13 @@ a.icon-button:hover {
 }
 
 .tabs button {
-  min-height: 48px;
-  padding: 6px 4px;
+  min-height: 3rem;
+  padding: 0.375rem 0.25rem;
   border: 0;
   background: var(--paper);
   box-shadow: none;
-  font: 400 16px/1.1 var(--display);
-  letter-spacing: 0.5px;
+  font: 400 1rem/1.1 var(--display);
+  letter-spacing: 0.0313rem;
 }
 
 .tabs button + button {
@@ -446,7 +460,7 @@ a.icon-button:hover {
 }
 
 .tabs button:hover {
-  text-decoration: underline 3px;
+  text-decoration: underline 0.1875rem;
 }
 
 .tabs button[aria-selected='true'] {
@@ -459,19 +473,19 @@ a.icon-button:hover {
 .segmented {
   display: inline-grid;
   grid-template-columns: repeat(2, auto);
-  gap: 2px;
+  gap: 0.125rem;
   border: var(--rule);
   background: var(--ink);
   box-shadow: var(--shadow-sm);
 }
 
 .segmented button {
-  min-height: 36px;
-  padding: 0 10px;
+  min-height: 2.25rem;
+  padding: 0 0.625rem;
   border: 0;
   background: var(--paper);
   box-shadow: none;
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .segmented button:hover {
@@ -485,7 +499,7 @@ a.icon-button:hover {
 .inline-field {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 0.625rem;
   flex-wrap: wrap;
 }
 
@@ -499,7 +513,7 @@ a.icon-button:hover {
 
 .row {
   display: flex;
-  gap: 12px;
+  gap: 0.75rem;
   flex-wrap: wrap;
   align-items: center;
 }
@@ -507,12 +521,12 @@ a.icon-button:hover {
 .grid2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 14px;
+  gap: 0.875rem;
 }
 
 .stack {
   display: grid;
-  gap: 18px;
+  gap: 1.125rem;
 }
 
 /* --- misc ------------------------------------------------------------------- */
@@ -522,45 +536,60 @@ a.icon-button:hover {
 }
 
 .note {
-  margin-bottom: 10px;
-  padding: 10px 14px;
+  margin-bottom: 0.625rem;
+  padding: 0.625rem 0.875rem;
   border: var(--rule);
   background: var(--coral);
   color: var(--ink);
-  font: 400 14px/1.45 var(--sans);
+  font: 400 0.875rem/1.45 var(--sans);
 }
 
 .empty {
-  padding: 40px 24px;
-  border: 3px dashed var(--ink);
+  padding: 2.5rem 1.5rem;
+  border: 0.1875rem dashed var(--ink);
   text-align: center;
   color: var(--muted);
-  font: 400 15px/1.5 var(--sans);
+  font: 400 0.9375rem/1.5 var(--sans);
 }
 
 .card {
-  margin-bottom: 16px;
-  padding: 16px;
+  margin-bottom: 1rem;
+  padding: 1rem;
   border: var(--rule);
   background: var(--paper);
   box-shadow: var(--shadow-sm);
 }
 
+.card > .row,
+.card > .note {
+  margin-top: 0.75rem;
+}
+
+.card > .note:last-child {
+  margin-bottom: 0;
+}
+
+.help {
+  margin-top: 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 td,
 th {
-  padding: 8px 6px;
-  border-bottom: 2px solid var(--ink);
+  padding: 0.5rem 0.375rem;
+  border-bottom: 0.125rem solid var(--ink);
   text-align: left;
 }
 
 th {
-  font: 500 12px var(--mono);
+  font: 500 0.75rem var(--mono);
   text-transform: uppercase;
 }
 
@@ -570,8 +599,9 @@ tbody tr:last-child th {
 }
 
 .meter {
-  height: 12px;
-  border: 2px solid var(--ink);
+  min-width: 3.75rem;
+  height: 0.75rem;
+  border: 0.125rem solid var(--ink);
   background: var(--paper);
 }
 
@@ -589,14 +619,14 @@ tbody tr:last-child th {
 }
 
 .progress-inner {
-  max-width: 1280px;
+  max-width: var(--page);
   margin: 0 auto;
-  padding: 12px 32px;
+  padding: 0.75rem 2rem;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 20px;
-  font: 500 13px/1.4 var(--mono);
+  gap: 0.5rem 1.25rem;
+  font: 500 0.8125rem/1.4 var(--mono);
   text-transform: uppercase;
 }
 
@@ -605,9 +635,9 @@ tbody tr:last-child th {
 }
 
 .progress .bar {
-  flex: 1 1 200px;
-  height: 12px;
-  border: 2px solid var(--ink);
+  flex: 1 1 12.5rem;
+  height: 0.75rem;
+  border: 0.125rem solid var(--ink);
   background: var(--paper);
 }
 
@@ -620,12 +650,12 @@ tbody tr:last-child th {
 
 /* inside a page column (the status page) it's a panel, not a band */
 .wrap .progress {
-  margin-bottom: 24px;
+  margin-bottom: 1.5rem;
   border: var(--rule);
 }
 
 .wrap .progress-inner {
-  padding: 12px 16px;
+  padding: 0.75rem 1rem;
 }
 
 /* --- chips and match dots ------------------------------------------------- */
@@ -633,16 +663,16 @@ tbody tr:last-child th {
 .chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 2px;
+  gap: 0.375rem;
+  margin-top: 0.125rem;
 }
 
 .chip {
-  padding: 3px 8px;
-  border: 2px solid var(--ink);
+  padding: 0.1875rem 0.5rem;
+  border: 0.125rem solid var(--ink);
   background: var(--paper);
   color: var(--ink);
-  font: 500 12px/1.3 var(--mono);
+  font: 500 0.75rem/1.3 var(--mono);
   text-transform: uppercase;
 }
 
@@ -662,20 +692,20 @@ tbody tr:last-child th {
 .score {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font: 500 13px var(--mono);
+  gap: 0.5rem;
+  font: 500 0.8125rem var(--mono);
   font-variant-numeric: tabular-nums;
 }
 
 .dots {
   display: flex;
-  gap: 3px;
+  gap: 0.1875rem;
 }
 
 .dots i {
-  width: 11px;
-  height: 11px;
-  border: 2px solid var(--ink);
+  width: 0.6875rem;
+  height: 0.6875rem;
+  border: 0.125rem solid var(--ink);
   border-radius: 50%;
   background: var(--paper);
 }
@@ -686,27 +716,31 @@ tbody tr:last-child th {
 
 /* --- show rows -------------------------------------------------------------- */
 
+/* a query container, so a row lays itself out by its own width rather than
+   the window's: the same row is 912px wide beside a sidebar and 720px under
+   one */
 .show-row {
+  container-type: inline-size;
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
-  gap: 14px 24px;
-  padding: 18px 0;
+  gap: 0.875rem 1.5rem;
+  padding: 1.125rem 0;
   border-top: var(--rule);
 }
 
 .show-row.selected {
-  outline: 3px solid var(--fuchsia);
-  outline-offset: 6px;
+  outline: 0.1875rem solid var(--fuchsia);
+  outline-offset: 0.375rem;
 }
 
 .show-row .show {
-  flex: 1 1 520px;
+  flex: 1 1 32.5rem;
   min-width: 0;
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
-  gap: 14px 24px;
+  gap: 0.875rem 1.5rem;
 }
 
 button.show {
@@ -724,27 +758,27 @@ button.show {
 
 .show-row .when {
   flex: none;
-  width: 116px;
+  width: 7.25rem;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 0.375rem;
 }
 
 .when-day {
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: 0.5rem;
 }
 
 .show-row .day {
-  font: 400 54px/0.9 var(--display);
+  font: 400 3.375rem/0.9 var(--display);
 }
 
 .dow {
-  padding: 1px 6px;
-  border: 2px solid var(--ink);
+  padding: 0.0625rem 0.375rem;
+  border: 0.125rem solid var(--ink);
   background: var(--paper);
-  font: 500 13px/1.3 var(--mono);
+  font: 500 0.8125rem/1.3 var(--mono);
   text-transform: uppercase;
 }
 
@@ -753,27 +787,27 @@ button.show {
 }
 
 .show-row .time {
-  font: 400 12px var(--mono);
+  font: 400 0.75rem var(--mono);
   color: var(--muted);
 }
 
 .show-row .body {
-  flex: 1 1 220px;
+  flex: 1 1 13.75rem;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 0.375rem;
 }
 
 .show-row .lead {
-  font: 400 36px/1 var(--display);
-  letter-spacing: 0.5px;
+  font: 400 2.25rem/1 var(--display);
+  letter-spacing: 0.0313rem;
   text-transform: uppercase;
   overflow-wrap: anywhere;
 }
 
 .show-row .where {
-  font: 400 14px/1.4 var(--mono);
+  font: 400 0.875rem/1.4 var(--mono);
   color: var(--muted);
   text-transform: uppercase;
   overflow-wrap: anywhere;
@@ -782,12 +816,12 @@ button.show {
 /* wide enough for "~2H 54M DRIVE · 260 KM" on one line */
 .show-row .reach {
   flex: none;
-  width: 184px;
+  width: 11.5rem;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding-top: 6px;
-  font: 500 13px var(--mono);
+  gap: 0.5rem;
+  padding-top: 0.375rem;
+  font: 500 0.8125rem var(--mono);
   text-transform: uppercase;
 }
 
@@ -798,21 +832,38 @@ button.show {
 /* the same width with or without a tickets link, so the columns line up */
 .show-row .actions {
   flex: none;
-  min-width: 268px;
+  min-width: 16.75rem;
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  padding-top: 2px;
+  gap: 0.625rem;
+  padding-top: 0.125rem;
+}
+
+/* Too narrow for the actions beside everything else (32.5 + 1.5 + 16.75),
+   so they drop to a line of their own, left-aligned. While the rest of the
+   row still fits on one line (35.5), they sit under the act rather than
+   under the date. */
+@container (max-width: 50.75rem) {
+  .show-row:not(.compact) .actions {
+    min-width: 0;
+    justify-content: flex-start;
+  }
+}
+
+@container (min-width: 35.5rem) and (max-width: 50.75rem) {
+  .show-row:not(.compact):has(> .show > .when) .actions {
+    margin-left: 8.75rem;
+  }
 }
 
 .tickets {
   display: inline-flex;
   align-items: center;
   height: var(--tap);
-  padding: 0 14px;
+  padding: 0 0.875rem;
   border: var(--rule);
   color: var(--ink);
-  font: 500 13px var(--mono);
+  font: 500 0.8125rem var(--mono);
   text-transform: uppercase;
   text-decoration: none;
   white-space: nowrap;
@@ -824,9 +875,9 @@ button.show {
 
 /* fixed, so "mark as bought" and "✓ going" don't shift the row */
 .ticket-toggle {
-  width: 152px;
+  width: 9.5rem;
   height: var(--tap);
-  padding: 0 10px;
+  padding: 0 0.625rem;
   white-space: nowrap;
 }
 
@@ -838,32 +889,32 @@ button.show {
 /* one artist's dates: the act is the heading, so the row is the place */
 .show-row.compact {
   align-items: center;
-  gap: 8px 20px;
-  padding: 10px 0;
-  border-top: 2px solid var(--ink);
+  gap: 0.5rem 1.25rem;
+  padding: 0.625rem 0;
+  border-top: 0.125rem solid var(--ink);
 }
 
 .show-row.compact .show {
-  flex-basis: 580px;
+  flex-basis: 36.25rem;
   align-items: center;
-  gap: 8px 20px;
+  gap: 0.5rem 1.25rem;
 }
 
 .show-row.compact .when {
-  width: 170px;
+  width: 10.625rem;
   flex-direction: row;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 2px 8px;
+  gap: 0.125rem 0.5rem;
 }
 
 .show-row.compact .day {
-  font-size: 30px;
+  font-size: 1.875rem;
   line-height: 1;
 }
 
 .show-row.compact .month {
-  font: 500 12px var(--mono);
+  font: 500 0.75rem var(--mono);
   text-transform: uppercase;
 }
 
@@ -872,25 +923,25 @@ button.show {
 }
 
 .show-row.compact .body {
-  gap: 2px;
+  gap: 0.125rem;
 }
 
 .show-row.compact .lead {
-  font: 800 17px/1.25 var(--sans);
+  font: 800 1.0625rem/1.25 var(--sans);
   letter-spacing: 0;
   text-transform: none;
 }
 
 .show-row.compact .where {
-  font-size: 13px;
+  font-size: 0.8125rem;
   text-transform: none;
 }
 
 .show-row.compact .country {
   flex: none;
-  width: 150px;
-  font: 400 19px/1.1 var(--display);
-  letter-spacing: 0.5px;
+  width: 9.375rem;
+  font: 400 1.1875rem/1.1 var(--display);
+  letter-spacing: 0.0313rem;
   text-transform: uppercase;
 }
 
@@ -899,19 +950,33 @@ button.show {
 }
 
 .show-row.compact .actions {
-  gap: 8px;
+  gap: 0.5rem;
   padding-top: 0;
+}
+
+/* the same, at a compact row's own widths (36.25 + 1.25 + 16.75) */
+@container (max-width: 54.25rem) {
+  .show-row.compact .actions {
+    min-width: 0;
+    justify-content: flex-start;
+  }
+}
+
+@container (min-width: 36.25rem) and (max-width: 54.25rem) {
+  .show-row.compact:has(> .show > .when) .actions {
+    margin-left: 11.875rem;
+  }
 }
 
 .show-row.compact .tickets,
 .show-row.compact .ticket-toggle {
-  height: 40px;
-  min-height: 40px;
-  font-size: 12px;
+  height: 2.5rem;
+  min-height: 2.5rem;
+  font-size: 0.75rem;
 }
 
 .show-row.compact .tickets {
-  padding: 0 12px;
+  padding: 0 0.75rem;
 }
 
 /* --- headings inside the feed ----------------------------------------------- */
@@ -923,15 +988,15 @@ button.show {
 
 .month-label {
   display: flex;
-  margin: 0 0 14px;
+  margin: 0 0 0.875rem;
 }
 
 .month-label span {
-  padding: 2px 20px;
+  padding: 0.125rem 1.25rem;
   transform: skewX(-8deg);
   background: var(--ink);
   color: var(--fuchsia);
-  font: 400 60px/1.05 var(--display);
+  font: 400 3.75rem/1.05 var(--display);
   text-transform: uppercase;
 }
 
@@ -944,18 +1009,18 @@ button.show {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
-  margin: 0 0 10px;
-  font: 500 13px var(--mono);
+  gap: 0.75rem;
+  margin: 0 0 0.625rem;
+  font: 500 0.8125rem var(--mono);
   text-transform: uppercase;
 }
 
 .date-label {
-  padding: 2px 14px;
+  padding: 0.125rem 0.875rem;
   transform: skewX(-8deg);
   background: var(--ink);
   color: var(--fuchsia);
-  font: 400 34px/1.1 var(--display);
+  font: 400 2.125rem/1.1 var(--display);
 }
 
 /* --- sidebar filters ------------------------------------------------------ */
@@ -963,17 +1028,19 @@ button.show {
 .filters {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0.75rem;
 }
 
+/* capped, so three short numbers don't stretch across a tablet */
 .grid3 {
+  max-width: 26rem;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: 0.625rem;
 }
 
 .filter-help {
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--muted);
 }
 
@@ -981,11 +1048,11 @@ button.show {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 12px;
+  gap: 0.75rem;
 }
 
 .tag-field input[type='number'] {
-  width: 96px;
+  width: 6rem;
 }
 
 .checklist {
@@ -1000,9 +1067,9 @@ button.show {
 .checklist legend {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 0.625rem;
   width: 100%;
-  margin-bottom: 10px;
+  margin-bottom: 0.625rem;
   padding: 0;
 }
 
@@ -1010,12 +1077,12 @@ button.show {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 2px 10px;
-  min-height: 42px;
+  gap: 0.125rem 0.625rem;
+  min-height: 2.625rem;
   margin: 0;
-  padding: 6px 0;
-  border-bottom: 2px solid var(--ink);
-  font: 500 15px/1.3 var(--sans);
+  padding: 0.375rem 0;
+  border-bottom: 0.125rem solid var(--ink);
+  font: 500 0.9375rem/1.3 var(--sans);
   text-transform: none;
   cursor: pointer;
 }
@@ -1026,25 +1093,25 @@ button.show {
 }
 
 .checklist label em {
-  font: normal 400 13px var(--mono);
+  font: normal 400 0.8125rem var(--mono);
   font-variant-numeric: tabular-nums;
 }
 
 .checklist .hint {
   flex-basis: 100%;
-  padding-left: 30px;
-  font: 400 12px/1.4 var(--mono);
+  padding-left: 1.875rem;
+  font: 400 0.75rem/1.4 var(--mono);
   color: var(--muted);
 }
 
 /* "Within [12] days / and [650] km", one grid so the fields line up */
 .trip-shape {
   display: grid;
-  grid-template-columns: max-content 96px max-content;
+  grid-template-columns: max-content 6rem max-content;
   justify-content: start;
   align-items: center;
-  gap: 12px;
-  font: 500 14px var(--mono);
+  gap: 0.75rem;
+  font: 500 0.875rem var(--mono);
   text-transform: uppercase;
 }
 
@@ -1061,16 +1128,16 @@ button.show {
 }
 
 .favorite[open] {
-  padding-bottom: 18px;
+  padding-bottom: 1.125rem;
 }
 
 .favorite-head {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px 18px;
+  gap: 0.625rem 1.125rem;
   min-height: var(--tap);
-  padding: 16px 0;
+  padding: 1rem 0;
 }
 
 .favorite > summary {
@@ -1087,38 +1154,43 @@ button.show {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 6px;
+  gap: 0.375rem;
 }
 
 .favorite-name h2 {
   margin: 0;
-  font: 400 38px/1 var(--display);
-  letter-spacing: 0.5px;
+  font: 400 2.375rem/1 var(--display);
+  letter-spacing: 0.0313rem;
   text-transform: uppercase;
   overflow-wrap: anywhere;
 }
 
 .favorite[open] .favorite-name h2 {
-  font-size: 56px;
+  font-size: 3.5rem;
 }
 
 .favorite-meta {
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 8px 14px;
-  font: 500 13px var(--mono);
+  gap: 0.5rem 0.875rem;
+  font: 500 0.8125rem var(--mono);
   text-transform: uppercase;
 }
 
 .chevron {
-  width: 36px;
-  height: 36px;
+  width: 2.25rem;
+  height: 2.25rem;
   display: flex;
   align-items: center;
   justify-content: center;
   border: var(--rule);
   background: var(--paper);
+}
+
+.chevron svg {
+  width: 1rem;
+  height: 1rem;
 }
 
 .favorite > summary:hover .chevron {
@@ -1134,8 +1206,8 @@ button.show {
 }
 
 .favorite-quiet {
-  margin: 0 0 16px;
-  font: 400 13px var(--mono);
+  margin: 0 0 1rem;
+  font: 400 0.8125rem var(--mono);
   color: var(--muted);
 }
 
@@ -1150,8 +1222,8 @@ button.show {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px 20px;
-  padding: 16px 20px;
+  gap: 0.625rem 1.25rem;
+  padding: 1rem 1.25rem;
   background: var(--ink);
   color: var(--paper);
 }
@@ -1159,49 +1231,49 @@ button.show {
 .trip-head h2 {
   margin: 0;
   color: var(--fuchsia);
-  font: 400 44px/1 var(--display);
+  font: 400 2.75rem/1 var(--display);
   text-transform: uppercase;
 }
 
 .trip-summary {
-  font: 500 13px var(--mono);
+  font: 500 0.8125rem var(--mono);
   text-transform: uppercase;
 }
 
 .trip-body {
   display: flex;
   flex-direction: column;
-  padding: 4px 20px 20px;
+  padding: 0.25rem 1.25rem 1.25rem;
 }
 
 .run {
   display: flex;
   flex-direction: column;
-  padding-top: 14px;
+  padding-top: 0.875rem;
 }
 
 .run-head strong {
-  font: 400 30px/1.1 var(--display);
+  font: 400 1.875rem/1.1 var(--display);
   text-transform: uppercase;
 }
 
 .trip-date {
   display: grid;
-  grid-template-columns: 100px 3.5rem minmax(0, 1fr) auto auto;
+  grid-template-columns: 6.25rem 3.5rem minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 6px 16px;
-  padding: 8px 0;
-  border-top: 2px solid var(--ink);
+  gap: 0.375rem 1rem;
+  padding: 0.5rem 0;
+  border-top: 0.125rem solid var(--ink);
 }
 
 .trip-date .on {
-  font: 500 13px var(--mono);
+  font: 500 0.8125rem var(--mono);
   text-transform: uppercase;
   white-space: nowrap;
 }
 
 .trip-date .at {
-  font: 400 12px var(--mono);
+  font: 400 0.75rem var(--mono);
   color: var(--muted);
 }
 
@@ -1213,22 +1285,22 @@ button.show {
 }
 
 .what-title {
-  font: 700 15px/1.3 var(--sans);
+  font: 700 0.9375rem/1.3 var(--sans);
 }
 
 .what-sub {
-  font: 400 13px/1.4 var(--mono);
+  font: 400 0.8125rem/1.4 var(--mono);
   color: var(--muted);
 }
 
 .trip-date a {
   display: inline-flex;
   align-items: center;
-  min-height: 36px;
-  padding: 0 10px;
-  border: 2px solid var(--ink);
+  min-height: 2.25rem;
+  padding: 0 0.625rem;
+  border: 0.125rem solid var(--ink);
   color: var(--ink);
-  font: 500 12px var(--mono);
+  font: 500 0.75rem var(--mono);
   text-transform: uppercase;
   text-decoration: none;
   white-space: nowrap;
@@ -1237,15 +1309,15 @@ button.show {
 .trip-date .ticket-toggle {
   width: auto;
   height: auto;
-  min-height: 36px;
-  border-width: 2px;
-  font-size: 12px;
+  min-height: 2.25rem;
+  border-width: 0.125rem;
+  font-size: 0.75rem;
 }
 
 /* a schedule is unreadable in five columns on a phone */
 @media (max-width: 620px) {
   .trip-date {
-    grid-template-columns: 100px minmax(0, 1fr) auto;
+    grid-template-columns: 6.25rem minmax(0, 1fr) auto;
   }
   .trip-date .at {
     display: none;
@@ -1257,7 +1329,7 @@ button.show {
 .trip-block {
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 1.75rem;
 }
 
 .trip-hero {
@@ -1265,8 +1337,8 @@ button.show {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 22px;
+  gap: 0.875rem;
+  padding: 1.375rem;
   border: var(--rule);
   background: var(--fuchsia);
   box-shadow: var(--shadow-lg);
@@ -1276,8 +1348,8 @@ button.show {
   content: '';
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(circle, var(--ink) 2.4px, transparent 2.8px);
-  background-size: 10px 10px;
+  background-image: radial-gradient(circle, var(--ink) 0.15rem, transparent 0.175rem);
+  background-size: 0.625rem 0.625rem;
   -webkit-mask-image: linear-gradient(160deg, transparent 50%, #000 100%);
   mask-image: linear-gradient(160deg, transparent 50%, #000 100%);
   pointer-events: none;
@@ -1290,7 +1362,7 @@ button.show {
 .trip-hero-top {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: 0.5rem;
 }
 
 .trip-hero-title {
@@ -1298,19 +1370,19 @@ button.show {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 0.25rem;
 }
 
 .trip-span {
-  font: 500 13px var(--mono);
+  font: 500 0.8125rem var(--mono);
   text-transform: uppercase;
 }
 
 .trip-hero h2 {
   margin: 0;
-  font: 400 64px/0.95 var(--display);
+  font: 400 4rem/0.95 var(--display);
   text-transform: uppercase;
-  text-shadow: 4px 4px 0 var(--paper);
+  text-shadow: 0.25rem 0.25rem 0 var(--paper);
   overflow-wrap: anywhere;
 }
 
@@ -1329,9 +1401,9 @@ button.show {
   flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
-  gap: 4px 12px;
-  padding: 6px 12px;
-  border-bottom: 2px solid var(--ink);
+  gap: 0.25rem 0.75rem;
+  padding: 0.375rem 0.75rem;
+  border-bottom: 0.125rem solid var(--ink);
 }
 
 .trip-legs li:last-child {
@@ -1339,25 +1411,25 @@ button.show {
 }
 
 .leg-place {
-  font: 400 22px/1.2 var(--display);
-  letter-spacing: 0.5px;
+  font: 400 1.375rem/1.2 var(--display);
+  letter-spacing: 0.0313rem;
   text-transform: uppercase;
 }
 
 .leg-dates {
-  font: 500 13px var(--mono);
+  font: 500 0.8125rem var(--mono);
   text-transform: uppercase;
   white-space: nowrap;
 }
 
 .new-trip {
-  min-height: 56px;
-  font-size: 24px;
+  min-height: 3.5rem;
+  font-size: 1.5rem;
   box-shadow: var(--shadow-lg);
 }
 
 button.primary.new-trip:hover:not(:disabled) {
-  box-shadow: 12px 12px 0 var(--ink);
+  box-shadow: 0.75rem 0.75rem 0 var(--ink);
 }
 
 /* --- settings drawer -------------------------------------------------------- */
@@ -1391,7 +1463,7 @@ button.primary.new-trip:hover:not(:disabled) {
   right: 0;
   bottom: 0;
   z-index: 21;
-  width: min(440px, 100%);
+  width: min(27.5rem, 100%);
   display: flex;
   flex-direction: column;
   border-left: var(--rule);
@@ -1412,18 +1484,18 @@ button.primary.new-trip:hover:not(:disabled) {
 .drawer-head {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 20px;
+  gap: 0.75rem;
+  padding: 0.875rem 1.25rem;
   background: var(--ink);
   color: var(--paper);
 }
 
 .drawer-head h1 {
   margin: 0;
-  font: 400 32px/1 var(--display);
-  letter-spacing: 1px;
+  font: 400 2rem/1 var(--display);
+  letter-spacing: 0.0625rem;
   text-transform: uppercase;
-  text-shadow: 3px 3px 0 var(--fuchsia);
+  text-shadow: 0.1875rem 0.1875rem 0 var(--fuchsia);
 }
 
 .drawer-head .icon-button {
@@ -1433,7 +1505,7 @@ button.primary.new-trip:hover:not(:disabled) {
 .drawer-body {
   flex: 1;
   overflow-y: auto;
-  padding: 20px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+  padding: 1.25rem 1.25rem calc(1.5rem + env(safe-area-inset-bottom, 0rem));
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1453,7 +1525,7 @@ button.primary.new-trip:hover:not(:disabled) {
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding: 5vh 16px;
+  padding: 5vh 1rem;
   pointer-events: none;
 }
 
@@ -1461,7 +1533,7 @@ button.primary.new-trip:hover:not(:disabled) {
   pointer-events: auto;
   display: flex;
   flex-direction: column;
-  width: min(560px, 100%);
+  width: min(35rem, 100%);
   max-height: 90vh;
   border: var(--rule);
   background: var(--paper);
@@ -1472,8 +1544,8 @@ button.primary.new-trip:hover:not(:disabled) {
 .modal-foot {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 20px;
+  gap: 0.75rem;
+  padding: 0.875rem 1.25rem;
 }
 
 .modal-head {
@@ -1483,8 +1555,8 @@ button.primary.new-trip:hover:not(:disabled) {
 
 .modal-head h2 {
   margin: 0;
-  font: 400 32px/1 var(--display);
-  text-shadow: 3px 3px 0 var(--fuchsia);
+  font: 400 2rem/1 var(--display);
+  text-shadow: 0.1875rem 0.1875rem 0 var(--fuchsia);
 }
 
 .modal-head button {
@@ -1495,7 +1567,7 @@ button.primary.new-trip:hover:not(:disabled) {
   background: transparent;
   color: var(--paper);
   box-shadow: none;
-  font: 400 24px/1 var(--sans);
+  font: 400 1.5rem/1 var(--sans);
 }
 
 .modal-head button:hover {
@@ -1509,7 +1581,7 @@ button.primary.new-trip:hover:not(:disabled) {
 
 .modal-body {
   overflow-y: auto;
-  padding: 20px;
+  padding: 1.25rem;
 }
 
 /* --- chip select -------------------------------------------------------------- */
@@ -1522,17 +1594,17 @@ button.primary.new-trip:hover:not(:disabled) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 0.375rem;
   min-height: var(--tap);
-  padding: 6px;
+  padding: 0.375rem;
   border: var(--rule);
   background: var(--paper);
   box-shadow: var(--shadow-sm);
 }
 
 .chip-field:focus-within {
-  outline: 3px solid var(--ink);
-  outline-offset: 3px;
+  outline: 0.1875rem solid var(--ink);
+  outline-offset: 0.1875rem;
 }
 
 .chip-field.disabled {
@@ -1542,11 +1614,11 @@ button.primary.new-trip:hover:not(:disabled) {
 .chip-field input {
   flex: 1;
   min-width: 8rem;
-  height: 30px;
-  padding: 0 4px;
+  height: 1.875rem;
+  padding: 0 0.25rem;
   border: 0;
   box-shadow: none;
-  font-size: 16px;
+  font-size: 1rem;
 }
 
 .chip-field input:focus {
@@ -1556,7 +1628,7 @@ button.primary.new-trip:hover:not(:disabled) {
 .chip.picked {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 0.375rem;
 }
 
 .chip.picked button {
@@ -1565,7 +1637,7 @@ button.primary.new-trip:hover:not(:disabled) {
   border: 0;
   background: none;
   box-shadow: none;
-  font: 400 15px/1 var(--sans);
+  font: 400 0.9375rem/1 var(--sans);
 }
 
 .chip-options {
@@ -1573,10 +1645,10 @@ button.primary.new-trip:hover:not(:disabled) {
   z-index: 30;
   left: 0;
   right: 0;
-  margin: 8px 0 0;
+  margin: 0.5rem 0 0;
   padding: 0;
   list-style: none;
-  max-height: 240px;
+  max-height: 15rem;
   overflow-y: auto;
   border: var(--rule);
   background: var(--paper);
@@ -1584,18 +1656,18 @@ button.primary.new-trip:hover:not(:disabled) {
 }
 
 .chip-options li + li {
-  border-top: 2px solid var(--ink);
+  border-top: 0.125rem solid var(--ink);
 }
 
 .chip-options li button {
   display: block;
   width: 100%;
-  min-height: 40px;
-  padding: 8px 10px;
+  min-height: 2.5rem;
+  padding: 0.5rem 0.625rem;
   border: 0;
   background: none;
   box-shadow: none;
-  font: 500 15px var(--sans);
+  font: 500 0.9375rem var(--sans);
   letter-spacing: 0;
   text-align: left;
   text-transform: none;
@@ -1606,13 +1678,13 @@ button.primary.new-trip:hover:not(:disabled) {
 }
 
 .empty-option {
-  padding: 8px 10px;
-  font-size: 14px;
+  padding: 0.5rem 0.625rem;
+  font-size: 0.875rem;
 }
 
 .field-help {
-  margin-top: 8px;
-  font-size: 13px;
+  margin-top: 0.5rem;
+  font-size: 0.8125rem;
 }
 
 /* --- trip modal --------------------------------------------------------------- */
@@ -1622,9 +1694,9 @@ button.primary.new-trip:hover:not(:disabled) {
 .slack {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 0.5rem;
   flex-wrap: wrap;
-  font: 400 15px var(--sans);
+  font: 400 0.9375rem var(--sans);
 }
 
 .slack label {
@@ -1641,19 +1713,19 @@ button.primary.new-trip:hover:not(:disabled) {
 
 .legs {
   display: grid;
-  gap: 10px;
+  gap: 0.625rem;
 }
 
 .leg-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 0.5rem;
   flex-wrap: wrap;
 }
 
 .leg-row .leg-name {
   min-width: 7rem;
-  font: 400 18px var(--display);
+  font: 400 1.125rem var(--display);
   text-transform: uppercase;
 }
 
@@ -1667,11 +1739,11 @@ button.primary.new-trip:hover:not(:disabled) {
 
 @media (max-width: 640px) {
   .topbar-inner {
-    padding: 12px 16px;
-    gap: 12px 16px;
+    padding: 0.75rem 1rem;
+    gap: 0.75rem 1rem;
   }
   .wordmark {
-    font-size: 36px;
+    font-size: 2.25rem;
   }
   /* wordmark and tools share the first line, the nav gets its own */
   .topbar-tools {
@@ -1682,38 +1754,47 @@ button.primary.new-trip:hover:not(:disabled) {
     width: 100%;
   }
   .progress-inner {
-    padding: 12px 16px;
+    padding: 0.75rem 1rem;
   }
   .wrap {
-    padding: 24px 16px calc(32px + env(safe-area-inset-bottom, 0px));
+    padding: 1.5rem 1rem calc(2rem + env(safe-area-inset-bottom, 0rem));
   }
   .page-title {
-    font-size: 52px;
+    font-size: 3.25rem;
   }
   .month-label span {
-    font-size: 44px;
+    font-size: 2.75rem;
   }
   .show-row,
   .show-row .show {
-    column-gap: 16px;
-  }
-  .show-row .actions {
-    min-width: 0;
-    justify-content: flex-start;
+    column-gap: 1rem;
   }
   .favorite-name h2 {
-    font-size: 32px;
+    font-size: 2rem;
   }
   .favorite[open] .favorite-name h2 {
-    font-size: 44px;
+    font-size: 2.75rem;
   }
   .trip-head h2 {
-    font-size: 34px;
+    font-size: 2.125rem;
   }
   .trip-hero h2 {
-    font-size: 44px;
+    font-size: 2.75rem;
   }
   .grid2 {
     grid-template-columns: 1fr;
+  }
+}
+
+/* the narrowest phones, where the three nav blocks only just fit on a line */
+@media (max-width: 380px) {
+  .wordmark {
+    font-size: 2rem;
+  }
+  .mainnav {
+    gap: 0.25rem;
+  }
+  .mainnav a {
+    padding: 0.625rem 0.75rem;
   }
 }

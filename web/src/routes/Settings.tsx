@@ -112,7 +112,7 @@ export function Settings() {
             ))}
           </div>
         </div>
-        <div className="muted" style={{ fontSize: 13, marginTop: 8 }}>
+        <div className="help">
           Health alerts use a separate topic and are never muted by this.
         </div>
       </div>
@@ -169,7 +169,7 @@ function SettingRow({
   if (spec.kind === 'bool') {
     return (
       <div className="card">
-        <label style={{ display: 'flex', gap: 10, alignItems: 'center', margin: 0 }}>
+        <label>
           <input
             type="checkbox"
             checked={Boolean(value)}
@@ -177,11 +177,7 @@ function SettingRow({
           />
           <span>{spec.label}</span>
         </label>
-        {spec.help && (
-          <div className="muted" style={{ fontSize: 13, marginTop: 6 }}>
-            {spec.help}
-          </div>
-        )}
+        {spec.help && <div className="help">{spec.help}</div>}
       </div>
     )
   }
@@ -198,11 +194,7 @@ function SettingRow({
         step={spec.kind === 'float' ? 0.05 : 1}
         onChange={(e) => onChange(e.target.value)}
       />
-      {spec.help && (
-        <div className="muted" style={{ fontSize: 13, marginTop: 6 }}>
-          {spec.help}
-        </div>
-      )}
+      {spec.help && <div className="help">{spec.help}</div>}
     </div>
   )
 }
