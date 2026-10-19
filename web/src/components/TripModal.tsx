@@ -3,8 +3,20 @@ import { api } from '../lib/api'
 import type { Trip, TripLeg } from '../lib/types'
 import { ChipSelect, type Choice } from './ChipSelect'
 
+/** A new trip worked out somewhere else, to start the form from. */
+export interface TripPrefill {
+  name?: string
+  start_date: string
+  end_date: string
+  /** ISO-2 codes */
+  countries: string[]
+  cities?: { country: string; city: string }[]
+}
+
 interface Props {
+  /** Editing an existing trip. Takes precedence over `prefill`. */
   trip?: Trip
+  prefill?: TripPrefill
   countries: { code: string; name: string }[]
   onClose: () => void
   onSaved: () => void
@@ -48,6 +60,21 @@ function fromTrip(trip: Trip, names: Map<string, string>): Draft {
   }
 }
 
+function fromPrefill(prefill: TripPrefill, names: Map<string, string>): Draft {
+  const cities = prefill.cities ?? []
+  // a city can't be kept without its country, so the city's country is in
+  // even if the caller left it out
+  const codes = [...new Set([...prefill.countries, ...cities.map((c) => c.country)])]
+  return {
+    ...blank(),
+    name: prefill.name ?? '',
+    start_date: prefill.start_date,
+    end_date: prefill.end_date,
+    countries: codes.map((code) => ({ value: code, label: names.get(code) ?? code })),
+    legs: cities.map(({ country, city }) => ({ country, city, start_date: null, end_date: null })),
+  }
+}
+
 /** Create or edit a trip.
  *
  *  Shaped around how a trip actually gets planned: you know the countries
@@ -56,12 +83,14 @@ function fromTrip(trip: Trip, names: Map<string, string>): Draft {
  *  city in stays deliberately open — that's what keeps a show just over its
  *  border in play.
  */
-export function TripModal({ trip, countries, onClose, onSaved }: Props) {
+export function TripModal({ trip, prefill, countries, onClose, onSaved }: Props) {
   const names = useMemo(
     () => new Map(countries.map((c) => [c.code, c.name])),
     [countries],
   )
-  const [draft, setDraft] = useState<Draft>(() => (trip ? fromTrip(trip, names) : blank()))
+  const [draft, setDraft] = useState<Draft>(() =>
+    trip ? fromTrip(trip, names) : prefill ? fromPrefill(prefill, names) : blank(),
+  )
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
