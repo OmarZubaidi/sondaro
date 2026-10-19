@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../lib/api'
 import type { LocalFeed, SettingSpec } from '../lib/types'
 import { relativeTime } from '../lib/format'
 import { ShowCard } from '../components/ShowCard'
 import { IndexProgress } from '../components/IndexProgress'
 import { LocalFilters, type Filters } from '../components/LocalFilters'
+import { NextUp } from '../components/NextUp'
 
 const monthId = (label: string) => `month-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
 
@@ -43,14 +44,24 @@ export function Local() {
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // Only the newest response lands, so the refetch after marking a ticket
+  // can't overwrite results for filters you've since moved. `quiet` keeps a
+  // failed refetch from replacing a page that's still fine with an error.
+  const latest = useRef(0)
+  const load = useCallback((current: Filters, quiet = false) => {
+    const request = ++latest.current
+    api
+      .home({ ...current })
+      .then((data) => request === latest.current && setFeed(data))
+      .catch(
+        (err) =>
+          !quiet && request === latest.current && setError(String(err.message ?? err)),
+      )
+  }, [])
+
   useEffect(() => {
     if (!filters) return
-    let canceled = false
-
-    api
-      .home({ ...filters })
-      .then((data) => !canceled && setFeed(data))
-      .catch((err) => !canceled && setError(String(err.message ?? err)))
+    load(filters)
 
     // remember where the controls were left, without a save button
     if (saveTimer.current) clearTimeout(saveTimer.current)
@@ -64,11 +75,7 @@ export function Local() {
         })
         .catch(() => undefined)
     }, 1200)
-
-    return () => {
-      canceled = true
-    }
-  }, [filters])
+  }, [filters, load])
 
   if (error)
     return (
@@ -84,6 +91,7 @@ export function Local() {
     )
 
   const { status } = feed
+  const nextUp = feed.months.flatMap((month) => month.shows).find((show) => show.purchased)
 
   return (
     <>
@@ -119,6 +127,8 @@ export function Local() {
         </aside>
 
         <div className="feed">
+          {nextUp && <NextUp show={nextUp} />}
+
           {feed.months.length === 0 && (
             <div className="empty">
               Nothing clears these filters.
@@ -133,7 +143,7 @@ export function Local() {
                 <span>{month.label}</span>
               </h2>
               {month.shows.map((show) => (
-                <ShowCard key={show.id} show={show} />
+                <ShowCard key={show.id} show={show} onChanged={() => load(filters, true)} />
               ))}
             </section>
           ))}

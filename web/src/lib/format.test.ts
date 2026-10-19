@@ -6,6 +6,7 @@ import {
   isWeekend,
   monthYear,
   placeParts,
+  weekdayLong,
   weekdayShort,
 } from './format'
 
@@ -16,6 +17,10 @@ describe('dates', () => {
 
   it('keeps the leading zero on the day', () => {
     expect(dayNumber('2026-11-06')).toBe('06')
+  })
+
+  it('spells the weekday out in full when asked', () => {
+    expect(weekdayLong('2026-11-06')).toBe('Friday')
   })
 
   it('names the month and year', () => {

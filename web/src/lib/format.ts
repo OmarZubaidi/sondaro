@@ -5,6 +5,15 @@ import type { Show } from './types'
  * locale or timezone. Uppercase is left to the stylesheet. */
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const WEEKDAYS_LONG = [
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+]
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 function weekdayIndex(iso: string): number {
@@ -23,6 +32,10 @@ export function dayNumber(iso: string): string {
 
 export function weekdayShort(iso: string): string {
   return WEEKDAYS[weekdayIndex(iso)]
+}
+
+export function weekdayLong(iso: string): string {
+  return WEEKDAYS_LONG[weekdayIndex(iso)]
 }
 
 export function monthShort(iso: string): string {

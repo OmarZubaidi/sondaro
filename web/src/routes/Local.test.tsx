@@ -1,4 +1,5 @@
 import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { Local } from './Local'
 import { api } from '../lib/api'
@@ -106,6 +107,44 @@ describe('Local', () => {
       await renderLocal(feed(MONTHS.slice(0, 1)))
 
       expect(screen.queryByRole('navigation', { name: 'Jump to month' })).toBeNull()
+    })
+  })
+
+  describe('the next-up block', () => {
+    /** The same months, with tickets bought for the given show ids. */
+    const bought = (...ids: string[]): LocalFeed['months'] =>
+      MONTHS.map((month) => ({
+        ...month,
+        shows: month.shows.map((s) => ({ ...s, purchased: ids.includes(s.id) })),
+      }))
+
+    it('puts the next show you’re going to above the list', async () => {
+      await renderLocal(feed(bought('b', 'c')))
+
+      const next = screen.getByRole('region', { name: 'Next up' })
+      expect(within(next).getByText('Big Thief')).toBeInTheDocument()
+      expect(within(next).getByText('Thursday · 20:00')).toBeInTheDocument()
+      expect(within(next).getByText('12')).toBeInTheDocument()
+      expect(within(next).getByText('Nov 2026')).toBeInTheDocument()
+      expect(within(next).getByText('Big Thief Hall, Utrecht, NL · 1h drive · 80 km')).toBeInTheDocument()
+    })
+
+    it('is left out when no ticket is bought', async () => {
+      await renderLocal()
+
+      expect(screen.queryByRole('region', { name: 'Next up' })).toBeNull()
+    })
+
+    it('appears once you mark a ticket bought, without a reload', async () => {
+      await renderLocal()
+      vi.spyOn(api, 'setPurchased').mockResolvedValue({ id: 'c', purchased: true })
+      vi.mocked(api.home).mockResolvedValue(feed(bought('c')))
+
+      const row = screen.getByText('Khruangbin').closest<HTMLElement>('.show-row')!
+      await userEvent.click(within(row).getByRole('button', { name: 'mark as bought' }))
+
+      const next = await screen.findByRole('region', { name: 'Next up' })
+      expect(within(next).getByText('Khruangbin')).toBeInTheDocument()
     })
   })
 })
