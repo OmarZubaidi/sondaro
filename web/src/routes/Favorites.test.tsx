@@ -158,18 +158,18 @@ async function renderFeed(payload: FavoritesFeed = makeFeed(TEXAS, TEXAS_CLUSTER
   // so a pending timer can't reach the network
   vi.spyOn(api, 'updateSettings').mockResolvedValue({ updated: {} })
   render(<Favorites />)
-  await screen.findByRole('heading', { name: 'Favorites' })
+  await screen.findByRole('heading', { name: 'Artists' })
 }
 
 function bands(): (string | null)[] {
   return screen
     .getAllByRole('heading')
     .map((node) => node.textContent)
-    .filter((text) => text !== 'Favorites')
+    .filter((text) => text !== 'Artists')
 }
 
-const trips = () => userEvent.click(screen.getByRole('tab', { name: 'Trips' }))
-const artists = () => userEvent.click(screen.getByRole('tab', { name: 'Artists' }))
+const trips = () => userEvent.click(screen.getByRole('tab', { name: 'Could-be trips' }))
+const artists = () => userEvent.click(screen.getByRole('tab', { name: 'By artist' }))
 const tick = (name: RegExp) => userEvent.click(screen.getByRole('checkbox', { name }))
 
 /** Run headings inside the feed, in order. */
@@ -282,9 +282,9 @@ describe('Favorites', () => {
         'System of a Down',
       ])
       expect(rowsUnder('Empire of the Sun')).toEqual([
-        '2026-09-20',
-        '2026-09-21',
-        '2026-09-24',
+        'Sun 20 Sep',
+        'Mon 21 Sep',
+        'Thu 24 Sep',
       ])
     })
 
@@ -323,7 +323,7 @@ describe('Favorites', () => {
 
       await trips()
 
-      expect(bands()).toEqual(['2026-09-20 – 2026-10-24'])
+      expect(bands()).toEqual(['20 Sep — 24 Oct 2026'])
     })
 
     it('labels a trip by its dates and nothing else', async () => {
@@ -333,7 +333,7 @@ describe('Favorites', () => {
 
       await trips()
 
-      expect(bands()).toEqual(['2026-09-20 – 2026-10-24'])
+      expect(bands()).toEqual(['20 Sep — 24 Oct 2026'])
     })
 
     it('says how many favorites converge on the trip', async () => {
@@ -342,7 +342,7 @@ describe('Favorites', () => {
       await trips()
 
       expect(
-        screen.getByRole('heading', { name: /2026-09-20/ }).parentElement,
+        screen.getByRole('heading', { name: /20 Sep/ }).parentElement,
       ).toHaveTextContent('4 favorites · 8 dates')
     })
 

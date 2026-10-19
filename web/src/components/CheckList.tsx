@@ -30,7 +30,7 @@ export function CheckList({ legend, options, selected, onChange }: Props) {
   return (
     <fieldset className="checklist">
       <legend>
-        {legend}
+        <span className="tag">{legend}</span>
         {selected.size > 0 && (
           <button type="button" className="linkish" onClick={() => onChange(new Set())}>
             clear

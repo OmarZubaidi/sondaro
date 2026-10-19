@@ -1,5 +1,5 @@
 import type { Show } from '../lib/types'
-import { place } from '../lib/format'
+import { dateLabel, placeParts } from '../lib/format'
 import { TicketToggle, useTicket } from './TicketToggle'
 
 interface Props {
@@ -36,14 +36,18 @@ export function TripRun({ artist, shows, onChanged }: Props) {
 
 function TripDate({ show, onChanged }: { show: Show; onChanged?: () => void }) {
   const { bought, pending, toggle } = useTicket(show, onChanged)
+  // the run names the act and the rows carry the region, so the country code
+  // would only repeat what's above and beside it
+  const { title, sub } = placeParts(show, { country: false })
 
   return (
     <div className={`trip-date${bought ? ' held' : ''}`}>
-      <span className="on">{show.date}</span>
+      <span className="on">{dateLabel(show.date)}</span>
       <span className="at">{show.time ?? ''}</span>
-      {/* the run names the act and the rows carry the region, so the country
-          code would only repeat what's above and beside it */}
-      <span className="what">{place(show, { country: false }) || 'venue to be announced'}</span>
+      <span className="what">
+        <span className="what-title">{title}</span>
+        {sub && <span className="what-sub">{sub}</span>}
+      </span>
       {show.url ? (
         <a href={show.url} target="_blank" rel="noreferrer" aria-label="tickets">
           tickets ↗

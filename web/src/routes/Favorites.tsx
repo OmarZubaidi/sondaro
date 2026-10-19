@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../lib/api'
-import type { Cluster, FavoritesFeed, Show } from '../lib/types'
+import type { FavoritesFeed, Show } from '../lib/types'
+import { dateSpan } from '../lib/format'
 import { CheckList } from '../components/CheckList'
 import { ShowCard } from '../components/ShowCard'
 import { TripRun } from '../components/TripRun'
@@ -8,8 +9,8 @@ import { TripRun } from '../components/TripRun'
 type View = 'artists' | 'trips'
 
 const VIEWS: { value: View; label: string }[] = [
-  { value: 'artists', label: 'Artists' },
-  { value: 'trips', label: 'Trips' },
+  { value: 'artists', label: 'By artist' },
+  { value: 'trips', label: 'Could-be trips' },
 ]
 
 /** One date, flattened out of the artist/country nesting the API sends so it
@@ -38,12 +39,6 @@ interface Trip {
 
 function plural(count: number, one: string, many = `${one}s`): string {
   return `${count} ${count === 1 ? one : many}`
-}
-
-function span(cluster: Cluster): string {
-  return cluster.start_date === cluster.end_date
-    ? cluster.start_date
-    : `${cluster.start_date} – ${cluster.end_date}`
 }
 
 /** Split a trip's dates into consecutive same-artist runs.
@@ -174,7 +169,7 @@ export function Favorites() {
 
       found.push({
         key: `trip-${cluster.id}`,
-        label: span(cluster),
+        label: dateSpan(cluster.start_date, cluster.end_date),
         summary: `${plural(artists.size, 'favorite')} · ${plural(dates.length, 'date')}`,
         runs: runs(dates),
       })
@@ -212,125 +207,129 @@ export function Favorites() {
       })
   }, [feed, shown, view, filtering])
 
-  if (error) return <div className="note">Couldn't load favorites: {error}</div>
-  if (!feed || !shape) return <div className="empty">Loading…</div>
+  if (error)
+    return (
+      <div className="wrap">
+        <div className="note">Couldn't load favorites: {error}</div>
+      </div>
+    )
+  if (!feed || !shape)
+    return (
+      <div className="wrap">
+        <div className="empty">Loading…</div>
+      </div>
+    )
 
   const empty = view === 'trips' ? trips.length === 0 : byArtist.length === 0
 
   return (
-    <>
-      <div className="tabs" role="tablist" aria-label="Favorites">
-        {VIEWS.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            role="tab"
-            aria-selected={view === option.value}
-            onClick={() => setView(option.value)}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
+    <div className="wrap local-layout">
+      <aside className="side tall">
+        <h1 className="page-title">Artists</h1>
 
-      <div className="local-layout">
-        <aside className="side tall">
-          <div className="title-row">
-            <h2>Favorites</h2>
-          </div>
+        <div className="tabs" role="tablist" aria-label="View">
+          {VIEWS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              role="tab"
+              aria-selected={view === option.value}
+              onClick={() => setView(option.value)}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
 
-          {/* What counts as one trip. One grid rather than two rows, so the
-              labels, fields and units line up in columns instead of drifting.
-              Only meaningful here, so it only appears here. */}
-          {view === 'trips' && (
-            <div className="card filters trip-shape">
-              <label htmlFor="fav-days">Within</label>
-              <input
-                id="fav-days"
-                type="number"
-                min={1}
-                max={60}
-                step={1}
-                value={shape.days}
-                onChange={(e) =>
-                  reshape({
-                    ...shape,
-                    days: Math.min(60, Math.max(1, Number(e.target.value) || 1)),
-                  })
-                }
-              />
-              <span className="muted">days</span>
-
-              <label htmlFor="fav-km">and</label>
-              <input
-                id="fav-km"
-                type="number"
-                min={25}
-                max={3000}
-                step={50}
-                value={shape.km}
-                onChange={(e) =>
-                  reshape({
-                    ...shape,
-                    km: Math.min(3000, Math.max(25, Number(e.target.value) || 25)),
-                  })
-                }
-              />
-              <span className="muted">km</span>
-            </div>
-          )}
-
-          <div className="card filters">
-            <CheckList
-              legend="Artists"
-              selected={artistFilter}
-              onChange={setArtistFilter}
-              // an artist touring nowhere is not a filter, it's a blank row
-              options={feed.artists
-                .filter((artist) => artist.total > 0)
-                .map((artist) => ({
-                  value: artist.key,
-                  label: artist.name,
-                  count: artist.total,
-                }))}
+        {/* What counts as one trip. One grid rather than two rows, so the
+            labels, fields and units line up in columns instead of drifting.
+            Only meaningful here, so it only appears here. */}
+        {view === 'trips' && (
+          <div className="trip-shape">
+            <label htmlFor="fav-days">Within</label>
+            <input
+              id="fav-days"
+              type="number"
+              min={1}
+              max={60}
+              step={1}
+              value={shape.days}
+              onChange={(e) =>
+                reshape({
+                  ...shape,
+                  days: Math.min(60, Math.max(1, Number(e.target.value) || 1)),
+                })
+              }
             />
+            <span>days</span>
+
+            <label htmlFor="fav-km">and</label>
+            <input
+              id="fav-km"
+              type="number"
+              min={25}
+              max={3000}
+              step={50}
+              value={shape.km}
+              onChange={(e) =>
+                reshape({
+                  ...shape,
+                  km: Math.min(3000, Math.max(25, Number(e.target.value) || 25)),
+                })
+              }
+            />
+            <span>km</span>
           </div>
+        )}
 
-          {view === 'artists' && (
-            <div className="card filters">
-              <CheckList
-                legend="Countries"
-                selected={countryFilter}
-                onChange={setCountryFilter}
-                options={feed.countries.map((country) => ({
-                  value: country.code,
-                  label: country.name,
-                  count: perCountry.get(country.code) ?? 0,
-                }))}
-              />
-            </div>
-          )}
-        </aside>
+        <CheckList
+          legend="Artists"
+          selected={artistFilter}
+          onChange={setArtistFilter}
+          // an artist touring nowhere is not a filter, it's a blank row
+          options={feed.artists
+            .filter((artist) => artist.total > 0)
+            .map((artist) => ({
+              value: artist.key,
+              label: artist.name,
+              count: artist.total,
+            }))}
+        />
 
-        <div className="feed">
-          {feed.artists.length === 0 ? (
-            <div className="empty">
-              Nothing in the library yet. Sondaro follows what's in Lidarr, so add an
-              artist there and they'll turn up here.
-            </div>
-          ) : empty ? (
-            <div className="empty">
-              {view === 'trips'
-                ? 'No trips. A trip needs two favorites close enough together to catch on one journey — widen the window or the radius.'
-                : 'Nothing clears these filters.'}
-            </div>
-          ) : view === 'trips' ? (
-            trips.map((trip) => (
-              <section className="trip" key={trip.key}>
-                <div className="trip-head">
-                  <h2>{trip.label}</h2>
-                  <span className="muted">{trip.summary}</span>
-                </div>
+        {view === 'artists' && (
+          <CheckList
+            legend="Countries"
+            selected={countryFilter}
+            onChange={setCountryFilter}
+            options={feed.countries.map((country) => ({
+              value: country.code,
+              label: country.name,
+              count: perCountry.get(country.code) ?? 0,
+            }))}
+          />
+        )}
+      </aside>
+
+      <div className={`feed${view === 'artists' ? ' tight' : ''}`}>
+        {feed.artists.length === 0 ? (
+          <div className="empty">
+            Nothing in the library yet. Sondaro follows what's in Lidarr, so add an
+            artist there and they'll turn up here.
+          </div>
+        ) : empty ? (
+          <div className="empty">
+            {view === 'trips'
+              ? 'No trips. A trip needs two favorites close enough together to catch on one journey — widen the window or the radius.'
+              : 'Nothing clears these filters.'}
+          </div>
+        ) : view === 'trips' ? (
+          trips.map((trip) => (
+            <section className="trip" key={trip.key}>
+              <div className="trip-head">
+                <h2>{trip.label}</h2>
+                <span className="trip-summary">{trip.summary}</span>
+              </div>
+              <div className="trip-body">
                 {trip.runs.map((run) => (
                   <TripRun
                     key={run.key}
@@ -339,64 +338,80 @@ export function Favorites() {
                     onChanged={() => load(shape)}
                   />
                 ))}
-              </section>
-            ))
-          ) : (
-            byArtist.map(({ artist, dates, quiet }) => {
-              const head = (
-                <>
+              </div>
+            </section>
+          ))
+        ) : (
+          byArtist.map(({ artist, dates, quiet }) => {
+            const head = (
+              <>
+                <div className="favorite-name">
                   <h2>{artist.name}</h2>
                   {artist.slipped && (
                     <span
-                      className="chip"
+                      className="chip slipped"
                       title="Followed for a month after slipping, so a trip you're planning around doesn't vanish under you. Their dates are already cached either way."
                     >
                       slipped out of your top {feed.follows}
                     </span>
                   )}
-                  {dates.length > 0 && (
-                    <span className="muted">{plural(dates.length, 'date')}</span>
-                  )}
-                </>
-              )
+                </div>
+                {dates.length > 0 && (
+                  <span className="favorite-meta">
+                    <span>{plural(dates.length, 'date')}</span>
+                    <span className="chevron" aria-hidden="true">
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="3"
+                      >
+                        <path d="M6 9l6 6 6-6" />
+                      </svg>
+                    </span>
+                  </span>
+                )}
+              </>
+            )
 
-              // Nothing to collapse, so no control that implies there is.
-              if (quiet) {
-                return (
-                  <section className="favorite" key={artist.key}>
-                    <div className="favorite-head">{head}</div>
-                    <p className="favorite-quiet">{quiet}</p>
-                  </section>
-                )
-              }
-
+            // Nothing to collapse, so no control that implies there is.
+            if (quiet) {
               return (
-                <details
-                  className="favorite"
-                  key={artist.key}
-                  // Open under a filter: you narrowed the page to find
-                  // something, and hiding the result behind a click would be
-                  // the opposite of an answer.
-                  open={filtering}
-                >
-                  <summary className="favorite-head">{head}</summary>
-                  {dates.map((entry) => (
-                    <ShowCard
-                      key={entry.show.id}
-                      show={entry.show}
-                      compact
-                      showScore={false}
-                      showCountry={false}
-                      countryName={entry.country}
-                      onChanged={() => load(shape)}
-                    />
-                  ))}
-                </details>
+                <section className="favorite" key={artist.key}>
+                  <div className="favorite-head">{head}</div>
+                  <p className="favorite-quiet">{quiet}</p>
+                </section>
               )
-            })
-          )}
-        </div>
+            }
+
+            return (
+              <details
+                className="favorite"
+                key={artist.key}
+                // Open under a filter: you narrowed the page to find
+                // something, and hiding the result behind a click would be
+                // the opposite of an answer.
+                open={filtering}
+              >
+                <summary className="favorite-head">{head}</summary>
+                {dates.map((entry) => (
+                  <ShowCard
+                    key={entry.show.id}
+                    show={entry.show}
+                    compact
+                    showScore={false}
+                    showCountry={false}
+                    countryName={entry.country}
+                    onChanged={() => load(shape)}
+                  />
+                ))}
+              </details>
+            )
+          })
+        )}
       </div>
-    </>
+    </div>
   )
 }
