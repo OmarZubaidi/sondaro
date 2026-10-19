@@ -175,7 +175,7 @@ function SettingRow({
             checked={Boolean(value)}
             onChange={(e) => onChange(e.target.checked)}
           />
-          <span style={{ color: 'var(--text)' }}>{spec.label}</span>
+          <span>{spec.label}</span>
         </label>
         {spec.help && (
           <div className="muted" style={{ fontSize: 13, marginTop: 6 }}>

@@ -258,7 +258,7 @@ export function TripModal({ trip, countries, onClose, onSaved }: Props) {
                 checked={draft.strict_dates}
                 onChange={(e) => set('strict_dates', e.target.checked)}
               />
-              <span style={{ color: 'var(--text)' }}>Dates are booked and immovable</span>
+              <span>Dates are booked and immovable</span>
             </label>
 
             {/* Two full-width number fields under two full-width labels made

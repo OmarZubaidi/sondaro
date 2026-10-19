@@ -433,12 +433,12 @@ a.icon-button:hover {
 
 .tabs button {
   min-height: 48px;
-  padding: 6px 10px;
+  padding: 6px 4px;
   border: 0;
   background: var(--paper);
   box-shadow: none;
-  font: 400 17px/1.1 var(--display);
-  letter-spacing: 1px;
+  font: 400 16px/1.1 var(--display);
+  letter-spacing: 0.5px;
 }
 
 .tabs button + button {
@@ -454,11 +454,14 @@ a.icon-button:hover {
   text-decoration: none;
 }
 
+/* a 2×2 grid ruled by the ink showing through the gaps, which reads cleaner
+   than four buttons wrapping raggedly */
 .segmented {
-  display: inline-flex;
-  flex-wrap: wrap;
+  display: inline-grid;
+  grid-template-columns: repeat(2, auto);
+  gap: 2px;
   border: var(--rule);
-  background: var(--paper);
+  background: var(--ink);
   box-shadow: var(--shadow-sm);
 }
 
@@ -466,12 +469,9 @@ a.icon-button:hover {
   min-height: 36px;
   padding: 0 10px;
   border: 0;
+  background: var(--paper);
   box-shadow: none;
   font-size: 12px;
-}
-
-.segmented button + button {
-  border-left: 2px solid var(--ink);
 }
 
 .segmented button:hover {
@@ -779,9 +779,10 @@ button.show {
   overflow-wrap: anywhere;
 }
 
+/* wide enough for "~2H 54M DRIVE · 260 KM" on one line */
 .show-row .reach {
   flex: none;
-  width: 160px;
+  width: 184px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -790,8 +791,16 @@ button.show {
   text-transform: uppercase;
 }
 
+.show-row .drive {
+  white-space: nowrap;
+}
+
+/* the same width with or without a tickets link, so the columns line up */
 .show-row .actions {
+  flex: none;
+  min-width: 268px;
   display: flex;
+  justify-content: flex-end;
   gap: 10px;
   padding-top: 2px;
 }
@@ -1248,7 +1257,7 @@ button.show {
 .trip-block {
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 28px;
 }
 
 .trip-hero {
@@ -1687,6 +1696,10 @@ button.primary.new-trip:hover:not(:disabled) {
   .show-row,
   .show-row .show {
     column-gap: 16px;
+  }
+  .show-row .actions {
+    min-width: 0;
+    justify-content: flex-start;
   }
   .favorite-name h2 {
     font-size: 32px;
