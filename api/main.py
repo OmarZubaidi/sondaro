@@ -194,6 +194,7 @@ async def api_favorites(
             {
                 "key": favorite.artist.key,
                 "name": favorite.artist.name,
+                "image": scan.image_of(favorite.artist),
                 "listens": favorite.artist.listens,
                 "affinity": favorite.artist.affinity,
                 "searching": favorite.searching,

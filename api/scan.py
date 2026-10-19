@@ -205,7 +205,7 @@ def local_candidates(overrides: dict | None = None) -> list[Candidate]:
     min_lat, max_lat, min_lon, max_lon = geo.bounding_box(lat, lon, LOCAL_QUERY_KM)
 
     rows = db.query(
-        "SELECT e.*, a.affinity, a.listens "
+        "SELECT e.*, a.affinity, a.listens, a.image_poster, a.image_fanart "
         "FROM events e JOIN artists a ON a.key = e.artist_key "
         "WHERE e.date >= ? AND e.date <= ? "
         "  AND e.lat BETWEEN ? AND ? AND e.lon BETWEEN ? AND ? "
@@ -400,7 +400,7 @@ def trip_candidates(trip) -> list[Candidate]:
     bought = purchased_ids()
 
     rows = db.query(
-        "SELECT e.*, a.affinity, a.listens "
+        "SELECT e.*, a.affinity, a.listens, a.image_poster, a.image_fanart "
         "FROM events e JOIN artists a ON a.key = e.artist_key "
         "WHERE e.date >= ? AND e.date <= ? ORDER BY e.date",
         (max(window_start, today()).isoformat(), window_end.isoformat()),
@@ -539,7 +539,7 @@ def favorite_candidates(limit: int) -> list[Favorite]:
     favorites: list[Favorite] = []
     for artist in artists:
         rows = db.query(
-            "SELECT e.*, a.affinity, a.listens "
+            "SELECT e.*, a.affinity, a.listens, a.image_poster, a.image_fanart "
             "FROM events e JOIN artists a ON a.key = e.artist_key "
             "WHERE e.artist_key = ? AND e.date >= ? "
             # No upper bound. The lookups only reach the home horizon, but a
@@ -589,6 +589,8 @@ def _candidate(row, score: scoring.Score) -> Candidate:
             mbid=None,
             affinity=row["affinity"],
             listens=row["listens"] or 0,
+            image_poster=row["image_poster"],
+            image_fanart=row["image_fanart"],
         ),
         score=score,
         provider=row["provider"],
@@ -618,6 +620,13 @@ def set_purchased(event_id: str, purchased: bool) -> bool:
     return purchased
 
 
+def image_of(artist: Artist) -> dict | None:
+    """The artist's photos for the page, or None when Lidarr has neither."""
+    if not (artist.image_poster or artist.image_fanart):
+        return None
+    return {"poster": artist.image_poster, "fanart": artist.image_fanart}
+
+
 def serialize(candidate: Candidate, purchased: set[str] | None = None) -> dict:
     event = candidate.event
     score = candidate.score
@@ -625,6 +634,7 @@ def serialize(candidate: Candidate, purchased: set[str] | None = None) -> dict:
         "purchased": event.id in purchased if purchased is not None else is_purchased(event.id),
         "id": event.id,
         "artist": candidate.artist.name,
+        "image": image_of(candidate.artist),
         "listens": candidate.artist.listens,
         "score": score.total,
         "affinity": score.affinity,

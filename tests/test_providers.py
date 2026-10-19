@@ -119,6 +119,41 @@ async def test_lidarr_reports_how_much_of_an_artist_is_on_disk(routes, monkeypat
     assert [a["tracks"] for a in artists] == [212, 0]
 
 
+async def test_lidarr_reports_the_photos_a_browser_can_load(routes, monkeypatch):
+    """Lidarr's own relative paths need the key to read, and plain http would
+    be mixed content on the https page, so only https remote URLs are kept."""
+    monkeypatch.setattr(config, "lidarr_api_key", "key")
+    monkeypatch.setattr(config, "lidarr_url", "http://lidarr.test:8686")
+    routes.add(
+        "/api/v1/artist",
+        [
+            {
+                "artistName": "Fontaines D.C.",
+                "foreignArtistId": "abc",
+                "id": 1,
+                "monitored": True,
+                "images": [
+                    {"coverType": "banner", "remoteUrl": "https://img.test/banner.jpg"},
+                    {
+                        "coverType": "poster",
+                        "url": "/MediaCover/1/poster.jpg",
+                        "remoteUrl": "https://img.test/poster.jpg",
+                    },
+                    {"coverType": "fanart", "remoteUrl": "http://img.test/fanart.jpg"},
+                ],
+            },
+            {"artistName": "No Photos", "foreignArtistId": "def", "id": 2, "monitored": True},
+        ],
+    )
+
+    artists = await lidarr.list_artists()
+
+    assert [(a["image_poster"], a["image_fanart"]) for a in artists] == [
+        ("https://img.test/poster.jpg", None),
+        (None, None),
+    ]
+
+
 async def test_lidarr_without_a_key_returns_nothing_rather_than_erroring(routes, monkeypatch):
     monkeypatch.setattr(config, "lidarr_api_key", "")
     assert await lidarr.list_artists() == []

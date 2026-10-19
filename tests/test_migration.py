@@ -101,3 +101,18 @@ def test_adding_the_end_columns_twice_is_harmless():
 
     columns = {row["name"] for row in db.query("PRAGMA table_info(events)")}
     assert {"end_date", "end_time", "ends_at"} <= columns
+
+
+def test_an_older_library_gains_photo_columns_and_keeps_its_artists():
+    db.execute(
+        "INSERT INTO artists(key, name, affinity, listens) VALUES('name:danheim', 'Danheim', 0.8, 114)"
+    )
+    with db.cursor() as cur:
+        for column in ("image_poster", "image_fanart"):
+            cur.execute(f"ALTER TABLE artists DROP COLUMN {column}")
+
+    db.close()
+    db.connect()  # runs the migration
+
+    row = db.query_one("SELECT * FROM artists WHERE key = 'name:danheim'")
+    assert (row["listens"], row["image_poster"], row["image_fanart"]) == (114, None, None)

@@ -34,7 +34,11 @@ CREATE TABLE IF NOT EXISTS artists (
     -- recomputed from scratch on every sync, so rank 10 and rank 11 can trade
     -- places during the week you spent planning around one of them; this is
     -- what keeps the one that slipped on the page instead of dropping it.
-    top_seen_at TEXT
+    top_seen_at TEXT,
+    -- photos, as the remote URLs Lidarr reports. The browser loads them
+    -- directly, so nothing here is ever downloaded or stored as a file.
+    image_poster TEXT,
+    image_fanart TEXT
 );
 CREATE INDEX IF NOT EXISTS artists_affinity ON artists(affinity DESC);
 
@@ -263,6 +267,11 @@ def _migrate(conn: sqlite3.Connection) -> None:
     # slice, and the next sync stamps whoever is actually in it.
     if "top_seen_at" not in artist_columns:
         conn.execute("ALTER TABLE artists ADD COLUMN top_seen_at TEXT")
+
+    # Photos came later again, and the next library sync fills them in.
+    for column in ("image_poster", "image_fanart"):
+        if column not in artist_columns:
+            conn.execute(f"ALTER TABLE artists ADD COLUMN {column} TEXT")
 
     # Distances moved to km. The cached drive times cost real API calls, so
     # they are converted in place rather than thrown away and re-fetched.

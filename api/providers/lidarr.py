@@ -74,6 +74,7 @@ async def list_artists(monitored_only: bool = True) -> list[dict]:
         # to "how much of them do I have" — trackCount includes everything
         # Lidarr merely knows exists.
         statistics = raw.get("statistics") or {}
+        images = _images(raw.get("images"))
         artists.append(
             {
                 "name": name,
@@ -81,9 +82,29 @@ async def list_artists(monitored_only: bool = True) -> list[dict]:
                 "lidarr_id": raw.get("id"),
                 "monitored": 1 if monitored else 0,
                 "tracks": int(statistics.get("trackFileCount") or 0),
+                "image_poster": images.get("poster"),
+                "image_fanart": images.get("fanart"),
             }
         )
     return artists
+
+
+def _images(raw) -> dict[str, str]:
+    """coverType -> remote URL, for the two kinds the pages use.
+
+    Only https survives. The browser loads these straight from the source, so
+    a plain-http one would be blocked as mixed content on the tailnet's https
+    page, and Lidarr's own relative `url` needs the API key to read.
+    """
+    found: dict[str, str] = {}
+    for image in raw if isinstance(raw, list) else []:
+        if not isinstance(image, dict):
+            continue
+        kind = image.get("coverType")
+        url = str(image.get("remoteUrl") or "")
+        if kind in ("poster", "fanart") and kind not in found and url.startswith("https://"):
+            found[kind] = url
+    return found
 
 
 async def healthy() -> bool:

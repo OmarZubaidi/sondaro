@@ -112,3 +112,32 @@ async def test_the_chosen_source_is_reported_for_the_status_page(routes):
     _counts, source = await library.pick_counts(ARTISTS)
 
     assert source == "lastfm (2/5 artists)"
+
+
+async def test_sync_keeps_photos_and_drops_ones_lidarr_no_longer_reports(routes, monkeypatch):
+    routes.add("listenbrainz.org", listenbrainz([]))
+    routes.add("audioscrobbler.com", lastfm([]))
+
+    def lidarr_reporting(poster):
+        async def list_artists(**_):
+            return [
+                {
+                    "name": "Danheim",
+                    "mbid": None,
+                    "lidarr_id": 1,
+                    "monitored": 1,
+                    "tracks": 0,
+                    "image_poster": poster,
+                    "image_fanart": None,
+                }
+            ]
+
+        return list_artists
+
+    monkeypatch.setattr(library.lidarr, "list_artists", lidarr_reporting("https://img.test/a.jpg"))
+    await library.sync()
+    assert library.all_artists()[0].image_poster == "https://img.test/a.jpg"
+
+    monkeypatch.setattr(library.lidarr, "list_artists", lidarr_reporting(None))
+    await library.sync()
+    assert library.all_artists()[0].image_poster is None
