@@ -17,7 +17,12 @@ export function DateGroup({ date, shows, onChanged }: Props) {
     <section className="date-group">
       <h3 className="date-tag">
         <span className="date-label">{dateLabel(date)}</span>
-        {ordered.length > 1 && <span>· {ordered.length} options</span>}
+        {ordered.length > 1 && (
+          <>
+            {' '}
+            <span>· {ordered.length} options</span>
+          </>
+        )}
       </h3>
       {ordered.map((show) => (
         <ShowCard key={show.id} show={show} showDate={false} onChanged={onChanged} />

@@ -4,7 +4,7 @@ interface Option {
   /** a string lets a row say something other than a number — "…" for a count
    *  that isn't final yet */
   count?: number | string
-  /** hover text, for whatever the count can't say on its own */
+  /** a line under the row, for whatever the count can't say on its own */
   hint?: string
 }
 
@@ -38,7 +38,7 @@ export function CheckList({ legend, options, selected, onChange }: Props) {
         )}
       </legend>
       {options.map((option) => (
-        <label key={option.value} title={option.hint}>
+        <label key={option.value}>
           <input
             type="checkbox"
             checked={selected.has(option.value)}
@@ -46,6 +46,7 @@ export function CheckList({ legend, options, selected, onChange }: Props) {
           />
           <span>{option.label}</span>
           {option.count !== undefined && <em>{option.count}</em>}
+          {option.hint && <small className="hint">{option.hint}</small>}
         </label>
       ))}
     </fieldset>

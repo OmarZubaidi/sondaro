@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api'
 import type { Trip, TripsFeed } from '../lib/types'
+import { dateSpan } from '../lib/format'
 import { DateGroup } from '../components/DateGroup'
 import { CheckList } from '../components/CheckList'
 import { TripModal } from '../components/TripModal'
@@ -47,6 +48,25 @@ export function Trips() {
       .filter((group) => group.shows.length > 0)
   }, [feed, minScore, countryFilter, tripFilter])
 
+  // One section per trip, holding whatever turned up for it. A show two trips
+  // both want appears under each, and a show you're going to keeps its trip on
+  // the page even when the trip filter leaves that trip out.
+  const sections = useMemo(() => {
+    if (!feed) return []
+    return feed.trips.flatMap((trip) => {
+      const picked = tripFilter.size === 0 || tripFilter.has(String(trip.id))
+      const groups = dates
+        .map((group) => ({
+          date: group.date,
+          shows: group.shows.filter(
+            (show) => show.trips?.some((t) => t.id === trip.id) && (picked || show.purchased),
+          ),
+        }))
+        .filter((group) => group.shows.length > 0)
+      return picked || groups.length > 0 ? [{ trip, groups }] : []
+    })
+  }, [feed, dates, tripFilter])
+
   const shown = dates.reduce((sum, group) => sum + group.shows.length, 0)
 
   const perTrip = useMemo(() => {
@@ -79,126 +99,84 @@ export function Trips() {
     load()
   }
 
-  if (error) return <div className="note">{error}</div>
-  if (!feed) return <div className="empty">Loading…</div>
+  if (error)
+    return (
+      <div className="wrap">
+        <div className="note">{error}</div>
+      </div>
+    )
+  if (!feed)
+    return (
+      <div className="wrap">
+        <div className="empty">Loading…</div>
+      </div>
+    )
 
   return (
     <>
-      <div className="local-layout">
-        <aside className="side">
-          <div className="title-row">
-            <h2>Trips</h2>
-          </div>
+      <div className="wrap local-layout">
+        <aside className="side tall">
+          <h1 className="page-title">Your trips</h1>
 
-          <button className="primary block" type="button" onClick={() => setEditing('new')}>
+          <button
+            className="primary block new-trip"
+            type="button"
+            onClick={() => setEditing('new')}
+          >
             New trip
           </button>
 
-          {/* The itinerary, then which trips, then how to narrow them.
-              Collapsible because it's reference material: you read it when
-              you're wondering where you'll be, not on every visit. */}
           {feed.trips.length > 0 && (
             <>
-              <details className="card filters trip-list" open>
-                <summary>
-                  Itinerary <em>{feed.trips.length}</em>
-                </summary>
-                {feed.trips.map((trip) => (
-                  <div className="trip-row" key={trip.id}>
-                    <div className="trip-row-head">
-                      <strong title={trip.name}>{trip.name}</strong>
-                      <IconButton
-                        label={`Edit ${trip.name}`}
-                        icon={<EditIcon />}
-                        onClick={() => setEditing(trip)}
-                      />
-                      <IconButton
-                        label={`Delete ${trip.name}`}
-                        icon={<TrashIcon />}
-                        tone="danger"
-                        onClick={() => remove(trip)}
-                      />
-                    </div>
-                    <div className="muted trip-span">
-                      {trip.start_date} – {trip.end_date}
-                    </div>
-                    <ul className="trip-legs">
-                      {trip.legs.map((leg) => (
-                        <li key={`${leg.country}:${leg.city ?? ''}`}>
-                          <span className={leg.city ? undefined : 'loose'}>
-                            {leg.city ?? countryNames.get(leg.country) ?? leg.country}
-                          </span>
-                          {leg.start_date ? (
-                            <span className="muted">
-                              {leg.start_date}
-                              {leg.end_date && ` – ${leg.end_date}`}
-                            </span>
-                          ) : (
-                            <span
-                              className="muted"
-                              title="no city named, so the whole country stays in play"
-                            >
-                              anywhere, any day
-                            </span>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </details>
+              <CheckList
+                legend="Trips"
+                selected={tripFilter}
+                onChange={setTripFilter}
+                options={feed.trips.map((trip) => ({
+                  value: String(trip.id),
+                  label: trip.name,
+                  count: perTrip.get(String(trip.id)) ?? 0,
+                }))}
+              />
 
-              <div className="card filters">
-                <CheckList
-                  legend="Trips"
-                  selected={tripFilter}
-                  onChange={setTripFilter}
-                  options={feed.trips.map((trip) => ({
-                    value: String(trip.id),
-                    label: trip.name,
-                    count: perTrip.get(String(trip.id)) ?? 0,
-                  }))}
+              <div className="tag-field">
+                <label htmlFor="trip-min" className="tag">
+                  Hide anything below
+                </label>
+                <input
+                  id="trip-min"
+                  type="number"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={minScore}
+                  onChange={(e) =>
+                    setMinScore(Math.min(1, Math.max(0, Number(e.target.value) || 0)))
+                  }
                 />
               </div>
 
-              <div className="card filters">
-                <div className="inline-field">
-                  <label htmlFor="trip-min">Hide anything below</label>
-                  <input
-                    id="trip-min"
-                    type="number"
-                    min={0}
-                    max={1}
-                    step={0.05}
-                    value={minScore}
-                    onChange={(e) =>
-                      setMinScore(Math.min(1, Math.max(0, Number(e.target.value) || 0)))
-                    }
-                  />
-                </div>
-
-                {/* every country the trips touch, including the ones showing
-                    nothing — a row reading 0 is what the explanatory banners
-                    used to say, at a fraction of the page */}
-                <CheckList
-                  legend="Countries"
-                  selected={countryFilter}
-                  onChange={setCountryFilter}
-                  options={feed.countries.map((c) => {
-                    const found = perCountry.get(c.code) ?? 0
-                    return {
-                      value: c.code,
-                      label: c.name,
-                      count: found === 0 && c.searching ? '…' : found,
-                      hint:
-                        c.note ??
-                        (found === 0 && c.searching
-                          ? 'Still being searched, so this may not be the final answer.'
-                          : undefined),
-                    }
-                  })}
-                />
-              </div>
+              {/* every country the trips touch, including the ones showing
+                  nothing — a row reading 0 is what the explanatory banners
+                  used to say, at a fraction of the page */}
+              <CheckList
+                legend="Countries"
+                selected={countryFilter}
+                onChange={setCountryFilter}
+                options={feed.countries.map((c) => {
+                  const found = perCountry.get(c.code) ?? 0
+                  return {
+                    value: c.code,
+                    label: c.name,
+                    count: found === 0 && c.searching ? '…' : found,
+                    hint:
+                      c.note ??
+                      (found === 0 && c.searching
+                        ? 'Still being searched, so this may not be the final answer.'
+                        : undefined),
+                  }
+                })}
+              />
             </>
           )}
 
@@ -212,17 +190,70 @@ export function Trips() {
           </div>
         </aside>
 
-        {/* nothing but results: the itinerary that used to sit on top of them
-            is in the sidebar, where it doesn't push the answer below the fold */}
         <div className="feed">
           {feed.trips.length === 0 ? (
             <div className="empty">No trips yet. Add one and anything worth seeing while
               you're there turns up here — and in the calendar you already subscribe to.</div>
-          ) : dates.length === 0 ? (
-            <div className="empty">Nothing clears these filters.</div>
           ) : (
-            dates.map((group) => (
-              <DateGroup key={group.date} date={group.date} shows={group.shows} onChanged={load} />
+            sections.map(({ trip, groups }) => (
+              <section className="trip-block" key={trip.id} aria-label={trip.name}>
+                <div className="trip-hero">
+                  <div className="trip-hero-top">
+                    <div className="trip-hero-title">
+                      <span className="trip-span">
+                        {dateSpan(trip.start_date, trip.end_date)}
+                      </span>
+                      <h2>{trip.name}</h2>
+                    </div>
+                    <IconButton
+                      label={`Edit ${trip.name}`}
+                      icon={<EditIcon />}
+                      onClick={() => setEditing(trip)}
+                    />
+                    <IconButton
+                      label={`Delete ${trip.name}`}
+                      icon={<TrashIcon />}
+                      tone="danger"
+                      onClick={() => remove(trip)}
+                    />
+                  </div>
+                  <ol className="trip-legs">
+                    {trip.legs.map((leg) => (
+                      <li key={`${leg.country}:${leg.city ?? ''}`}>
+                        <span className="leg-place">
+                          {leg.city ?? countryNames.get(leg.country) ?? leg.country}
+                        </span>
+                        {leg.start_date ? (
+                          <span className="leg-dates">
+                            {dateSpan(leg.start_date, leg.end_date ?? leg.start_date, {
+                              year: false,
+                            })}
+                          </span>
+                        ) : (
+                          <span
+                            className="chip info"
+                            title="no city named, so the whole country stays in play"
+                          >
+                            anywhere, any day
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+
+                {groups.length === 0 && (perTrip.get(String(trip.id)) ?? 0) > 0 && (
+                  <div className="empty">Nothing clears these filters.</div>
+                )}
+                {groups.map((group) => (
+                  <DateGroup
+                    key={group.date}
+                    date={group.date}
+                    shows={group.shows}
+                    onChanged={load}
+                  />
+                ))}
+              </section>
             ))
           )}
         </div>
