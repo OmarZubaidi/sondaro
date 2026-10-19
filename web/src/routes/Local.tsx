@@ -6,6 +6,8 @@ import { ShowCard } from '../components/ShowCard'
 import { IndexProgress } from '../components/IndexProgress'
 import { LocalFilters, type Filters } from '../components/LocalFilters'
 
+const monthId = (label: string) => `month-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+
 const DEFAULTS: Filters = {
   weeknight_hours: 3,
   sunday_hours: 3.75,
@@ -91,10 +93,21 @@ export function Local() {
         {/* the filters stay put while the list scrolls: they're the reason the
             list looks the way it does, so scrolling away from them is what
             makes a result confusing */}
-        <aside className="side">
+        <aside className="side tall">
           <h1 className="page-title">Near home</h1>
 
           <LocalFilters value={filters} onChange={setFilters} />
+
+          {/* one month has nowhere to jump to */}
+          {feed.months.length > 1 && (
+            <nav className="month-jump" aria-label="Jump to month">
+              {feed.months.map((month) => (
+                <a key={month.label} href={`#${monthId(month.label)}`}>
+                  <span>{month.label}</span> <em>{month.shows.length}</em>
+                </a>
+              ))}
+            </nav>
+          )}
 
           {/* provenance, not navigation — quiet, and out of the way at the end */}
           <div className="side-meta">
@@ -115,7 +128,7 @@ export function Local() {
           )}
 
           {feed.months.map((month) => (
-            <section className="month" key={month.label}>
+            <section className="month" id={monthId(month.label)} key={month.label}>
               <h2 className="month-label">
                 <span>{month.label}</span>
               </h2>
