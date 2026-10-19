@@ -2,21 +2,26 @@ interface Props {
   score: number
 }
 
+/** Ten dots, one filled per tenth of the score. */
 export function ScoreBar({ score }: Props) {
-  const pct = Math.round(Math.max(0, Math.min(score, 1)) * 100)
+  const clamped = Math.max(0, Math.min(score, 1))
+  const filled = Math.round(clamped * 10)
   return (
     <div className="score">
-      <span data-testid="score-value">{score.toFixed(2)}</span>
-      <div
-        className="meter"
+      <span
+        className="dots"
         role="meter"
-        aria-valuenow={pct}
+        aria-valuenow={Math.round(clamped * 100)}
         aria-valuemin={0}
         aria-valuemax={100}
+        aria-valuetext={score.toFixed(2)}
         aria-label="match score"
       >
-        <i style={{ width: `${pct}%` }} />
-      </div>
+        {Array.from({ length: 10 }, (_, i) => (
+          <i key={i} className={i < filled ? 'on' : undefined} />
+        ))}
+      </span>
+      <span data-testid="score-value">{score.toFixed(2)}</span>
     </div>
   )
 }
