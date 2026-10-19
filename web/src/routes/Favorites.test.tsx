@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 import { Favorites } from './Favorites'
 import { api } from '../lib/api'
@@ -159,7 +160,14 @@ async function renderFeed(payload: FavoritesFeed = makeFeed(TEXAS, TEXAS_CLUSTER
   // the trip-shape controls remember themselves on a debounce; stub the write
   // so a pending timer can't reach the network
   vi.spyOn(api, 'updateSettings').mockResolvedValue({ updated: {} })
-  render(<Favorites />)
+  render(
+    <MemoryRouter initialEntries={['/favorites']}>
+      <Routes>
+        <Route path="/favorites" element={<Favorites />} />
+        <Route path="/trips" element={<p>the trips page</p>} />
+      </Routes>
+    </MemoryRouter>,
+  )
   await screen.findByRole('heading', { name: 'Artists' })
 }
 
@@ -427,6 +435,77 @@ describe('Favorites', () => {
       fireEvent.change(screen.getByLabelText('Within'), { target: { value: '900' } })
 
       await waitFor(() => expect(fetched).toHaveBeenCalledWith({ days: 60, km: 650 }))
+    })
+
+    describe('making a could-be trip a real one', () => {
+      const make = () => userEvent.click(screen.getByRole('button', { name: 'Make it a trip →' }))
+
+      async function renderWithCountries() {
+        await renderFeed()
+        vi.spyOn(api, 'countries').mockResolvedValue({
+          countries: [{ code: 'US', name: 'United States of America' }],
+        })
+        await trips()
+      }
+
+      it('offers it on every card', async () => {
+        await renderWithCountries()
+
+        expect(screen.getAllByRole('button', { name: 'Make it a trip →' })).toHaveLength(1)
+      })
+
+      it('opens the trip form filled in from the card', async () => {
+        await renderWithCountries()
+
+        await make()
+
+        const form = await screen.findByRole('dialog', { name: 'New trip' })
+        expect(within(form).getByLabelText('Name')).toHaveValue('Dallas · Austin · The Woodlands')
+        expect(within(form).getByLabelText('First day')).toHaveValue('2026-09-20')
+        expect(within(form).getByLabelText('Last day')).toHaveValue('2026-10-24')
+        for (const label of [
+          'United States of America',
+          'Dallas',
+          'Austin',
+          'The Woodlands',
+          'Fort Worth',
+        ]) {
+          expect(within(form).getByRole('button', { name: `Remove ${label}` })).toBeInTheDocument()
+        }
+      })
+
+      it('saves it as a trip and goes to the trips page', async () => {
+        await renderWithCountries()
+        const created = vi.spyOn(api, 'createTrip').mockResolvedValue({} as never)
+
+        await make()
+        await userEvent.click(await screen.findByRole('button', { name: 'Create trip' }))
+
+        expect(created).toHaveBeenCalledWith(
+          expect.objectContaining({
+            start_date: '2026-09-20',
+            end_date: '2026-10-24',
+            legs: ['Dallas', 'Austin', 'The Woodlands', 'Fort Worth'].map((city) => ({
+              country: 'US',
+              city,
+              start_date: null,
+              end_date: null,
+            })),
+          }),
+        )
+        expect(await screen.findByText('the trips page')).toBeInTheDocument()
+      })
+
+      it('closes without saving anything', async () => {
+        await renderWithCountries()
+        const created = vi.spyOn(api, 'createTrip')
+
+        await make()
+        await userEvent.click(await screen.findByRole('button', { name: 'Cancel' }))
+
+        expect(screen.queryByRole('dialog')).toBeNull()
+        expect(created).not.toHaveBeenCalled()
+      })
     })
 
     it('goes back to artist bands when you switch back', async () => {

@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
-import type { FavoritesFeed, Show } from '../lib/types'
+import type { Cluster, FavoritesFeed, Show } from '../lib/types'
 import { dateSpan } from '../lib/format'
 import { ArtistPhoto } from '../components/ArtistPhoto'
 import { CheckList } from '../components/CheckList'
 import { ShowCard } from '../components/ShowCard'
+import { TripModal, type TripPrefill } from '../components/TripModal'
 import { TripRun } from '../components/TripRun'
 
 type View = 'artists' | 'trips'
@@ -36,10 +38,29 @@ interface Trip {
   label: string
   summary: string
   runs: Run[]
+  prefill: TripPrefill
 }
 
 function plural(count: number, one: string, many = `${one}s`): string {
   return `${count} ${count === 1 ? one : many}`
+}
+
+/** A real trip, started from the dates on a could-be card: its span, the
+ *  countries those dates fall in, and their cities as booked legs. */
+function prefillFor(cluster: Cluster, dates: Entry[]): TripPrefill {
+  const cities: { country: string; city: string }[] = []
+  for (const { code, show } of dates) {
+    if (code && show.city && !cities.some((c) => c.country === code && c.city === show.city)) {
+      cities.push({ country: code, city: show.city })
+    }
+  }
+  return {
+    name: [...new Set(cities.map((c) => c.city))].slice(0, 3).join(' · '),
+    start_date: cluster.start_date,
+    end_date: cluster.end_date,
+    countries: [...new Set(dates.map((entry) => entry.code).filter(Boolean))],
+    cities,
+  }
 }
 
 /** Split a trip's dates into consecutive same-artist runs.
@@ -67,6 +88,12 @@ export function Favorites() {
   const [artistFilter, setArtistFilter] = useState<Set<string>>(new Set())
   const [countryFilter, setCountryFilter] = useState<Set<string>>(new Set())
   const [shape, setShape] = useState<{ days: number; km: number } | null>(null)
+  const [making, setMaking] = useState<TripPrefill | null>(null)
+  // every country, for the trip form's picker; fetched the first time it's needed
+  const [allCountries, setAllCountries] = useState<{ code: string; name: string }[] | null>(
+    null,
+  )
+  const navigate = useNavigate()
 
   const load = useCallback((next?: { days: number; km: number }) => {
     api
@@ -173,6 +200,7 @@ export function Favorites() {
         label: dateSpan(cluster.start_date, cluster.end_date),
         summary: `${plural(artists.size, 'favorite')} · ${plural(dates.length, 'date')}`,
         runs: runs(dates),
+        prefill: prefillFor(cluster, dates),
       })
     }
     return found
@@ -222,6 +250,13 @@ export function Favorites() {
     )
 
   const empty = view === 'trips' ? trips.length === 0 : byArtist.length === 0
+
+  async function makeTrip(prefill: TripPrefill) {
+    if (!allCountries) {
+      setAllCountries(await api.countries().then((d) => d.countries, () => []))
+    }
+    setMaking(prefill)
+  }
 
   return (
     <div className="wrap local-layout">
@@ -329,6 +364,9 @@ export function Favorites() {
               <div className="trip-head">
                 <h2>{trip.label}</h2>
                 <span className="trip-summary">{trip.summary}</span>
+                <button type="button" className="make-trip" onClick={() => makeTrip(trip.prefill)}>
+                  Make it a trip →
+                </button>
               </div>
               <div className="trip-body">
                 {trip.runs.map((run) => (
@@ -417,6 +455,16 @@ export function Favorites() {
           })
         )}
       </div>
+
+      {/* fixed over the page, so where it sits in the tree doesn't matter */}
+      {making && allCountries && (
+        <TripModal
+          prefill={making}
+          countries={allCountries}
+          onClose={() => setMaking(null)}
+          onSaved={() => navigate('/trips')}
+        />
+      )}
     </div>
   )
 }

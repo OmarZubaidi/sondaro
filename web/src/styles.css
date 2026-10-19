@@ -1468,6 +1468,26 @@ button.show {
   text-transform: uppercase;
 }
 
+/* on the ink bar, so its border, shadow and focus ring are white or fuchsia */
+.make-trip {
+  margin-left: auto;
+  padding: 0 1rem;
+  border-color: var(--paper);
+  background: var(--fuchsia);
+  box-shadow: 0.25rem 0.25rem 0 var(--paper);
+  font: 400 1.125rem/1.1 var(--display);
+  letter-spacing: 0.0625rem;
+}
+
+.make-trip:hover:not(:disabled) {
+  transform: translate(-0.125rem, -0.125rem);
+  box-shadow: 0.375rem 0.375rem 0 var(--paper);
+}
+
+.make-trip:focus-visible {
+  outline-color: var(--fuchsia);
+}
+
 .trip-body {
   display: flex;
   flex-direction: column;
