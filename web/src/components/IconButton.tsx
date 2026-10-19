@@ -39,7 +39,7 @@ export function IconButton({ label, icon, onClick, href, disabled, tone = 'defau
 const stroke = {
   fill: 'none',
   stroke: 'currentColor',
-  strokeWidth: 1.7,
+  strokeWidth: 2.5,
   strokeLinecap: 'round' as const,
   strokeLinejoin: 'round' as const,
 }
@@ -76,6 +76,14 @@ export const CalendarIcon = () => (
 export const CloseIcon = () => (
   <Svg>
     <path d="M6 6l12 12M18 6L6 18" />
+  </Svg>
+)
+
+export const SettingsIcon = () => (
+  <Svg>
+    <path d="M4 7h10M18 7h2M4 17h4M12 17h8" />
+    <circle cx="16" cy="7" r="2" />
+    <circle cx="10" cy="17" r="2" />
   </Svg>
 )
 
