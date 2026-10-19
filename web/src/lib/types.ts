@@ -1,6 +1,13 @@
+/** Remote photo URLs from Lidarr; the browser loads them directly. */
+export interface ArtistImage {
+  poster: string | null
+  fanart: string | null
+}
+
 export interface Show {
   id: string
   artist: string
+  image?: ArtistImage | null
   listens: number
   score: number
   affinity: number
@@ -114,6 +121,7 @@ export interface FavoriteCountry {
 export interface FavoriteArtist {
   key: string
   name: string
+  image?: ArtistImage | null
   listens: number
   affinity: number
   /** no clean worldwide lookup yet, so no dates isn't the answer */

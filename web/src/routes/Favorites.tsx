@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../lib/api'
 import type { FavoritesFeed, Show } from '../lib/types'
 import { dateSpan } from '../lib/format'
+import { ArtistPhoto } from '../components/ArtistPhoto'
 import { CheckList } from '../components/CheckList'
 import { ShowCard } from '../components/ShowCard'
 import { TripRun } from '../components/TripRun'
@@ -345,6 +346,10 @@ export function Favorites() {
           byArtist.map(({ artist, dates, quiet }) => {
             const head = (
               <>
+                <ArtistPhoto
+                  src={artist.image?.poster ?? artist.image?.fanart}
+                  className="favorite-thumb"
+                />
                 <div className="favorite-name">
                   <h2>{artist.name}</h2>
                   {artist.slipped && (

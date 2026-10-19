@@ -985,6 +985,48 @@ button.show {
   padding: 0 0.75rem;
 }
 
+/* --- artist photos ------------------------------------------------------------ */
+
+.artist-photo {
+  position: relative;
+  overflow: hidden;
+  display: block;
+  background: var(--ink);
+}
+
+.artist-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.favorite-thumb {
+  flex: none;
+  width: 3.75rem;
+  height: 3.75rem;
+  border: var(--rule);
+}
+
+.favorite[open] .favorite-thumb {
+  width: 5.5rem;
+  height: 5.5rem;
+}
+
+.favorite-thumb::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, var(--fuchsia) 0.1375rem, transparent 0.1625rem);
+  background-size: 0.5rem 0.5rem;
+  opacity: 0.45;
+}
+
+.next-up-photo {
+  position: absolute;
+  inset: 0;
+}
+
 /* --- next up ------------------------------------------------------------------ */
 
 .next-up {
@@ -1020,7 +1062,7 @@ button.show {
   mask-image: linear-gradient(200deg, transparent 15%, #000 75%);
 }
 
-.next-up-act > :not(.next-up-dots) {
+.next-up-act > :not(.next-up-dots, .next-up-photo) {
   position: relative;
 }
 

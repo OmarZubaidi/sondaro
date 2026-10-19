@@ -129,6 +129,24 @@ describe('Local', () => {
       expect(within(next).getByText('Big Thief Hall, Utrecht, NL · 1h drive · 80 km')).toBeInTheDocument()
     })
 
+    it('sets the artist’s photo behind the act, the wide one first', async () => {
+      const months = bought('b')
+      months[0].shows[1].image = { poster: 'https://img.test/p.jpg', fanart: 'https://img.test/f.jpg' }
+      await renderLocal(feed(months))
+
+      const next = screen.getByRole('region', { name: 'Next up' })
+      expect(next.querySelector('.next-up-photo img')).toHaveAttribute('src', 'https://img.test/f.jpg')
+    })
+
+    it('falls back to the poster when there is no wide photo', async () => {
+      const months = bought('b')
+      months[0].shows[1].image = { poster: 'https://img.test/p.jpg', fanart: null }
+      await renderLocal(feed(months))
+
+      const next = screen.getByRole('region', { name: 'Next up' })
+      expect(next.querySelector('.next-up-photo img')).toHaveAttribute('src', 'https://img.test/p.jpg')
+    })
+
     it('is left out when no ticket is bought', async () => {
       await renderLocal()
 

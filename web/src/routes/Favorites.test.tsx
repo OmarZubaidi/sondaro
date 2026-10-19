@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { Favorites } from './Favorites'
 import { api } from '../lib/api'
-import type { Cluster, FavoriteArtist, FavoritesFeed, Show } from '../lib/types'
+import type { ArtistImage, Cluster, FavoriteArtist, FavoritesFeed, Show } from '../lib/types'
 
 const COUNTRY_NAMES: Record<string, string> = {
   US: 'United States of America',
@@ -25,6 +25,7 @@ interface Spec {
   dates: Date_[]
   slipped?: boolean
   searching?: boolean
+  image?: ArtistImage
 }
 
 function show(artist: string, date: Date_): Show {
@@ -70,6 +71,7 @@ function makeFeed(
     return {
       key: `name:${spec.name.toLowerCase()}`,
       name: spec.name,
+      image: spec.image ?? null,
       listens: 5000,
       affinity: 1,
       searching: spec.searching ?? false,
@@ -260,6 +262,24 @@ describe('Favorites', () => {
         .getByRole('heading', { name: 'Saint Levant' })
         .closest<HTMLElement>('.favorite')!
       expect(within(group).getByText('2 dates')).toBeInTheDocument()
+    })
+
+    it('puts each artist’s photo beside their name, and a plain tile without one', async () => {
+      await renderFeed(
+        makeFeed(
+          [{ ...TEXAS[0], image: { poster: 'https://img.test/eots.jpg', fanart: null } }, TEXAS[1]],
+          TEXAS_CLUSTERS,
+        ),
+      )
+
+      const band = (name: string) =>
+        screen.getByRole('heading', { name }).closest<HTMLElement>('.favorite')!
+      expect(band('Empire of the Sun').querySelector('.favorite-thumb img')).toHaveAttribute(
+        'src',
+        'https://img.test/eots.jpg',
+      )
+      expect(band('Saint Levant').querySelector('.favorite-thumb')).toBeInTheDocument()
+      expect(band('Saint Levant').querySelector('.favorite-thumb img')).toBeNull()
     })
 
     it('offers no cluster controls, which mean nothing here', async () => {

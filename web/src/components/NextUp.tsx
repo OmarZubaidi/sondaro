@@ -1,5 +1,6 @@
 import type { Show } from '../lib/types'
 import { dayNumber, driveTime, monthYear, place, weekdayLong } from '../lib/format'
+import { ArtistPhoto } from './ArtistPhoto'
 
 interface Props {
   show: Show
@@ -19,6 +20,8 @@ export function NextUp({ show }: Props) {
   return (
     <section className="next-up" aria-label="Next up">
       <div className="next-up-act">
+        {/* the panel is wide, so the wide shot leads */}
+        <ArtistPhoto src={show.image?.fanart ?? show.image?.poster} className="next-up-photo" />
         <div className="next-up-dots" aria-hidden="true" />
         <span className="next-up-label">Next up · ✓ going</span>
         <div className="next-up-name">
