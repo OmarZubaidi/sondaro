@@ -58,14 +58,14 @@ describe('DateGroup', () => {
     expect(screen.queryByText(/options/)).not.toBeInTheDocument()
   })
 
-  it('renders the date as YYYY-MM-DD', () => {
+  it('heads the group with the weekday, day and month', () => {
     render(<DateGroup date="2026-09-12" shows={[show('a', 'Only', 0.5)]} />)
     const heading = screen.getByRole('heading')
-    expect(within(heading).getByText('2026-09-12')).toBeInTheDocument()
+    expect(within(heading).getByText('Sat 12 Sep')).toBeInTheDocument()
   })
 
-  it('still marks a weekend, which is the part of the weekday that matters', () => {
+  it('sits a level under the trip it belongs to', () => {
     render(<DateGroup date="2026-09-12" shows={[show('a', 'Only', 0.5)]} />)
-    expect(screen.getByText('2026-09-12')).toHaveClass('weekend')
+    expect(screen.getByRole('heading', { level: 3 })).toBeInTheDocument()
   })
 })

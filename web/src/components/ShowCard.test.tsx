@@ -41,16 +41,35 @@ describe('ShowCard', () => {
     expect(screen.getByTestId('score-value')).toHaveTextContent('0.64')
   })
 
-  it('says the date and the time the doors open', () => {
+  it('says the day, the weekday and the time the doors open', () => {
     render(<ShowCard show={makeShow()} />)
-    expect(screen.getByText('2026-09-08')).toBeInTheDocument()
+    expect(screen.getByText('08')).toBeInTheDocument()
+    expect(screen.getByText('Tue')).toBeInTheDocument()
     expect(screen.getByText('20:00')).toBeInTheDocument()
   })
 
   it('shows the date alone when the doors are still TBA', () => {
     render(<ShowCard show={makeShow({ time: null })} />)
-    expect(screen.getByText('2026-09-08')).toBeInTheDocument()
+    expect(screen.getByText('08')).toBeInTheDocument()
     expect(screen.queryByText(/\d\d:\d\d/)).not.toBeInTheDocument()
+  })
+
+  it('marks a Friday or Saturday, which is the part of the weekday that matters', () => {
+    const { unmount } = render(<ShowCard show={makeShow({ date: '2026-09-11' })} />)
+    expect(screen.getByText('Fri')).toHaveClass('weekend')
+    unmount()
+
+    render(<ShowCard show={makeShow()} />)
+    expect(screen.getByText('Tue')).not.toHaveClass('weekend')
+  })
+
+  it('in a compact row, leads with the town and puts the venue under it', () => {
+    render(<ShowCard show={makeShow()} compact showCountry={false} countryName="United States" />)
+
+    expect(screen.getByText('Fairview, KS')).toBeInTheDocument()
+    expect(screen.getByText('The Fillmore')).toBeInTheDocument()
+    expect(screen.getByText('Sep 2026')).toBeInTheDocument()
+    expect(screen.getByText('United States')).toBeInTheDocument()
   })
 
   it('renders drive time as hours and minutes, not a decimal', () => {

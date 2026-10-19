@@ -203,13 +203,12 @@ describe('Favorites', () => {
       expect(document.querySelectorAll('.favorite-place')).toHaveLength(0)
     })
 
-    it('puts the country on its own line under the venue', async () => {
+    it('puts the town over the venue, and the country beside them', async () => {
       await renderFeed()
 
-      const card = screen
-        .getByText('Dos Equis Pavilion, Dallas, TX')
-        .closest<HTMLElement>('.card')!
-      expect(within(card).getByText('United States of America')).toBeInTheDocument()
+      const row = screen.getByText('Dos Equis Pavilion').closest<HTMLElement>('.show-row')!
+      expect(within(row).getByText('Dallas, TX')).toBeInTheDocument()
+      expect(within(row).getByText('United States of America')).toBeInTheDocument()
     })
 
     it('orders an artist’s dates chronologically', async () => {
@@ -219,10 +218,8 @@ describe('Favorites', () => {
         .getByRole('heading', { name: 'Empire of the Sun' })
         .closest<HTMLElement>('.favorite')!
       expect(
-        within(band)
-          .getAllByText(/^2026-/)
-          .map((node) => node.textContent),
-      ).toEqual(['2026-09-20', '2026-09-21', '2026-09-24'])
+        Array.from(band.querySelectorAll('.show-row .day')).map((node) => node.textContent),
+      ).toEqual(['20', '21', '24'])
     })
 
     it('shows no score, since it would be the same on every card', async () => {

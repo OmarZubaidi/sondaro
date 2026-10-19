@@ -384,7 +384,7 @@ export function Favorites() {
                     <ShowCard
                       key={entry.show.id}
                       show={entry.show}
-                      showArtist={false}
+                      compact
                       showScore={false}
                       showCountry={false}
                       countryName={entry.country}

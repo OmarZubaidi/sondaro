@@ -1,5 +1,13 @@
 import type { Show } from '../lib/types'
-import { driveTime, isWeekend, place } from '../lib/format'
+import {
+  dayNumber,
+  driveTime,
+  isWeekend,
+  monthYear,
+  place,
+  placeParts,
+  weekdayShort,
+} from '../lib/format'
 import { FlagChip } from './FlagChip'
 import { ScoreBar } from './ScoreBar'
 import { TicketToggle, useTicket } from './TicketToggle'
@@ -22,6 +30,9 @@ interface Props {
    *  the end of a place line is noise; on a worldwide list the country is the
    *  thing you're scanning for. */
   countryName?: string
+  /** One act's dates: the date on one line, the town over the venue, and the
+   *  country in a column of its own. */
+  compact?: boolean
   /** Called after the ticket state changes, so the list can re-filter. */
   onChanged?: () => void
 }
@@ -35,12 +46,12 @@ export function ShowCard({
   showScore = true,
   showCountry = true,
   countryName,
+  compact = false,
   onChanged,
 }: Props) {
   const where = place(show, { country: showCountry }) || 'venue to be announced'
+  const parts = placeParts(show, { country: showCountry })
   const drive = driveTime(show)
-  const weekend = isWeekend(show.date)
-  const interactive = Boolean(onToggle)
   const { bought, pending, toggle } = useTicket(show, onChanged)
   const hasChips =
     bought ||
@@ -48,21 +59,39 @@ export function ShowCard({
     show.reasons.length > 0 ||
     show.flags.length > 0
 
+  const weekday = (
+    <span className={`dow${isWeekend(show.date) ? ' weekend' : ''}`}>
+      {weekdayShort(show.date)}
+    </span>
+  )
+  const time = show.time && <span className="time">{show.time}</span>
+
   const body = (
     <>
-      {showDate && (
-        <div className="when">
-          <span className={weekend ? 'weekend' : undefined}>{show.date}</span>
-          {show.time && (
-            <>
-              <br />
-              <span className="muted">{show.time}</span>
-            </>
-          )}
-        </div>
-      )}
+      {showDate &&
+        (compact ? (
+          <div className="when">
+            <span className="day">{dayNumber(show.date)}</span>
+            <span className="month">{monthYear(show.date)}</span>
+            {weekday}
+            {time}
+          </div>
+        ) : (
+          <div className="when">
+            <div className="when-day">
+              <span className="day">{dayNumber(show.date)}</span>
+              {weekday}
+            </div>
+            {time}
+          </div>
+        ))}
       <div className="body">
-        {showArtist ? (
+        {compact ? (
+          <>
+            <div className="lead">{parts.title}</div>
+            {parts.sub && <div className="where">{parts.sub}</div>}
+          </>
+        ) : showArtist ? (
           <>
             <div className="lead">{show.artist}</div>
             <div className="where">{where}</div>
@@ -70,14 +99,7 @@ export function ShowCard({
         ) : (
           <div className="lead">{where}</div>
         )}
-        {countryName && <div className="where">{countryName}</div>}
-        {drive && (
-          <div className="drive">
-            {drive} drive
-            {show.km !== null && <span className="muted"> · {Math.round(show.km)} km</span>}
-          </div>
-        )}
-        {/* the row carries its own top margin, so an empty one is a gap */}
+        {countryName && !compact && <div className="where">{countryName}</div>}
         {hasChips && (
           <div className="chips">
             {bought && <span className="chip good">ticket bought</span>}
@@ -97,34 +119,45 @@ export function ShowCard({
           </div>
         )}
       </div>
-      {showScore && <ScoreBar score={show.score} />}
+      {countryName && compact && <div className="country">{countryName}</div>}
+      {(drive || showScore) && (
+        <div className="reach">
+          {drive && (
+            <span className="drive">
+              {drive} drive
+              {show.km !== null && <span className="muted"> · {Math.round(show.km)} km</span>}
+            </span>
+          )}
+          {showScore && <ScoreBar score={show.score} />}
+        </div>
+      )}
     </>
   )
 
-  const className = `show${interactive ? ' selectable' : ''}${selected ? ' selected' : ''}`
+  const className = `show-row${compact ? ' compact' : ''}${selected ? ' selected' : ''}${bought ? ' held' : ''}`
 
   return (
-    <div className={`card${selected ? ' selected' : ''}${bought ? ' held' : ''}`}>
-      {interactive ? (
+    <article className={className}>
+      {onToggle ? (
         <button
           type="button"
-          className={className}
+          className="show"
           aria-pressed={selected}
-          onClick={() => onToggle?.(show)}
+          onClick={() => onToggle(show)}
         >
           {body}
         </button>
       ) : (
-        <div className={className}>{body}</div>
+        <div className="show">{body}</div>
       )}
-      <div className="card-foot">
+      <div className="actions">
         {show.url && (
-          <a href={show.url} target="_blank" rel="noreferrer">
+          <a className="tickets" href={show.url} target="_blank" rel="noreferrer">
             tickets ↗
           </a>
         )}
         <TicketToggle bought={bought} pending={pending} onToggle={toggle} />
       </div>
-    </div>
+    </article>
   )
 }
