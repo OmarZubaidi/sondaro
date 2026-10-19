@@ -6,6 +6,7 @@ hand-written polygons, so the index format and the query path are both covered
 without a single byte crossing the wire.
 """
 
+import json
 import math
 import random
 import sys
@@ -152,3 +153,68 @@ def test_country_names_come_from_the_index(index):
     assert borders.country_name("FR") == "France"
     assert borders.country_name("es") == "Spain"
     assert [c["code"] for c in borders.known_countries()] == ["FR", "ES"]
+
+
+# --------------------------------------------------------------------------
+# the map's country shapes
+# --------------------------------------------------------------------------
+
+
+def _world(tmp_path, geojson):
+    out = tmp_path / "world.json"
+    stats = build_borders.build_world(geojson, out)
+    return json.loads(out.read_text()), stats
+
+
+def _area(ring):
+    """Shoelace in lon/lat, written out again so the test doesn't trust the
+    builder's own. Negative is clockwise with north up."""
+    return sum(x1 * y2 - x2 * y1 for (x1, y1), (x2, y2) in zip(ring, ring[1:])) / 2
+
+
+def _country(code, *polygons):
+    return {
+        "properties": {"ISO_A2_EH": code},
+        "geometry": {"type": "MultiPolygon", "coordinates": list(polygons)},
+    }
+
+
+def test_the_map_keys_its_shapes_by_two_letter_code(tmp_path):
+    world, stats = _world(tmp_path, SAMPLE)
+
+    # the -99 territory has no code a trip could name, so it isn't drawn
+    assert sorted(world) == ["ES", "FR"]
+    assert stats["countries"] == 2
+
+
+def test_the_map_winds_rings_the_way_d3_reads_them(tmp_path):
+    """GeoJSON's way round (exterior anticlockwise) would make d3 fill the
+    whole globe except the country."""
+    exterior = [[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]]  # anticlockwise
+    hole = [[2, 2], [2, 4], [4, 4], [4, 2], [2, 2]]  # clockwise
+    world, _ = _world(tmp_path, {"features": [_country("ZA", [exterior, hole])]})
+
+    outline, inner = world["ZA"][0]
+    assert _area(outline) < 0
+    assert _area(inner) > 0
+
+
+def test_the_map_rounds_to_about_a_kilometer_and_drops_merged_points(tmp_path):
+    ring = [[0.001, 0.0], [0.004, 0.0], [5.0, 0.0], [5.0, 5.0], [0.0, 5.0], [0.0, 0.0]]
+    world, _ = _world(tmp_path, {"features": [_country("XX", [ring])]})
+
+    outline = world["XX"][0][0]
+    assert all(point == [round(v, 2) for v in point] for point in outline)
+    assert all(a != b for a, b in zip(outline, outline[1:]))
+
+
+def test_an_island_too_small_to_draw_is_left_out(tmp_path):
+    speck = [[5.001, 5.001], [5.002, 5.001], [5.002, 5.002], [5.001, 5.001]]
+    square = [[0, 0], [0, 1], [1, 1], [1, 0], [0, 0]]
+    world, _ = _world(
+        tmp_path,
+        {"features": [_country("AA", [square], [speck]), _country("BB", [speck])]},
+    )
+
+    assert len(world["AA"]) == 1
+    assert "BB" not in world

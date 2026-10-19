@@ -9,6 +9,10 @@ which is the right cadence for data that changes every few decades.
 `fetch_geojson` is the only function that touches the network, and it is
 deliberately separate from `build` so tests can exercise the real builder
 against inline geometry without ever reaching out.
+
+`--world <path>` writes the trip maps' country shapes from the same file
+instead. That one is run by hand and committed as `web/public/world.json`,
+since the browser needs it and the web build has no Python.
 """
 
 from __future__ import annotations
@@ -160,7 +164,94 @@ def build(geojson: dict[str, Any], out_path: str | Path) -> dict[str, int]:
     return {"countries": len(countries), "segments": len(segments)}
 
 
+# --- the map's country shapes ----------------------------------------------
+
+# Two decimals is about a kilometer: finer than 110m geometry is anyway, and it
+# roughly halves the file the browser downloads.
+WORLD_PRECISION = 2
+
+
+def _polygons(geometry: dict[str, Any]) -> Iterable[list]:
+    kind = geometry.get("type")
+    coords = geometry.get("coordinates") or []
+    if kind == "Polygon":
+        yield coords
+    elif kind == "MultiPolygon":
+        yield from coords
+
+
+def _signed_area(ring: list[tuple[float, float]]) -> float:
+    """Shoelace area in lon/lat. Negative is clockwise with north up."""
+    return sum(x1 * y2 - x2 * y1 for (x1, y1), (x2, y2) in zip(ring, ring[1:])) / 2
+
+
+def _compact_ring(ring: list) -> list[tuple[float, float]] | None:
+    """Rounded, with the points rounding merged dropped. None once too little
+    is left to enclose anything."""
+    out: list[tuple[float, float]] = []
+    for point in ring:
+        if not isinstance(point, (list, tuple)) or len(point) < 2:
+            continue
+        current = (
+            round(float(point[0]), WORLD_PRECISION),
+            round(float(point[1]), WORLD_PRECISION),
+        )
+        if not out or current != out[-1]:
+            out.append(current)
+    if out and out[0] != out[-1]:
+        out.append(out[0])
+    if len(out) < 4 or _signed_area(out) == 0:
+        return None
+    return out
+
+
+def build_world(geojson: dict[str, Any], out_path: str | Path) -> dict[str, int]:
+    """Write the map's country shapes as {alpha-2: [polygon, ...]}.
+
+    Rings are wound the way d3-geo reads them: exteriors clockwise, holes the
+    other way. GeoJSON winds them the opposite way, and d3 reads a backwards
+    ring as everything *except* the country, so one would fill the globe.
+    """
+    world: dict[str, list] = {}
+    points = 0
+
+    for feature in geojson.get("features", []):
+        code = _country_code(feature.get("properties") or {})
+        if not code:
+            continue
+        for polygon in _polygons(feature.get("geometry") or {}):
+            rings = []
+            for index, ring in enumerate(polygon):
+                compact = _compact_ring(ring)
+                if compact is None:
+                    if index == 0:
+                        break  # no outline left, so its holes mean nothing
+                    continue
+                if (_signed_area(compact) < 0) != (index == 0):
+                    compact.reverse()
+                rings.append([list(point) for point in compact])
+                points += len(compact)
+            if rings:
+                world.setdefault(code, []).append(rings)
+
+    out = Path(out_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(world, separators=(",", ":"), sort_keys=True))
+    return {"countries": len(world), "points": points}
+
+
 def main(argv: list[str]) -> int:
+    if len(argv) > 2 and argv[1] == "--world":
+        out_path = argv[2]
+        print(f"fetching {SOURCE_URL}")
+        stats = build_world(fetch_geojson(), out_path)
+        size_kb = Path(out_path).stat().st_size / 1000
+        print(
+            f"wrote {out_path}: {stats['countries']} countries, "
+            f"{stats['points']} points, {size_kb:.0f} KB"
+        )
+        return 0
+
     out_path = argv[1] if len(argv) > 1 else "borders.db"
     print(f"fetching {SOURCE_URL}")
     geojson = fetch_geojson()
