@@ -159,11 +159,12 @@ describe('Trips', () => {
   it('lists the legs, and a country with no city as anywhere, any day', async () => {
     await renderTrips()
 
-    const spring = section('Spring tour')
-    expect(within(spring).getByText('Tokyo')).toBeInTheDocument()
-    expect(within(spring).getByText('02 — 07 Apr')).toBeInTheDocument()
-    expect(await within(spring).findByText('South Korea')).toBeInTheDocument()
-    expect(within(spring).getByText('anywhere, any day')).toBeInTheDocument()
+    // the legs list, not the whole section: the map tags its places too
+    const legs = within(section('Spring tour')).getByRole('list')
+    expect(within(legs).getByText('Tokyo')).toBeInTheDocument()
+    expect(within(legs).getByText('02 — 07 Apr')).toBeInTheDocument()
+    expect(await within(legs).findByText('South Korea')).toBeInTheDocument()
+    expect(within(legs).getByText('anywhere, any day')).toBeInTheDocument()
   })
 
   it('puts a show under every trip that wants it', async () => {

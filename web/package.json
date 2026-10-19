@@ -14,10 +14,11 @@
     "d3-geo": "^3.1.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.28.0"
+    "react-router-dom": "^7.18.4"
   },
   "overrides": {
-    "vite": "$vite"
+    "vite": "$vite",
+    "source-map-js": "^1.2.2"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.3",
@@ -30,6 +31,6 @@
     "jsdom": "^25.0.1",
     "typescript": "^5.7.2",
     "vite": "^6.0.5",
-    "vitest": "^2.1.8"
+    "vitest": "^4.1.11"
   }
 }
