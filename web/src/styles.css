@@ -1,7 +1,8 @@
-/* Round 3. Light only for now; element defaults sit inside :where() so any
-   class can override them without a specificity fight. */
+/* Round 3. Light by default, with the dark theme at the end following the
+   OS. Element defaults sit inside :where() so any class can override them
+   without a specificity fight. */
 :root {
-  color-scheme: light;
+  color-scheme: light dark;
   /* the same in both themes; text on any of the fills is always ink */
   --ink: #0b0b0f;
   --fuchsia: #ff2a8a;
@@ -2207,5 +2208,66 @@ button.primary.new-trip:hover:not(:disabled) {
   }
   .mainnav a {
     padding: 0.625rem 0.75rem;
+  }
+}
+
+/* --- dark ---------------------------------------------------------------------- */
+
+/* The same poster on a dark page, and only colours, borders and shadows
+   change. A black rule or shadow would vanish here, so outlines go
+   off-white, dark or outlined things cast fuchsia, and fuchsia things cast
+   off-white. Text on any of the fills stays ink. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #f5f2f7;
+    --page: #121017;
+    --header: #000000;
+    --surface: #1c1922;
+    --hollow: transparent;
+    --text: #f5f2f7;
+    --muted: #b8b2bf;
+    --rule-dim: #4a4452;
+    --land: #4a2a3d;
+    --map-dots: #34303c;
+    --label-bg: var(--paper);
+    --label-fg: var(--ink);
+    --heading-bg: var(--fuchsia);
+    --heading-fg: var(--ink);
+    --heading-cast: 0.3125rem 0.3125rem 0 var(--text);
+    --cast: var(--fuchsia);
+    --cast-fill: var(--text);
+    --cast-strong: var(--text);
+  }
+
+  :where(input[type='checkbox']) {
+    accent-color: var(--fuchsia);
+  }
+
+  /* rows and list items step down to a quieter rule; the thick off-white one
+     stays on the edges of sections */
+  .show-row {
+    border-top: 0.125rem solid var(--rule-dim);
+  }
+
+  .month-jump a {
+    border-bottom: 0.125rem solid var(--rule-dim);
+  }
+
+  /* a filled tag is bordered in its own fill rather than in ink */
+  .month-jump em,
+  .chip.good,
+  .ticket-toggle.held,
+  .favorite[open] .chevron {
+    border-color: var(--fuchsia);
+  }
+
+  .dow.weekend,
+  .chip.warn {
+    border-color: var(--coral);
+  }
+
+  .chip.info,
+  .chip.slipped {
+    border-color: var(--lavender);
   }
 }
