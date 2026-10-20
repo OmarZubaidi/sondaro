@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useState } from 'react'
 import { geoCircle, geoMercator, geoPath } from 'd3-geo'
 import type { Feature, FeatureCollection, Geometry } from 'geojson'
 import { loadWorld, type World } from '../lib/world'
@@ -58,6 +58,21 @@ function country(world: World, code: string): Feature | null {
 
 const clamp = (value: number, low: number, high: number) => Math.min(Math.max(value, low), high)
 
+interface Size {
+  width: number
+  height: number
+}
+
+/** The frame in drawing units: WIDTH × HEIGHT at the scale it fits the frame
+ *  at, grown along whichever side the frame has to spare. The land then
+ *  reaches every edge, and pins, tags and lines keep their size. */
+function drawingSize(frameWidth: number, frameHeight: number): Size {
+  if (!frameWidth || !frameHeight) return { width: WIDTH, height: HEIGHT }
+  return frameWidth / frameHeight > WIDTH / HEIGHT
+    ? { width: (HEIGHT * frameWidth) / frameHeight, height: HEIGHT }
+    : { width: WIDTH, height: (WIDTH * frameHeight) / frameWidth }
+}
+
 interface Box {
   x: number
   y: number
@@ -71,7 +86,7 @@ const overlaps = (a: Box, b: Box) =>
 /** Beside the pin, on whichever corner is inside the map and clear of every
  *  pin and tag already placed: right then left, below then above. When none
  *  is, the first clear one pulled inside, and failing that the first. */
-function placeTag(x: number, y: number, w: number, taken: Box[]): [number, number] {
+function placeTag(x: number, y: number, w: number, taken: Box[], size: Size): [number, number] {
   const corners = [
     [x + 14, y + 8],
     [x + 14, y - 8 - TAG_HEIGHT],
@@ -79,10 +94,10 @@ function placeTag(x: number, y: number, w: number, taken: Box[]): [number, numbe
     [x - 14 - w, y - 8 - TAG_HEIGHT],
   ]
   const inside = ([cx, cy]: number[]) =>
-    cx >= 2 && cy >= 2 && cx + w <= WIDTH - 2 && cy + TAG_HEIGHT <= HEIGHT - 2
+    cx >= 2 && cy >= 2 && cx + w <= size.width - 2 && cy + TAG_HEIGHT <= size.height - 2
   const pulled = corners.map(([cx, cy]) => [
-    clamp(cx, 2, WIDTH - 2 - w),
-    clamp(cy, 2, HEIGHT - 2 - TAG_HEIGHT),
+    clamp(cx, 2, size.width - 2 - w),
+    clamp(cy, 2, size.height - 2 - TAG_HEIGHT),
   ])
   const clear = ([cx, cy]: number[]) => !taken.some((box) => overlaps(box, { x: cx, y: cy, w, h: TAG_HEIGHT }))
 
@@ -102,6 +117,7 @@ function bend(x1: number, y1: number, x2: number, y2: number): string {
 
 function draw(
   world: World,
+  size: Size,
   stops: MapStop[],
   nearby: MapStop[],
   loose: string[],
@@ -125,13 +141,13 @@ function draw(
     .fitExtent(
       [
         [PAD, PAD],
-        [WIDTH - PAD, HEIGHT - PAD],
+        [size.width - PAD, size.height - PAD],
       ],
       frame,
     )
     .clipExtent([
       [0, 0],
-      [WIDTH, HEIGHT],
+      [size.width, size.height],
     ])
   const path = geoPath(projection)
   const at = (s: MapStop) => projection([s.lon, s.lat]) ?? [0, 0]
@@ -159,7 +175,7 @@ function draw(
   const taken: Box[] = unique.map((pin) => ({ x: pin.x - 11, y: pin.y - 11, w: 22, h: 22 }))
   const pins = unique.map((pin) => {
     const width = tagWidth(pin.tag)
-    const [tagX, tagY] = placeTag(pin.x, pin.y, width + TAG_PAD * 2, taken)
+    const [tagX, tagY] = placeTag(pin.x, pin.y, width + TAG_PAD * 2, taken, size)
     taken.push({ x: tagX, y: tagY, w: width + TAG_PAD * 2, h: TAG_HEIGHT })
     return { ...pin, width, tagX, tagY }
   })
@@ -182,6 +198,9 @@ function draw(
  *  site: no key, no tiles, nothing fetched but the one shapes file. */
 export function RouteMap({ label, stops, nearby = [], loose = [], reachKm }: RouteMapProps) {
   const [world, setWorld] = useState<World | null>(null)
+  const [frame, setFrame] = useState<HTMLDivElement | null>(null)
+  const [frameWidth, setFrameWidth] = useState(0)
+  const [frameHeight, setFrameHeight] = useState(0)
 
   useEffect(() => {
     let live = true
@@ -191,17 +210,31 @@ export function RouteMap({ label, stops, nearby = [], loose = [], reachKm }: Rou
     }
   }, [])
 
+  // a layout effect, so the first paint already has the frame's shape
+  useLayoutEffect(() => {
+    if (!frame) return
+    const measure = () => {
+      setFrameWidth(frame.clientWidth)
+      setFrameHeight(frame.clientHeight)
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(frame)
+    return () => observer.disconnect()
+  }, [frame])
+
   if (stops.length === 0 && nearby.length === 0 && loose.length === 0) return null
-  const drawing = world && draw(world, stops, nearby, loose, reachKm)
+  const size = drawingSize(frameWidth, frameHeight)
+  const drawing = world && draw(world, size, stops, nearby, loose, reachKm)
   if (world && !drawing) return null
 
   return (
-    <div className="route-map">
+    <div className="route-map" ref={setFrame}>
       {drawing && (
         <svg
           role="img"
           aria-label={label}
-          viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+          viewBox={`0 0 ${size.width} ${size.height}`}
           preserveAspectRatio="xMidYMid meet"
         >
           {drawing.land.map((shape) => (

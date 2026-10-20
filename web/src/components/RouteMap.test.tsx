@@ -107,6 +107,22 @@ describe('RouteMap', () => {
     expect(Number(rect.getAttribute('width'))).toBe(Number(text.getAttribute('textLength')) + 16)
   })
 
+  it('draws to the shape of its frame, so the land reaches every edge', async () => {
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(640)
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(270)
+    render(<RouteMap label={LABEL} stops={[TOKYO, OSAKA]} />)
+
+    expect(await screen.findByRole('img')).toHaveAttribute('viewBox', '0 0 640 270')
+  })
+
+  it('grows a tall frame’s drawing downwards, keeping pins and lines their size', async () => {
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(320)
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(540)
+    render(<RouteMap label={LABEL} stops={[TOKYO, OSAKA]} />)
+
+    expect(await screen.findByRole('img')).toHaveAttribute('viewBox', '0 0 360 607.5')
+  })
+
   it('still draws the route when the shapes can’t be loaded', async () => {
     vi.mocked(loadWorld).mockResolvedValue({})
     render(<RouteMap label={LABEL} stops={[TOKYO, OSAKA]} loose={['KR']} />)
