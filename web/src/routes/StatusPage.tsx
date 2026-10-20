@@ -133,7 +133,7 @@ export function StatusPage() {
                     <i
                       style={{
                         width: percent(quota.fraction),
-                        background: quota.exhausted ? 'var(--coral)' : 'var(--ink)',
+                        background: quota.exhausted ? 'var(--coral)' : 'var(--text)',
                       }}
                     />
                   </div>

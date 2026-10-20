@@ -639,14 +639,14 @@ tbody tr:last-child th {
 .meter {
   min-width: 3.75rem;
   height: 0.75rem;
-  border: 0.125rem solid var(--ink);
-  background: var(--paper);
+  border: 0.125rem solid var(--text);
+  background: var(--hollow);
 }
 
 .meter > i {
   display: block;
   height: 100%;
-  background: var(--ink);
+  background: var(--text);
 }
 
 /* --- index progress ------------------------------------------------------- */
@@ -2262,12 +2262,36 @@ button.primary.new-trip:hover:not(:disabled) {
   }
 
   .dow.weekend,
-  .chip.warn {
+  .chip.warn,
+  .note {
     border-color: var(--coral);
   }
 
   .chip.info,
   .chip.slipped {
     border-color: var(--lavender);
+  }
+
+  button.primary.new-trip {
+    box-shadow: 0.375rem 0.375rem 0 var(--cast-fill);
+  }
+
+  button.primary.new-trip:hover:not(:disabled) {
+    box-shadow: 0.5rem 0.5rem 0 var(--cast-fill);
+  }
+
+  /* the black bar meets the dark card under it, so it needs a line between */
+  .trip-head {
+    border-bottom: var(--rule);
+  }
+
+  /* inverted inside the fuchsia panel, which itself stays as it is */
+  .trip-legs {
+    background: var(--ink);
+    color: var(--text);
+  }
+
+  .map-loose {
+    fill-opacity: 0.7;
   }
 }
