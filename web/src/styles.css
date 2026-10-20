@@ -2,23 +2,45 @@
    class can override them without a specificity fight. */
 :root {
   color-scheme: light;
+  /* the same in both themes; text on any of the fills is always ink */
   --ink: #0b0b0f;
-  --paper: #ffffff;
   --fuchsia: #ff2a8a;
   --pink: #ffb3d1;
   --coral: #ff7a5c;
   --lavender: #a78bfa;
+
+  /* Roles. Ink and paper each play several parts in the light theme, and a
+     dark page needs those parts apart, so everything below goes through
+     these rather than through ink and paper directly. */
+  --paper: #ffffff; /* the lightest tone: header text, light fills */
+  --page: var(--paper);
+  --header: var(--ink); /* the header and the black bars */
+  --surface: var(--paper); /* inputs, tabs, cards */
+  --hollow: var(--paper); /* outlined chips, tags and buttons */
+  --text: var(--ink); /* text and outlines */
   --muted: #3d3842;
-  --rule: 0.1875rem solid var(--ink);
-  --shadow-sm: 0.25rem 0.25rem 0 var(--ink);
-  --shadow-lg: 0.625rem 0.625rem 0 var(--ink);
+  --rule-dim: var(--ink); /* the 2px separators between rows */
+  --land: var(--pink);
+  --map-dots: color-mix(in srgb, var(--ink) 15%, var(--paper));
+  --label-bg: var(--ink); /* sidebar and map tags */
+  --label-fg: var(--paper);
+  --heading-bg: var(--ink); /* month and date tags */
+  --heading-fg: var(--fuchsia);
+  --heading-cast: none;
+  --cast: var(--ink); /* the shadow of an outlined element */
+  --cast-fill: var(--ink); /* the shadow of a fuchsia one */
+  --cast-strong: var(--ink); /* the shadow of a trip header */
+
+  --rule: 0.1875rem solid var(--text);
+  --shadow-sm: 0.25rem 0.25rem 0 var(--cast);
+  --shadow-lg: 0.625rem 0.625rem 0 var(--cast);
 
   --display: 'Anton', Impact, 'Arial Narrow', sans-serif;
   --sans: 'Archivo', 'Helvetica Neue', Arial, sans-serif;
   --mono: 'DM Mono', ui-monospace, Menlo, monospace;
   --tap: 2.75rem;
   /* the header, the progress band and the page column share one width */
-  --page: 90rem;
+  --page-width: 90rem;
 }
 
 * {
@@ -49,14 +71,14 @@ html {
 }
 
 body {
-  background: var(--paper);
-  color: var(--ink);
+  background: var(--page);
+  color: var(--text);
   font: 400 1rem/1.5 var(--sans);
   -webkit-text-size-adjust: 100%;
 }
 
 a {
-  color: var(--ink);
+  color: var(--text);
   text-decoration-thickness: 0.0625rem;
   text-underline-offset: 0.125rem;
 }
@@ -66,7 +88,7 @@ a:hover {
 }
 
 :focus-visible {
-  outline: 0.1875rem solid var(--ink);
+  outline: 0.1875rem solid var(--text);
   outline-offset: 0.1875rem;
 }
 
@@ -89,7 +111,7 @@ code {
 /* --- header --------------------------------------------------------------- */
 
 .topbar {
-  background: var(--ink);
+  background: var(--header);
   color: var(--paper);
 }
 
@@ -98,7 +120,7 @@ code {
 }
 
 .topbar-inner {
-  max-width: var(--page);
+  max-width: var(--page-width);
   margin: 0 auto;
   padding: 1rem 2rem;
   display: flex;
@@ -185,7 +207,7 @@ code {
 
 .wrap {
   width: 100%;
-  max-width: var(--page);
+  max-width: var(--page-width);
   margin: 0 auto;
   padding: 2.25rem 2rem calc(3rem + env(safe-area-inset-bottom, 0rem));
 }
@@ -259,8 +281,8 @@ code {
   padding: 0.25rem 0.75rem;
   transform: skewX(-10deg);
   transform-origin: 0 100%;
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--label-bg);
+  color: var(--label-fg);
   font: 400 1.25rem/1.2 var(--display);
   letter-spacing: 0.0625rem;
   text-transform: uppercase;
@@ -282,7 +304,7 @@ code {
   margin-bottom: 0.375rem;
   font: 500 0.75rem/1.3 var(--mono);
   text-transform: uppercase;
-  color: var(--ink);
+  color: var(--text);
 }
 
 :where(label:has(> input[type='checkbox'])) {
@@ -315,8 +337,8 @@ code {
   padding: 0 0.5rem;
   border: var(--rule);
   border-radius: 0;
-  background: var(--paper);
-  color: var(--ink);
+  background: var(--surface);
+  color: var(--text);
   box-shadow: var(--shadow-sm);
   font: 400 1.125rem var(--mono);
 }
@@ -326,8 +348,8 @@ code {
   padding: 0 1rem;
   border: var(--rule);
   border-radius: 0;
-  background: var(--paper);
-  color: var(--ink);
+  background: var(--hollow);
+  color: var(--text);
   font: 500 0.8125rem/1.2 var(--mono);
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -340,7 +362,7 @@ code {
 
 :where(button:active:not(:disabled)) {
   transform: translate(0.125rem, 0.125rem);
-  box-shadow: 0.125rem 0.125rem 0 var(--ink);
+  box-shadow: 0.125rem 0.125rem 0 var(--cast);
 }
 
 button:disabled {
@@ -351,14 +373,15 @@ button:disabled {
 button.primary {
   padding: 0 1.125rem;
   background: var(--fuchsia);
-  box-shadow: var(--shadow-sm);
+  color: var(--ink);
+  box-shadow: 0.25rem 0.25rem 0 var(--cast-fill);
   font: 400 1.25rem/1.1 var(--display);
   letter-spacing: 0.0625rem;
 }
 
 button.primary:hover:not(:disabled) {
   transform: translate(-0.125rem, -0.125rem);
-  box-shadow: 0.375rem 0.375rem 0 var(--ink);
+  box-shadow: 0.375rem 0.375rem 0 var(--cast-fill);
 }
 
 button.primary:disabled {
@@ -367,6 +390,7 @@ button.primary:disabled {
 
 button.danger:hover:not(:disabled) {
   background: var(--coral);
+  color: var(--ink);
 }
 
 .block {
@@ -393,7 +417,7 @@ button.danger:hover:not(:disabled) {
   height: var(--tap);
   min-height: var(--tap);
   padding: 0;
-  border: var(--rule);
+  border: 0.1875rem solid var(--ink);
   background: var(--paper);
   color: var(--ink);
 }
@@ -405,8 +429,13 @@ button.danger:hover:not(:disabled) {
   height: 1.125rem;
 }
 
+/* they sit on the fuchsia trip panel, which is the same in both themes */
+.icon-button:hover:not(:disabled) {
+  box-shadow: 0.25rem 0.25rem 0 var(--ink);
+}
+
 a.icon-button:hover {
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0.25rem 0.25rem 0 var(--ink);
 }
 
 .icon-button.danger:hover:not(:disabled) {
@@ -438,7 +467,7 @@ a.icon-button:hover {
   border: var(--rule);
   background: var(--fuchsia);
   color: var(--ink);
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0.25rem 0.25rem 0 var(--cast-fill);
   font: 500 0.8125rem var(--mono);
   text-transform: uppercase;
   text-decoration: none;
@@ -455,7 +484,7 @@ a.icon-button:hover {
   min-height: 3rem;
   padding: 0.375rem 0.25rem;
   border: 0;
-  background: var(--paper);
+  background: var(--surface);
   box-shadow: none;
   font: 400 1rem/1.1 var(--display);
   letter-spacing: 0.0313rem;
@@ -471,17 +500,18 @@ a.icon-button:hover {
 
 .tabs button[aria-selected='true'] {
   background: var(--fuchsia);
+  color: var(--ink);
   text-decoration: none;
 }
 
-/* a 2×2 grid ruled by the ink showing through the gaps, which reads cleaner
-   than four buttons wrapping raggedly */
+/* a 2×2 grid ruled by the line colour showing through the gaps, which reads
+   cleaner than four buttons wrapping raggedly */
 .segmented {
   display: inline-grid;
   grid-template-columns: repeat(2, auto);
   gap: 0.125rem;
   border: var(--rule);
-  background: var(--ink);
+  background: var(--text);
   box-shadow: var(--shadow-sm);
 }
 
@@ -489,7 +519,7 @@ a.icon-button:hover {
   min-height: 2.25rem;
   padding: 0 0.625rem;
   border: 0;
-  background: var(--paper);
+  background: var(--surface);
   box-shadow: none;
   font-size: 0.75rem;
 }
@@ -500,6 +530,7 @@ a.icon-button:hover {
 
 .segmented button[aria-pressed='true'] {
   background: var(--fuchsia);
+  color: var(--ink);
 }
 
 .inline-field {
@@ -552,7 +583,7 @@ a.icon-button:hover {
 
 .empty {
   padding: 2.5rem 1.5rem;
-  border: 0.1875rem dashed var(--ink);
+  border: 0.1875rem dashed var(--rule-dim);
   text-align: center;
   color: var(--muted);
   font: 400 0.9375rem/1.5 var(--sans);
@@ -562,7 +593,7 @@ a.icon-button:hover {
   margin-bottom: 1rem;
   padding: 1rem;
   border: var(--rule);
-  background: var(--paper);
+  background: var(--surface);
   box-shadow: var(--shadow-sm);
 }
 
@@ -590,7 +621,7 @@ table {
 td,
 th {
   padding: 0.5rem 0.375rem;
-  border-bottom: 0.125rem solid var(--ink);
+  border-bottom: 0.125rem solid var(--rule-dim);
   text-align: left;
 }
 
@@ -621,11 +652,12 @@ tbody tr:last-child th {
 
 .progress {
   background: var(--fuchsia);
-  border-bottom: var(--rule);
+  border-bottom: 0.1875rem solid var(--header);
+  color: var(--ink);
 }
 
 .progress-inner {
-  max-width: var(--page);
+  max-width: var(--page-width);
   margin: 0 auto;
   padding: 0.75rem 2rem;
   display: flex;
@@ -675,24 +707,27 @@ tbody tr:last-child th {
 
 .chip {
   padding: 0.1875rem 0.5rem;
-  border: 0.125rem solid var(--ink);
-  background: var(--paper);
-  color: var(--ink);
+  border: 0.125rem solid var(--text);
+  background: var(--hollow);
+  color: var(--text);
   font: 500 0.75rem/1.3 var(--mono);
   text-transform: uppercase;
 }
 
 .chip.good {
   background: var(--fuchsia);
+  color: var(--ink);
 }
 
 .chip.warn {
   background: var(--coral);
+  color: var(--ink);
 }
 
 .chip.info,
 .chip.slipped {
   background: var(--lavender);
+  color: var(--ink);
 }
 
 .score {
@@ -711,9 +746,9 @@ tbody tr:last-child th {
 .dots i {
   width: 0.6875rem;
   height: 0.6875rem;
-  border: 0.125rem solid var(--ink);
+  border: 0.125rem solid var(--text);
   border-radius: 50%;
-  background: var(--paper);
+  background: var(--hollow);
 }
 
 .dots i.on {
@@ -782,14 +817,15 @@ button.show {
 
 .dow {
   padding: 0.0625rem 0.375rem;
-  border: 0.125rem solid var(--ink);
-  background: var(--paper);
+  border: 0.125rem solid var(--text);
+  background: var(--hollow);
   font: 500 0.8125rem/1.3 var(--mono);
   text-transform: uppercase;
 }
 
 .dow.weekend {
   background: var(--coral);
+  color: var(--ink);
 }
 
 .show-row .time {
@@ -868,7 +904,7 @@ button.show {
   height: var(--tap);
   padding: 0 0.875rem;
   border: var(--rule);
-  color: var(--ink);
+  color: var(--text);
   font: 500 0.8125rem var(--mono);
   text-transform: uppercase;
   text-decoration: none;
@@ -889,7 +925,8 @@ button.show {
 
 .ticket-toggle.held {
   background: var(--fuchsia);
-  box-shadow: var(--shadow-sm);
+  color: var(--ink);
+  box-shadow: 0.25rem 0.25rem 0 var(--cast-fill);
 }
 
 /* one artist's dates: the act is the heading, so the row is the place */
@@ -897,7 +934,7 @@ button.show {
   align-items: center;
   gap: 0.5rem 1.25rem;
   padding: 0.625rem 0;
-  border-top: 0.125rem solid var(--ink);
+  border-top: 0.125rem solid var(--rule-dim);
 }
 
 .show-row.compact .show {
@@ -1069,7 +1106,7 @@ button.show {
 .next-up-label {
   padding: 0.375rem 0.625rem;
   border: 0.125rem solid var(--fuchsia);
-  background: var(--ink);
+  background: var(--header);
   color: var(--fuchsia);
   font: 500 0.8125rem var(--mono);
   letter-spacing: 0.0625rem;
@@ -1089,9 +1126,10 @@ button.show {
   max-width: 100%;
   padding: 0.25rem 1rem;
   transform: skewX(-8deg);
-  border: var(--rule);
+  border: 0.1875rem solid var(--ink);
   background: var(--paper);
-  box-shadow: 0.375rem 0.375rem 0 var(--ink);
+  color: var(--ink);
+  box-shadow: 0.375rem 0.375rem 0 var(--cast);
   font: 400 clamp(2.5rem, 10cqi, 4.75rem) / 1 var(--display);
   letter-spacing: 0.0625rem;
   text-transform: uppercase;
@@ -1100,7 +1138,7 @@ button.show {
 
 .next-up-where {
   padding: 0.25rem 0.625rem;
-  background: var(--ink);
+  background: var(--header);
   color: var(--paper);
   font: 400 0.875rem/1.4 var(--mono);
   text-transform: uppercase;
@@ -1117,6 +1155,7 @@ button.show {
   padding: 1.5rem;
   border-left: var(--rule);
   background: var(--fuchsia);
+  color: var(--ink);
   font: 500 0.875rem var(--mono);
   text-transform: uppercase;
 }
@@ -1180,8 +1219,9 @@ button.show {
 .month-label span {
   padding: 0.125rem 1.25rem;
   transform: skewX(-8deg);
-  background: var(--ink);
-  color: var(--fuchsia);
+  background: var(--heading-bg);
+  color: var(--heading-fg);
+  box-shadow: var(--heading-cast);
   font: 400 3.75rem/1.05 var(--display);
   text-transform: uppercase;
 }
@@ -1204,8 +1244,9 @@ button.show {
 .date-label {
   padding: 0.125rem 0.875rem;
   transform: skewX(-8deg);
-  background: var(--ink);
-  color: var(--fuchsia);
+  background: var(--heading-bg);
+  color: var(--heading-fg);
+  box-shadow: var(--heading-cast);
   font: 400 2.125rem/1.1 var(--display);
 }
 
@@ -1261,7 +1302,7 @@ button.show {
   min-height: var(--tap);
   padding: 0.625rem 0;
   border-bottom: var(--rule);
-  color: var(--ink);
+  color: var(--text);
   text-decoration: none;
 }
 
@@ -1279,6 +1320,7 @@ button.show {
   padding: 0.0625rem 0.5rem;
   border: 0.125rem solid var(--ink);
   background: var(--fuchsia);
+  color: var(--ink);
   font: normal 500 0.8125rem var(--mono);
   font-variant-numeric: tabular-nums;
 }
@@ -1309,7 +1351,7 @@ button.show {
   min-height: 2.625rem;
   margin: 0;
   padding: 0.375rem 0;
-  border-bottom: 0.125rem solid var(--ink);
+  border-bottom: 0.125rem solid var(--rule-dim);
   font: 500 0.9375rem/1.3 var(--sans);
   text-transform: none;
   cursor: pointer;
@@ -1413,7 +1455,7 @@ button.show {
   align-items: center;
   justify-content: center;
   border: var(--rule);
-  background: var(--paper);
+  background: var(--hollow);
 }
 
 .chevron svg {
@@ -1427,6 +1469,7 @@ button.show {
 
 .favorite[open] .chevron {
   background: var(--fuchsia);
+  color: var(--ink);
 }
 
 .favorite[open] .chevron svg {
@@ -1443,6 +1486,7 @@ button.show {
 
 .trip {
   border: var(--rule);
+  background: var(--surface);
   box-shadow: var(--shadow-lg);
 }
 
@@ -1452,7 +1496,7 @@ button.show {
   align-items: center;
   gap: 0.625rem 1.25rem;
   padding: 1rem 1.25rem;
-  background: var(--ink);
+  background: var(--header);
   color: var(--paper);
 }
 
@@ -1474,6 +1518,7 @@ button.show {
   padding: 0 1rem;
   border-color: var(--paper);
   background: var(--fuchsia);
+  color: var(--ink);
   box-shadow: 0.25rem 0.25rem 0 var(--paper);
   font: 400 1.125rem/1.1 var(--display);
   letter-spacing: 0.0625rem;
@@ -1533,7 +1578,7 @@ button.show {
   align-items: center;
   gap: 0.375rem 1rem;
   padding: 0.5rem 0;
-  border-top: 0.125rem solid var(--ink);
+  border-top: 0.125rem solid var(--rule-dim);
 }
 
 .trip-date .on {
@@ -1568,8 +1613,8 @@ button.show {
   align-items: center;
   min-height: 2.25rem;
   padding: 0 0.625rem;
-  border: 0.125rem solid var(--ink);
-  color: var(--ink);
+  border: 0.125rem solid var(--text);
+  color: var(--text);
   font: 500 0.75rem var(--mono);
   text-transform: uppercase;
   text-decoration: none;
@@ -1609,7 +1654,7 @@ button.show {
   display: flex;
   flex-wrap: wrap;
   border: var(--rule);
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0.625rem 0.625rem 0 var(--cast-strong);
 }
 
 .trip-header > .route-map {
@@ -1634,6 +1679,7 @@ button.show {
   gap: 0.875rem;
   padding: 1.375rem;
   background: var(--fuchsia);
+  color: var(--ink);
 }
 
 .trip-hero::before {
@@ -1684,7 +1730,7 @@ button.show {
   list-style: none;
   display: flex;
   flex-direction: column;
-  border: var(--rule);
+  border: 0.1875rem solid var(--ink);
   background: var(--paper);
 }
 
@@ -1695,7 +1741,7 @@ button.show {
   align-items: center;
   gap: 0.25rem 0.75rem;
   padding: 0.375rem 0.75rem;
-  border-bottom: 0.125rem solid var(--ink);
+  border-bottom: 0.125rem solid var(--rule-dim);
 }
 
 .trip-legs li:last-child {
@@ -1717,11 +1763,11 @@ button.show {
 .new-trip {
   min-height: 3.5rem;
   font-size: 1.5rem;
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0.625rem 0.625rem 0 var(--cast-fill);
 }
 
 button.primary.new-trip:hover:not(:disabled) {
-  box-shadow: 0.75rem 0.75rem 0 var(--ink);
+  box-shadow: 0.75rem 0.75rem 0 var(--cast-fill);
 }
 
 /* --- route maps ----------------------------------------------------------------- */
@@ -1729,12 +1775,8 @@ button.primary.new-trip:hover:not(:disabled) {
 .route-map {
   position: relative;
   min-height: 16.875rem;
-  background-color: var(--paper);
-  background-image: radial-gradient(
-    circle,
-    color-mix(in srgb, var(--ink) 15%, var(--paper)) 0.0875rem,
-    transparent 0.1063rem
-  );
+  background-color: var(--page);
+  background-image: radial-gradient(circle, var(--map-dots) 0.0875rem, transparent 0.1063rem);
   background-size: 0.5625rem 0.5625rem;
 }
 
@@ -1748,29 +1790,29 @@ button.primary.new-trip:hover:not(:disabled) {
 /* Inside the svg, px are viewBox units and scale with the map, so these stay
    px while the rest of the sheet is rem. */
 .map-land {
-  fill: var(--pink);
-  stroke: var(--ink);
+  fill: var(--land);
+  stroke: var(--text);
   stroke-width: 2.5px;
   stroke-linejoin: round;
 }
 
 .map-loose {
   fill: var(--lavender);
-  stroke: var(--ink);
+  stroke: var(--text);
   stroke-width: 2.5px;
   stroke-dasharray: 7px 5px;
 }
 
 .map-ring {
   fill: none;
-  stroke: var(--ink);
+  stroke: var(--text);
   stroke-width: 2.5px;
   stroke-dasharray: 7px 6px;
 }
 
 .map-route {
   fill: none;
-  stroke: var(--ink);
+  stroke: var(--text);
   stroke-width: 4px;
   stroke-linecap: round;
 }
@@ -1791,11 +1833,11 @@ button.primary.new-trip:hover:not(:disabled) {
 }
 
 .map-tag rect {
-  fill: var(--ink);
+  fill: var(--label-bg);
 }
 
 .map-tag text {
-  fill: var(--paper);
+  fill: var(--label-fg);
   font: 400 17px var(--display);
   text-transform: uppercase;
 }
@@ -1835,7 +1877,7 @@ button.primary.new-trip:hover:not(:disabled) {
   display: flex;
   flex-direction: column;
   border-left: var(--rule);
-  background: var(--paper);
+  background: var(--page);
   transform: translateX(100%);
   visibility: hidden;
   transition:
@@ -1854,7 +1896,7 @@ button.primary.new-trip:hover:not(:disabled) {
   align-items: center;
   gap: 0.75rem;
   padding: 0.875rem 1.25rem;
-  background: var(--ink);
+  background: var(--header);
   color: var(--paper);
 }
 
@@ -1904,7 +1946,7 @@ button.primary.new-trip:hover:not(:disabled) {
   width: min(35rem, 100%);
   max-height: 90vh;
   border: var(--rule);
-  background: var(--paper);
+  background: var(--page);
   box-shadow: var(--shadow-lg);
 }
 
@@ -1917,7 +1959,7 @@ button.primary.new-trip:hover:not(:disabled) {
 }
 
 .modal-head {
-  background: var(--ink);
+  background: var(--header);
   color: var(--paper);
 }
 
@@ -1966,12 +2008,12 @@ button.primary.new-trip:hover:not(:disabled) {
   min-height: var(--tap);
   padding: 0.375rem;
   border: var(--rule);
-  background: var(--paper);
+  background: var(--surface);
   box-shadow: var(--shadow-sm);
 }
 
 .chip-field:focus-within {
-  outline: 0.1875rem solid var(--ink);
+  outline: 0.1875rem solid var(--text);
   outline-offset: 0.1875rem;
 }
 
@@ -2019,12 +2061,12 @@ button.primary.new-trip:hover:not(:disabled) {
   max-height: 15rem;
   overflow-y: auto;
   border: var(--rule);
-  background: var(--paper);
+  background: var(--surface);
   box-shadow: var(--shadow-sm);
 }
 
 .chip-options li + li {
-  border-top: 0.125rem solid var(--ink);
+  border-top: 0.125rem solid var(--rule-dim);
 }
 
 .chip-options li button {
@@ -2043,6 +2085,7 @@ button.primary.new-trip:hover:not(:disabled) {
 
 .chip-options li button:hover {
   background: var(--fuchsia);
+  color: var(--ink);
 }
 
 .empty-option {
