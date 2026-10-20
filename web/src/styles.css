@@ -1051,13 +1051,16 @@ button.show {
   height: 5.5rem;
 }
 
-.favorite-thumb::after {
+/* a tile without a photo, or whose photo failed to load */
+.favorite-thumb:not(:has(img))::after {
   content: '';
   position: absolute;
   inset: 0;
   background-image: radial-gradient(circle, var(--fuchsia) 0.1375rem, transparent 0.1625rem);
   background-size: 0.5rem 0.5rem;
   opacity: 0.45;
+  -webkit-mask-image: linear-gradient(200deg, transparent 15%, #000 75%);
+  mask-image: linear-gradient(200deg, transparent 15%, #000 75%);
 }
 
 .next-up-photo {
