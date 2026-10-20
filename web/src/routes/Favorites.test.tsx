@@ -439,6 +439,18 @@ describe('Favorites', () => {
       await waitFor(() => expect(fetched).toHaveBeenCalledWith({ days: 60, km: 650 }))
     })
 
+    it('lets the radius be cleared and retyped', async () => {
+      // clamping each keystroke snapped the emptied field to 25, so typing 500 gave 25500
+      await renderFeed()
+      const fetched = vi.mocked(api.favorites)
+
+      await trips()
+      await userEvent.type(screen.getByLabelText('and'), '{Backspace}{Backspace}{Backspace}500')
+
+      expect(screen.getByLabelText('and')).toHaveValue(500)
+      await waitFor(() => expect(fetched).toHaveBeenLastCalledWith({ days: 12, km: 500 }))
+    })
+
     it('maps each could-be trip city by city, in date order', async () => {
       await renderFeed()
 

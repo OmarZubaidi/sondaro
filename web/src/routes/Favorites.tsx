@@ -7,6 +7,7 @@ import { clusterMap } from '../lib/routes'
 import { ArtistPhoto } from '../components/ArtistPhoto'
 import { CheckList } from '../components/CheckList'
 import { LazyRouteMap } from '../components/LazyRouteMap'
+import { NumberField } from '../components/NumberField'
 import { ShowCard } from '../components/ShowCard'
 import { TripModal, type TripPrefill } from '../components/TripModal'
 import { TripRun } from '../components/TripRun'
@@ -285,36 +286,23 @@ export function Favorites() {
         {view === 'trips' && (
           <div className="trip-shape">
             <label htmlFor="fav-days">Within</label>
-            <input
+            <NumberField
               id="fav-days"
-              type="number"
               min={1}
               max={60}
-              step={1}
               value={shape.days}
-              onChange={(e) =>
-                reshape({
-                  ...shape,
-                  days: Math.min(60, Math.max(1, Number(e.target.value) || 1)),
-                })
-              }
+              onChange={(days) => reshape({ ...shape, days })}
             />
             <span>days</span>
 
             <label htmlFor="fav-km">and</label>
-            <input
+            <NumberField
               id="fav-km"
-              type="number"
               min={25}
               max={3000}
               step={50}
               value={shape.km}
-              onChange={(e) =>
-                reshape({
-                  ...shape,
-                  km: Math.min(3000, Math.max(25, Number(e.target.value) || 25)),
-                })
-              }
+              onChange={(km) => reshape({ ...shape, km })}
             />
             <span>km</span>
           </div>
