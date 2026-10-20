@@ -1,63 +1,79 @@
-import { useEffect, useRef, useState } from 'react'
-import { MoonIcon } from './IconButton'
+import { useEffect, useState } from 'react'
+import { MoonIcon, SunIcon, SystemIcon } from './IconButton'
 
 // index.html reads both too, to set the theme before the first paint
 const STORAGE_KEY = 'theme'
 const OS_DARK = '(prefers-color-scheme: dark)'
 
 type Theme = 'light' | 'dark'
+type Mode = Theme | 'system'
 
-const root = document.documentElement
+const MODES = {
+  system: { label: 'Theme: system', icon: <SystemIcon /> },
+  light: { label: 'Theme: light', icon: <SunIcon /> },
+  dark: { label: 'Theme: dark', icon: <MoonIcon /> },
+}
 
-function storedTheme() {
+function remembered(): Mode {
+  let stored = null
   try {
-    return localStorage.getItem(STORAGE_KEY)
+    stored = localStorage.getItem(STORAGE_KEY)
   } catch {
-    return null
+    // blocked storage reads as no choice
+  }
+  return stored === 'light' || stored === 'dark' ? stored : 'system'
+}
+
+function remember(mode: Mode) {
+  try {
+    if (mode === 'system') localStorage.removeItem(STORAGE_KEY)
+    else localStorage.setItem(STORAGE_KEY, mode)
+  } catch {
+    // the theme still changes for this visit, it just isn't remembered
   }
 }
 
-/** Follows the OS until the first click, then keeps whichever theme was picked. */
+/** From the system setting, the first click always changes the page; the
+ *  next pins the system's own theme, and the third goes back to following it. */
+function nextMode(mode: Mode, os: Theme): Mode {
+  if (mode === 'system') return os === 'dark' ? 'light' : 'dark'
+  return mode === os ? 'system' : os
+}
+
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>(() =>
-    root.dataset.theme === 'dark' ? 'dark' : 'light',
+  const [mode, setMode] = useState(remembered)
+  const [os, setOs] = useState<Theme>(() =>
+    window.matchMedia(OS_DARK).matches ? 'dark' : 'light',
   )
-  const picked = useRef(storedTheme() !== null)
+  const theme = mode === 'system' ? os : mode
 
   useEffect(() => {
-    root.dataset.theme = theme
+    document.documentElement.dataset.theme = theme
   }, [theme])
 
   useEffect(() => {
-    const os = window.matchMedia(OS_DARK)
-    const follow = () => {
-      if (!picked.current) setTheme(os.matches ? 'dark' : 'light')
-    }
-    os.addEventListener('change', follow)
-    return () => os.removeEventListener('change', follow)
+    const query = window.matchMedia(OS_DARK)
+    const follow = () => setOs(query.matches ? 'dark' : 'light')
+    query.addEventListener('change', follow)
+    return () => query.removeEventListener('change', follow)
   }, [])
 
-  function toggle() {
-    const next = theme === 'dark' ? 'light' : 'dark'
-    picked.current = true
-    setTheme(next)
-    try {
-      localStorage.setItem(STORAGE_KEY, next)
-    } catch {
-      // the theme still changes for this visit, it just isn't remembered
-    }
+  function cycle() {
+    const next = nextMode(mode, os)
+    setMode(next)
+    remember(next)
   }
 
+  const { label, icon } = MODES[mode]
   return (
     <button
       type="button"
       className="icon-button on-ink"
-      aria-label="Dark mode"
-      title="Dark mode"
-      aria-pressed={theme === 'dark'}
-      onClick={toggle}
+      aria-label={label}
+      title={label}
+      onClick={cycle}
     >
-      <MoonIcon />
+      {icon}
     </button>
   )
 }

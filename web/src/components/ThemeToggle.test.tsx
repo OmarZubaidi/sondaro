@@ -12,7 +12,7 @@ function setOs(dark: boolean) {
 }
 
 const pageTheme = () => document.documentElement.dataset.theme
-const toggle = () => screen.getByRole('button', { name: 'Dark mode' })
+const toggle = () => screen.getByRole('button', { name: /^Theme/ })
 
 beforeEach(() => {
   osDark = false
@@ -23,7 +23,6 @@ beforeEach(() => {
     addEventListener: (_: string, listener: () => void) => osListeners.add(listener),
     removeEventListener: (_: string, listener: () => void) => osListeners.delete(listener),
   }))
-  document.documentElement.dataset.theme = 'light'
 })
 
 afterEach(() => {
@@ -33,40 +32,53 @@ afterEach(() => {
 })
 
 describe('ThemeToggle', () => {
-  it('starts from the theme index.html set before the first paint', () => {
-    document.documentElement.dataset.theme = 'dark'
+  it('follows the system when nothing is remembered', () => {
+    osDark = true
     render(<ThemeToggle />)
-    expect(toggle()).toHaveAttribute('aria-pressed', 'true')
-  })
-
-  it('flips the page theme and remembers the choice', async () => {
-    render(<ThemeToggle />)
-
-    await userEvent.click(toggle())
+    expect(toggle()).toHaveAccessibleName('Theme: system')
     expect(pageTheme()).toBe('dark')
-    expect(toggle()).toHaveAttribute('aria-pressed', 'true')
-    expect(localStorage.getItem('theme')).toBe('dark')
 
-    await userEvent.click(toggle())
+    setOs(false)
     expect(pageTheme()).toBe('light')
-    expect(localStorage.getItem('theme')).toBe('light')
   })
 
-  it('follows the OS until a theme is picked', async () => {
+  it('starts from a choice remembered on an earlier visit, and ignores the system', () => {
+    localStorage.setItem('theme', 'light')
+    osDark = true
     render(<ThemeToggle />)
-    setOs(true)
-    expect(pageTheme()).toBe('dark')
+    expect(toggle()).toHaveAccessibleName('Theme: light')
+    expect(pageTheme()).toBe('light')
 
-    await userEvent.click(toggle())
     setOs(false)
     setOs(true)
     expect(pageTheme()).toBe('light')
   })
 
-  it('ignores the OS when a choice was remembered from an earlier visit', () => {
-    localStorage.setItem('theme', 'light')
+  it('cycles to the other theme, then the system’s own, then back to the system', async () => {
     render(<ThemeToggle />)
+
+    await userEvent.click(toggle())
+    expect(toggle()).toHaveAccessibleName('Theme: dark')
+    expect(pageTheme()).toBe('dark')
+    expect(localStorage.getItem('theme')).toBe('dark')
+
+    await userEvent.click(toggle())
+    expect(toggle()).toHaveAccessibleName('Theme: light')
+    expect(pageTheme()).toBe('light')
+    expect(localStorage.getItem('theme')).toBe('light')
+
+    await userEvent.click(toggle())
+    expect(toggle()).toHaveAccessibleName('Theme: system')
+    expect(localStorage.getItem('theme')).toBeNull()
     setOs(true)
+    expect(pageTheme()).toBe('dark')
+  })
+
+  it('goes light first on a dark system', async () => {
+    osDark = true
+    render(<ThemeToggle />)
+    await userEvent.click(toggle())
+    expect(toggle()).toHaveAccessibleName('Theme: light')
     expect(pageTheme()).toBe('light')
   })
 })

@@ -85,6 +85,20 @@ export const MoonIcon = () => (
   </Svg>
 )
 
+export const SunIcon = () => (
+  <Svg>
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+  </Svg>
+)
+
+export const SystemIcon = () => (
+  <Svg>
+    <rect x="3" y="4" width="18" height="12" rx="2" />
+    <path d="M8 20h8M12 16v4" />
+  </Svg>
+)
+
 export const SettingsIcon = () => (
   <Svg>
     <path d="M4 7h10M18 7h2M4 17h4M12 17h8" />

@@ -453,7 +453,6 @@ a.icon-button:hover {
 
 .icon-button.on-ink:hover,
 .icon-button.on-ink[aria-expanded='true'],
-.icon-button.on-ink[aria-pressed='true'],
 .drawer-head .icon-button:hover {
   background: var(--paper);
   color: var(--ink);
