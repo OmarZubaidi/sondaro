@@ -1,8 +1,8 @@
-/* Round 3. Light by default, with the dark theme at the end following the
-   OS. Element defaults sit inside :where() so any class can override them
-   without a specificity fight. */
+/* Round 3. Light by default, with the dark theme at the end, switched by
+   data-theme on <html>. Element defaults sit inside :where() so any class can
+   override them without a specificity fight. */
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
   /* the same in both themes; text on any of the fills is always ink */
   --ink: #0b0b0f;
   --fuchsia: #ff2a8a;
@@ -453,6 +453,7 @@ a.icon-button:hover {
 
 .icon-button.on-ink:hover,
 .icon-button.on-ink[aria-expanded='true'],
+.icon-button.on-ink[aria-pressed='true'],
 .drawer-head .icon-button:hover {
   background: var(--paper);
   color: var(--ink);
@@ -2198,10 +2199,17 @@ button.primary.new-trip:hover:not(:disabled) {
   }
 }
 
-/* the narrowest phones, where the three nav blocks only just fit on a line */
+/* the narrowest phones, where the three nav blocks only just fit on a line, and
+   so do the wordmark and the tools */
 @media (max-width: 380px) {
+  .topbar-inner {
+    column-gap: 0.5rem;
+  }
   .wordmark {
     font-size: 2rem;
+  }
+  .status-link {
+    padding: 0 0.25rem;
   }
   .mainnav {
     gap: 0.25rem;
@@ -2217,28 +2225,30 @@ button.primary.new-trip:hover:not(:disabled) {
    change. A black rule or shadow would vanish here, so outlines go
    off-white, dark or outlined things cast fuchsia, and fuchsia things cast
    off-white. Text on any of the fills stays ink. */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --paper: #f5f2f7;
-    --page: #121017;
-    --header: #000000;
-    --surface: #1c1922;
-    --hollow: transparent;
-    --text: #f5f2f7;
-    --muted: #b8b2bf;
-    --rule-dim: #4a4452;
-    --land: #4a2a3d;
-    --map-dots: #34303c;
-    --label-bg: var(--paper);
-    --label-fg: var(--ink);
-    --heading-bg: var(--fuchsia);
-    --heading-fg: var(--ink);
-    --heading-cast: 0.3125rem 0.3125rem 0 var(--text);
-    --cast: var(--fuchsia);
-    --cast-fill: var(--text);
-    --cast-strong: var(--text);
-  }
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --paper: #f5f2f7;
+  --page: #121017;
+  --header: #000000;
+  --surface: #1c1922;
+  --hollow: transparent;
+  --text: #f5f2f7;
+  --muted: #b8b2bf;
+  --rule-dim: #4a4452;
+  --land: #4a2a3d;
+  --map-dots: #34303c;
+  --label-bg: var(--paper);
+  --label-fg: var(--ink);
+  --heading-bg: var(--fuchsia);
+  --heading-fg: var(--ink);
+  --heading-cast: 0.3125rem 0.3125rem 0 var(--text);
+  --cast: var(--fuchsia);
+  --cast-fill: var(--text);
+  --cast-strong: var(--text);
+}
 
+/* the theme adds no specificity, so these win and lose as they would unscoped */
+:where([data-theme='dark']) {
   :where(input[type='checkbox']) {
     accent-color: var(--fuchsia);
   }

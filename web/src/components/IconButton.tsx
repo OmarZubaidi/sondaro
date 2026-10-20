@@ -79,6 +79,12 @@ export const CloseIcon = () => (
   </Svg>
 )
 
+export const MoonIcon = () => (
+  <Svg>
+    <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
+  </Svg>
+)
+
 export const SettingsIcon = () => (
   <Svg>
     <path d="M4 7h10M18 7h2M4 17h4M12 17h8" />

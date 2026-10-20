@@ -6,6 +6,17 @@
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#0b0b0f" />
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000" />
     <meta name="color-scheme" content="light dark" />
+    <!-- inline so the theme is set before the first paint; ThemeToggle takes over after -->
+    <script>
+      {
+        let theme = null
+        try {
+          theme = localStorage.getItem('theme')
+        } catch {}
+        document.documentElement.dataset.theme =
+          theme ?? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+      }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

@@ -6,6 +6,7 @@ import { Trips } from './routes/Trips'
 import { StatusPage } from './routes/StatusPage'
 import { SettingsDrawer } from './components/SettingsDrawer'
 import { SettingsIcon } from './components/IconButton'
+import { ThemeToggle } from './components/ThemeToggle'
 
 const navClass = ({ isActive }: { isActive: boolean }) => (isActive ? 'active' : '')
 
@@ -38,6 +39,7 @@ export function App() {
             >
               Status
             </NavLink>
+            <ThemeToggle />
             {/* not a route: settings open over the page you're on, because
                 that page is usually why you're changing them */}
             <button
