@@ -2237,7 +2237,6 @@ button.primary.new-trip:hover:not(:disabled) {
   --text: #f5f2f7;
   --muted: #b8b2bf;
   --rule-dim: #4a4452;
-  --land: #4a2a3d;
   --map-dots: #34303c;
   --label-bg: var(--paper);
   --label-fg: var(--ink);
@@ -2305,5 +2304,17 @@ button.primary.new-trip:hover:not(:disabled) {
 
   .map-loose {
     fill-opacity: 0.7;
+  }
+
+  /* the land keeps its pink and ink, so the lines that cross both it and the
+     dark sea go fuchsia */
+  .map-land,
+  .map-loose {
+    stroke: var(--ink);
+  }
+
+  .map-ring,
+  .map-route {
+    stroke: var(--fuchsia);
   }
 }
